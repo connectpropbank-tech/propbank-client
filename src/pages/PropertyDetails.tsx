@@ -1,0 +1,767 @@
+import { Helmet } from "react-helmet-async";
+import { useParams, useNavigate } from "react-router-dom";
+import { ArrowLeft, Eye, MapPin, Home, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+
+interface TenantInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  emergencyContact: string;
+  leaseStartDate: string;
+  leaseEndDate: string;
+  monthlyRent: string;
+  securityDeposit: string;
+  previousAddress: string;
+  employmentStatus: string;
+  employer: string;
+  monthlyIncome: string;
+  notes: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface BuyerInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  emergencyContact: string;
+  offerAmount: string;
+  financingType: string;
+  preApprovalAmount: string;
+  closingDate: string;
+  currentAddress: string;
+  employmentStatus: string;
+  employer: string;
+  annualIncome: string;
+  agentName: string;
+  agentPhone: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Property {
+  id: string;
+  title: string;
+  propertyType: string;
+  configuration: string;
+  listingType: string;
+  
+  // Unit Details
+  unitNumber: string;
+  floor: string;
+  buildingName: string;
+  location: string;
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  
+  // Area Details
+  carpetArea: string;
+  plotArea: string;
+  constructedArea: string;
+  squareFeet: number;
+  
+  // Tenant Information
+  tenantName: string;
+  personName: string;
+  mobileNumber: string;
+  primaryNo: string;
+  ultNo: string;
+  
+  // Pricing Details
+  monthlyRent: string;
+  sellingPrice: string;
+  
+  // Monthly Rent Details
+  monthlyRent1stYear: string;
+  monthlyRent2ndYear: string;
+  monthlyRent3rdYear: string;
+  monthlyRent4thYear: string;
+  rentFromDate1: string;
+  rentToDate1: string;
+  rentFromDate2: string;
+  rentToDate2: string;
+  
+  // Payment Details
+  paymentDueDate: string;
+  escalationPercentage: string;
+  escalationAmount: string;
+  
+  // Security & Agreement
+  securityDeposit: string;
+  agreementPeriod: string;
+  agreementStartDate: string;
+  agreementEndDate: string;
+  
+  // Notice & Lock-in
+  noticePeriod: string;
+  lockInPeriod: string;
+  
+  // Unit Condition & Maintenance
+  unitCondition: string;
+  maintenanceToBePaidBy: string;
+  
+  // Legacy fields
+  description: string;
+  price: number;
+  bedrooms: number;
+  bathrooms: number;
+  
+  // Images & Comments
+  images: string[];
+  specificComments: string;
+  
+  // Tenants
+  tenants: TenantInfo[];
+  
+  // Buyers
+  buyers: BuyerInfo[];
+  
+  // System Info
+  ownerUID: string;
+  ownerName: string;
+  ownerEmail: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const PropertyDetails = () => {
+  const { propertyId } = useParams();
+  const navigate = useNavigate();
+  const [property, setProperty] = useState<Property | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (propertyId) {
+      fetchPropertyDetails(propertyId);
+    }
+  }, [propertyId]);
+
+  const fetchPropertyDetails = async (id: string) => {
+    try {
+      const response = await fetch(`http://localhost:8002/properties/${id}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setProperty(data.property);
+      } else {
+        console.error("Failed to fetch property:", data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching property:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatPrice = (property: Property) => {
+    if (property.listingType === 'rent') {
+      return property.monthlyRent ? `₹${Number(property.monthlyRent).toLocaleString()}/month` : 'Price not set';
+    } else if (property.listingType === 'sell') {
+      return property.sellingPrice ? `₹${Number(property.sellingPrice).toLocaleString()}` : 'Price not set';
+    }
+    return 'Price not set';
+  };
+
+  const getListingTypeBadge = (listingType: string) => {
+    if (listingType === 'rent') {
+      return <Badge variant="secondary" className="bg-blue-100 text-blue-800">For Rent</Badge>;
+    } else if (listingType === 'sell') {
+      return <Badge variant="secondary" className="bg-green-100 text-green-800">For Sale</Badge>;
+    }
+    return <Badge variant="outline">Unknown</Badge>;
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading property details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+      <main className="container mx-auto py-8 px-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Property Not Found</h1>
+          <Button onClick={() => navigate("/manage-property")}>
+            Back to Properties
+          </Button>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="container mx-auto py-8 px-4">
+      <Helmet>
+        <title>{property.title} — Property Details</title>
+        <meta name="description" content={`Details for ${property.title}`} />
+      </Helmet>
+
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <Button variant="ghost" onClick={() => navigate("/manage-property")} className="mb-4">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Manage Properties
+          </Button>
+          
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
+              <Eye className="h-8 w-8 text-primary-foreground" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold">{property.title}</h1>
+                {getListingTypeBadge(property.listingType)}
+              </div>
+              <p className="text-lg text-muted-foreground">Property Details</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Property Information */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {/* Basic Property Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Property Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                  <span>{property.address}, {property.city}, {property.state} {property.zipCode}</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Home className="h-5 w-5 text-muted-foreground" />
+                  <span className="capitalize">{property.propertyType} - {property.configuration}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 pt-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold">{property.bedrooms}</div>
+                    <div className="text-sm text-muted-foreground">Bedrooms</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold">{property.bathrooms}</div>
+                    <div className="text-sm text-muted-foreground">Bathrooms</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-semibold">{property.squareFeet || 'N/A'}</div>
+                    <div className="text-sm text-muted-foreground">Sq Ft</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Unit Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Unit Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {property.unitNumber && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Unit Number</label>
+                      <p className="text-sm">{property.unitNumber}</p>
+                    </div>
+                  )}
+                  {property.floor && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Floor</label>
+                      <p className="text-sm">{property.floor}</p>
+                    </div>
+                  )}
+                  {property.buildingName && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Building Name</label>
+                      <p className="text-sm">{property.buildingName}</p>
+                    </div>
+                  )}
+                  {property.location && (
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Location</label>
+                      <p className="text-sm">{property.location}</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Area Details */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Area Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {property.carpetArea && (
+                    <div className="text-center">
+                      <div className="text-xl font-semibold">{property.carpetArea}</div>
+                      <div className="text-sm text-muted-foreground">Carpet Area</div>
+                    </div>
+                  )}
+                  {property.plotArea && (
+                    <div className="text-center">
+                      <div className="text-xl font-semibold">{property.plotArea}</div>
+                      <div className="text-sm text-muted-foreground">Plot Area</div>
+                    </div>
+                  )}
+                  {property.constructedArea && (
+                    <div className="text-center">
+                      <div className="text-xl font-semibold">{property.constructedArea}</div>
+                      <div className="text-sm text-muted-foreground">Constructed Area</div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tenant Information */}
+            {(property.tenantName || property.personName || property.mobileNumber) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Tenant Information</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {property.tenantName && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Tenant Name</label>
+                        <p className="text-sm">{property.tenantName}</p>
+                      </div>
+                    )}
+                    {property.personName && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Person Name</label>
+                        <p className="text-sm">{property.personName}</p>
+                      </div>
+                    )}
+                    {property.mobileNumber && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Mobile Number</label>
+                        <p className="text-sm">{property.mobileNumber}</p>
+                      </div>
+                    )}
+                    {property.primaryNo && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Primary Number</label>
+                        <p className="text-sm">{property.primaryNo}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Agreement & Security Details */}
+            {(property.securityDeposit || property.agreementPeriod || property.noticePeriod) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Agreement & Security</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {property.securityDeposit && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Security Deposit</label>
+                        <p className="text-sm font-semibold">₹{Number(property.securityDeposit).toLocaleString()}</p>
+                      </div>
+                    )}
+                    {property.agreementPeriod && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Agreement Period</label>
+                        <p className="text-sm">{property.agreementPeriod}</p>
+                      </div>
+                    )}
+                    {property.agreementStartDate && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Agreement Start Date</label>
+                        <p className="text-sm">{new Date(property.agreementStartDate).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {property.agreementEndDate && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Agreement End Date</label>
+                        <p className="text-sm">{new Date(property.agreementEndDate).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {property.noticePeriod && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Notice Period</label>
+                        <p className="text-sm">{property.noticePeriod}</p>
+                      </div>
+                    )}
+                    {property.lockInPeriod && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Lock-in Period</label>
+                        <p className="text-sm">{property.lockInPeriod}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Unit Condition & Maintenance */}
+            {(property.unitCondition || property.maintenanceToBePaidBy) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Unit Condition & Maintenance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {property.unitCondition && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Unit Condition</label>
+                        <p className="text-sm">{property.unitCondition}</p>
+                      </div>
+                    )}
+                    {property.maintenanceToBePaidBy && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Maintenance To Be Paid By</label>
+                        <p className="text-sm">{property.maintenanceToBePaidBy}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Comments */}
+            {property.specificComments && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Additional Comments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm">{property.specificComments}</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            {/* Pricing */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Pricing</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-primary mb-2">
+                  {formatPrice(property)}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                  <Calendar className="h-4 w-4" />
+                  Listed on {new Date(property.createdAt).toLocaleDateString()}
+                </div>
+
+                {/* Detailed Rent Information for Rentals */}
+                {property.listingType === 'rent' && (
+                  <div className="space-y-3">
+                    {property.monthlyRent1stYear && (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">1st Year Rent</label>
+                        <p className="text-sm font-semibold">₹{Number(property.monthlyRent1stYear).toLocaleString()}/month</p>
+                      </div>
+                    )}
+                    {property.monthlyRent2ndYear && (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">2nd Year Rent</label>
+                        <p className="text-sm font-semibold">₹{Number(property.monthlyRent2ndYear).toLocaleString()}/month</p>
+                      </div>
+                    )}
+                    {property.monthlyRent3rdYear && (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">3rd Year Rent</label>
+                        <p className="text-sm font-semibold">₹{Number(property.monthlyRent3rdYear).toLocaleString()}/month</p>
+                      </div>
+                    )}
+                    {property.paymentDueDate && (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Payment Due Date</label>
+                        <p className="text-sm">{property.paymentDueDate}</p>
+                      </div>
+                    )}
+                    {property.escalationPercentage && (
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Escalation</label>
+                        <p className="text-sm">{property.escalationPercentage}%</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Owner Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Owner Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Owner Name</label>
+                    <p className="text-sm font-medium">{property.ownerName}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Owner Email</label>
+                    <p className="text-sm">{property.ownerEmail}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Property Status</label>
+                    <div className="text-sm mt-1">
+                      <Badge variant={property.isActive ? "default" : "secondary"}>
+                        {property.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tenants Information */}
+            {property.tenants && property.tenants.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Home className="h-5 w-5" />
+                    Current Tenants ({property.tenants.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Active tenants for this property
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {property.tenants.filter(tenant => tenant.isActive).map((tenant, index) => (
+                      <div key={tenant.id} className="border rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <h4 className="font-medium text-base">
+                              {tenant.firstName} {tenant.lastName}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">{tenant.email}</p>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            Tenant {index + 1}
+                          </Badge>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                            <p>{tenant.phone}</p>
+                          </div>
+                          {tenant.monthlyRent && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Monthly Rent</label>
+                              <p className="font-semibold">₹{Number(tenant.monthlyRent).toLocaleString()}</p>
+                            </div>
+                          )}
+                          {tenant.leaseStartDate && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Lease Start</label>
+                              <p>{new Date(tenant.leaseStartDate).toLocaleDateString()}</p>
+                            </div>
+                          )}
+                          {tenant.leaseEndDate && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Lease End</label>
+                              <p>{new Date(tenant.leaseEndDate).toLocaleDateString()}</p>
+                            </div>
+                          )}
+                          {tenant.employmentStatus && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Employment</label>
+                              <p className="capitalize">{tenant.employmentStatus}</p>
+                            </div>
+                          )}
+                          {tenant.employer && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Employer</label>
+                              <p>{tenant.employer}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {tenant.emergencyContact && (
+                          <div className="mt-3 pt-3 border-t">
+                            <label className="text-xs font-medium text-muted-foreground">Emergency Contact</label>
+                            <p className="text-sm">{tenant.emergencyContact}</p>
+                          </div>
+                        )}
+
+                        {tenant.notes && (
+                          <div className="mt-3 pt-3 border-t">
+                            <label className="text-xs font-medium text-muted-foreground">Notes</label>
+                            <p className="text-sm">{tenant.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Buyers Information */}
+            {property.buyers && property.buyers.length > 0 && (
+              <Card className="border-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Eye className="h-5 w-5" />
+                    Interested Buyers ({property.buyers.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Buyers interested in purchasing this property
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {property.buyers.map((buyer, index) => (
+                      <div key={buyer.id} className="p-4 border rounded-lg bg-muted/20">
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="font-semibold">
+                            {buyer.firstName} {buyer.lastName}
+                          </h4>
+                          <Badge variant="outline" className="text-xs">
+                            Buyer {index + 1}
+                          </Badge>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Email</label>
+                            <p>{buyer.email}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                            <p>{buyer.phone}</p>
+                          </div>
+                          {buyer.offerAmount && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Offer Amount</label>
+                              <p className="font-semibold">₹{Number(buyer.offerAmount).toLocaleString()}</p>
+                            </div>
+                          )}
+                          {buyer.financingType && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Financing</label>
+                              <p className="capitalize">{buyer.financingType}</p>
+                            </div>
+                          )}
+                          {buyer.preApprovalAmount && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Pre-approval</label>
+                              <p>₹{Number(buyer.preApprovalAmount).toLocaleString()}</p>
+                            </div>
+                          )}
+                          {buyer.closingDate && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Expected Closing</label>
+                              <p>{new Date(buyer.closingDate).toLocaleDateString()}</p>
+                            </div>
+                          )}
+                          {buyer.employmentStatus && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Employment</label>
+                              <p className="capitalize">{buyer.employmentStatus}</p>
+                            </div>
+                          )}
+                          {buyer.employer && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Employer</label>
+                              <p>{buyer.employer}</p>
+                            </div>
+                          )}
+                          {buyer.annualIncome && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Annual Income</label>
+                              <p>₹{Number(buyer.annualIncome).toLocaleString()}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {buyer.agentName && (
+                          <div className="mt-3 pt-3 border-t">
+                            <label className="text-xs font-medium text-muted-foreground">Real Estate Agent</label>
+                            <p className="text-sm">{buyer.agentName} {buyer.agentPhone && `- ${buyer.agentPhone}`}</p>
+                          </div>
+                        )}
+
+                        {buyer.currentAddress && (
+                          <div className="mt-3 pt-3 border-t">
+                            <label className="text-xs font-medium text-muted-foreground">Current Address</label>
+                            <p className="text-sm">{buyer.currentAddress}</p>
+                          </div>
+                        )}
+
+                        {buyer.notes && (
+                          <div className="mt-3 pt-3 border-t">
+                            <label className="text-xs font-medium text-muted-foreground">Notes</label>
+                            <p className="text-sm">{buyer.notes}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Images */}
+        {property.images && property.images.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Property Images</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {property.images.map((image, index) => (
+                  <img
+                    key={index}
+                    src={image}
+                    alt={`Property ${index + 1}`}
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </main>
+  );
+};
+
+export default PropertyDetails;
