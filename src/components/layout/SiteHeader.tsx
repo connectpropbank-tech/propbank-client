@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Menu, X, LogOut, LogIn, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -48,6 +48,7 @@ const allNavItemsFlat = getAllNavItemsFlat();
 const SiteHeader = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<User | null>(auth.currentUser);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -55,6 +56,23 @@ const SiteHeader = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
 
   const handleLogout = async () => {
     await signOutUser();
@@ -66,7 +84,7 @@ const SiteHeader = () => {
       <div className="container mx-auto flex h-16 items-center justify-between">
         <Link to="/" className="inline-flex items-center gap-2 font-semibold">
           <span className="h-6 w-6 rounded-md bg-gradient-primary shadow-glow"></span>
-          <span>ShoPROP</span>
+          <span>Propbank</span>
         </Link>
         
         {/* Desktop Navigation */}
@@ -99,7 +117,7 @@ const SiteHeader = () => {
                 </NavigationMenuLink>
               </NavigationMenuItem>
               {user && (
-                <div className="relative group flex items-center mx-2">
+                <div className="relative group flex items-center mx-2" ref={dropdownRef}>
                   <button
                     className="rounded-full border-2 border-accent focus:outline-none transition-colors"
                     style={{ width: 40, height: 40, overflow: 'hidden', background: 'var(--gradient-primary)' }}

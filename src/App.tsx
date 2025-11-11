@@ -73,33 +73,37 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <SiteHeader />
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/" element={<Index />} />
-              <Route element={<ProtectedRoute />}>
-              <Route path="/buy" element={<Buy />} />
-              <Route path="/rent" element={<Rent />} />
-              <Route path="/sell" element={<Sell />} />
-              <Route path="/rent-out" element={<RentOut />} />
-              <Route path="/prelease" element={<Prelease />} />
-              <Route path="/search" element={<SearchResults />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/manage-property" element={<ManageProperty/>} />
-              <Route path="/select-property-type" element={<SelectPropertyType />} />
-              <Route path="/add-property" element={<AddPropertyForm />} />
-              <Route path="/property/:propertyId" element={<PropertyDetails />} />
-              <Route path="/edit-property/:propertyId" element={<EditProperty />} />
-              <Route path="/add-tenant/:propertyId" element={<AddTenant />} />
-              <Route path="/add-buyer/:propertyId" element={<AddBuyer />} />
-              <Route path="/request-services/:propertyId" element={<RequestServices />} />
-              <Route path="/visit-planner" element={<DayPlanner />} />
-            </Route>
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <SiteFooter />
-        </BrowserRouter>
+            <div className="flex flex-col min-h-screen">
+              <SiteHeader />
+              <main className="flex-1">
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/" element={<Index />} />
+                  <Route element={<ProtectedRoute />}>
+                  <Route path="/buy" element={<Buy />} />
+                  <Route path="/rent" element={<Rent />} />
+                  <Route path="/sell" element={<Sell />} />
+                  <Route path="/rent-out" element={<RentOut />} />
+                  <Route path="/prelease" element={<Prelease />} />
+                  <Route path="/search" element={<SearchResults />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/manage-property" element={<ManageProperty/>} />
+                  <Route path="/select-property-type" element={<SelectPropertyType />} />
+                  <Route path="/add-property" element={<AddPropertyForm />} />
+                  <Route path="/property/:propertyId" element={<PropertyDetails />} />
+                  <Route path="/edit-property/:propertyId" element={<EditProperty />} />
+                  <Route path="/add-tenant/:propertyId" element={<AddTenant />} />
+                  <Route path="/add-buyer/:propertyId" element={<AddBuyer />} />
+                  <Route path="/request-services/:propertyId" element={<RequestServices />} />
+                  <Route path="/visit-planner" element={<DayPlanner />} />
+                </Route>
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              </main>
+              <SiteFooter />
+            </div>
+          </BrowserRouter>
         </SearchProvider>
       </TooltipProvider>
     </HelmetProvider>

@@ -54,6 +54,8 @@ const Index = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedProjectCondition, setSelectedProjectCondition] = useState<string>("");
+  const [budgetRange, setBudgetRange] = useState<{min: number; max: number}>({min: 0, max: 0});
+  const [showCustomBudget, setShowCustomBudget] = useState<boolean>(false);
   const observerTarget = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
@@ -209,8 +211,23 @@ const Index = () => {
       );
     }
 
+    // Filter by budget range
+    if (budgetRange.min > 0 || budgetRange.max > 0) {
+      filtered = filtered.filter(property => {
+        const price = property.price || 0;
+        if (budgetRange.min > 0 && budgetRange.max > 0) {
+          return price >= budgetRange.min && price <= budgetRange.max;
+        } else if (budgetRange.min > 0) {
+          return price >= budgetRange.min;
+        } else if (budgetRange.max > 0) {
+          return price <= budgetRange.max;
+        }
+        return true;
+      });
+    }
+
     return filtered;
-  }, [allProperties, searchQuery, searchType, selectedCategories, selectedListingTypes, selectedProjectCondition]);
+  }, [allProperties, searchQuery, searchType, selectedCategories, selectedListingTypes, selectedProjectCondition, budgetRange]);
 
   const handleSearch = () => {
     setIsSearching(true);
@@ -235,6 +252,8 @@ const Index = () => {
     setSearchType("buy");
     setSelectedCategories([]);
     setSelectedProjectCondition("");
+    setBudgetRange({min: 0, max: 0});
+    setShowCustomBudget(false);
     setIsSearching(false);
     setPage(1);
     
@@ -253,7 +272,7 @@ const Index = () => {
 
   // Auto-apply filters when categories, search query, search type, or header filters change
   useEffect(() => {
-    if (selectedCategories.length > 0 || selectedListingTypes?.length > 0 || searchQuery.trim() || selectedProjectCondition) {
+    if (selectedCategories.length > 0 || selectedListingTypes?.length > 0 || searchQuery.trim() || selectedProjectCondition || budgetRange.min > 0 || budgetRange.max > 0) {
       setIsSearching(true);
       const filteredProperties = getFilteredProperties();
       const initialResults = filteredProperties.slice(0, ITEMS_PER_PAGE);
@@ -261,7 +280,7 @@ const Index = () => {
       setProperties(initialResults);
       setPage(1);
       setHasMore(filteredProperties.length > ITEMS_PER_PAGE);
-    } else if (!searchQuery.trim() && selectedCategories.length === 0 && (!selectedListingTypes || selectedListingTypes.length === 0) && !selectedProjectCondition) {
+    } else if (!searchQuery.trim() && selectedCategories.length === 0 && (!selectedListingTypes || selectedListingTypes.length === 0) && !selectedProjectCondition && budgetRange.min === 0 && budgetRange.max === 0) {
       // Show all properties when no filters are applied
       setIsSearching(false);
       const initialProperties = allProperties.slice(0, ITEMS_PER_PAGE);
@@ -269,7 +288,7 @@ const Index = () => {
       setPage(1);
       setHasMore(allProperties.length > ITEMS_PER_PAGE);
     }
-  }, [selectedCategories, selectedListingTypes, searchQuery, searchType, selectedProjectCondition, allProperties, getFilteredProperties]);
+  }, [selectedCategories, selectedListingTypes, searchQuery, searchType, selectedProjectCondition, budgetRange, allProperties, getFilteredProperties]);
 
   const formatPrice = (property: Property): string => {
     if (property.price > 0) {
@@ -279,9 +298,9 @@ const Index = () => {
   };
 
   return (
-    <main>
+    <>
       <Helmet>
-        <title>ShoPROP — Buy, Sell & Rent Properties</title>
+        <title>Propbank — Buy, Sell & Rent Properties</title>
         <meta name="description" content="Buy, sell, or rent properties with ShoPROP. Modern PWA for real estate with buyer/tenant and seller/landlord profiles." />
         <link rel="canonical" href="/" />
       </Helmet>
@@ -289,53 +308,44 @@ const Index = () => {
       {/* Hero Section */}
       <section aria-label="Hero" className="relative">
         <GradientSpotlight className="">
-          <div className="container mx-auto py-16 space-y-12">
-            {/* Header with Text and Image */}
-            <div className="grid lg:grid-cols-2 gap-10 items-center">
-              <div className="space-y-6">
-                <h1 className="text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
-                  Your Real Estate, Simplified
-                </h1>
-                <p className="text-lg text-muted-foreground lg:text-xl">
-                  Buy and sell homes, rent out as a landlord, or find your next place as a tenant — 
-                  all in one fast, installable app.
-                </p>
-                
-                {/* Quick Action Buttons */}
-                <div className="flex flex-wrap gap-3">
-                  <Button asChild variant="hero" size="lg">
-                    <Link to="/search?types=buy">Browse Properties for Sale</Link>
-                  </Button>
-                  <Button asChild variant="outline" size="lg">
-                    <Link to="/search?types=rent">Find Rental Properties</Link>
-                  </Button>
+          <div className="container mx-auto py-16">
+            {/* Main Layout: Left side (Text + Image) and Right side (Search) */}
+            <div className="grid lg:grid-cols-2 gap-12 items-center justify-center">
+              {/* Left Side: Text and Image */}
+              <div className="space-y-8 flex flex-col items-center text-center lg:items-start lg:text-left">
+                {/* Text Content */}
+                <div className="space-y-6">
+                  <h1 className="text-3xl font-bold leading-tight md:text-2xl lg:text-3xl">
+                    Your Go-To Hub for Buying, Selling, and Renting
+                  </h1>
+                  <p className="text-lg text-muted-foreground">
+                    Find, list, and manage — all in one platform
+                  </p>
                 </div>
-              </div>
-              
-              <div className="relative">
+                
+                {/* Image */}
                 <div className="glass-panel shadow-elegant rounded-xl overflow-hidden">
                   <img
                     src={heroImage}
                     alt="Modern homes and city skyline for a real estate app hero"
                     loading="eager"
-                    className="w-full h-[400px] lg:h-[500px] object-cover"
+                    className="w-full h-[300px] md:h-[350px] object-cover"
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Enhanced Search Section */}
-            <div className="max-w-4xl mx-auto space-y-8">
-              <div className="text-center space-y-4">
-                <h2 className="text-2xl md:text-3xl font-bold">Find Your Perfect Property</h2>
-                <p className="text-muted-foreground">
-                  Search thousands of properties by location, type, or features
-                </p>
-              </div>
-              
-              {/* Large Search Bar */}
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 space-y-4">
-                <div className="w-full max-w-2xl mx-auto">
+              {/* Right Side: Enhanced Search Section */}
+              <div className="space-6 w-full max-w-2xl mx-auto lg:mx-0">
+                <div className="text-center space-y-4">
+                  <h2 className="text-2xl md:text-3xl font-bold">Find Your Dream Property</h2>
+                  <p className="text-muted-foreground">
+                    Your dream property is just a search away.
+                  </p>
+                </div>
+                
+                {/* Search Bar */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-white/20 space-y-4 sm:space-y-6 w-full">
+                <div className="w-full mx-auto">
                   <div className="flex items-center gap-0 rounded-lg border border-input bg-background shadow-sm overflow-hidden">
                     <Select value={searchType} onValueChange={setSearchType}>
                       <SelectTrigger className="w-32 border-0 border-r border-input rounded-none bg-muted/50">
@@ -365,124 +375,314 @@ const Index = () => {
                   </div>
                 </div>
 
-                {/* Project Condition Filter */}
-                <div className="w-full max-w-md mx-auto">
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      variant={!selectedProjectCondition ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedProjectCondition("")}
-                      className="text-xs"
-                    >
-                      All Projects
-                    </Button>
-                    <Button
-                      variant={selectedProjectCondition === "New Project" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedProjectCondition("New Project")}
-                      className="text-xs"
-                    >
-                      New Project
-                    </Button>
-                    <Button
-                      variant={selectedProjectCondition === "Ready Project" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedProjectCondition("Ready Project")}
-                      className="text-xs"
-                    >
-                      Ready Project
-                    </Button>
+                {/* Property Category Filters */}
+                <div className="space-y-3">
+                  <div className="text-center">
+                    <h3 className="text-sm font-medium text-foreground/80">Property Types</h3>
                   </div>
-                  <div className="mt-2">
-                    <Button
-                      variant={selectedProjectCondition === "Preleased" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedProjectCondition("Preleased")}
-                      className="text-xs w-full"
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full mx-auto">
+                    <Button 
+                      variant={selectedCategories.length === 0 ? "default" : "outline"} 
+                      className="h-auto p-3 flex-col gap-1 text-xs"
+                      onClick={() => {
+                        setSelectedCategories([]);
+                        setSearchQuery("");
+                        setSelectedProjectCondition("");
+                      }}
                     >
-                      Preleased
+                      <Home className="h-4 w-4" />
+                      <span>All Properties</span>
+                    </Button>
+                    <Button 
+                      variant={selectedCategories.includes("residential") ? "default" : "outline"} 
+                      className="h-auto p-3 flex-col gap-1 text-xs"
+                      onClick={() => handleCategoryToggle("residential")}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      <span>Residential</span>
+                    </Button>
+                    <Button 
+                      variant={selectedCategories.includes("commercial") ? "default" : "outline"} 
+                      className="h-auto p-3 flex-col gap-1 text-xs"
+                      onClick={() => handleCategoryToggle("commercial")}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      <span>Commercial</span>
+                    </Button>
+                    <Button 
+                      variant={selectedCategories.includes("industrial") ? "default" : "outline"} 
+                      className="h-auto p-3 flex-col gap-1 text-xs"
+                      onClick={() => handleCategoryToggle("industrial")}
+                    >
+                      <Building2 className="h-4 w-4" />
+                      <span>Industrial</span>
                     </Button>
                   </div>
                 </div>
-              </div>
 
-              {/* Search Status */}
-              {(isSearching || selectedCategories.length > 0 || selectedProjectCondition) && (
-                <div className="flex items-center justify-between bg-muted/50 rounded-lg p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Active filters:</span>
-                    <div className="flex gap-1">
-                      {selectedCategories.map(category => (
-                        <Badge key={category} variant="secondary" className="capitalize">
-                          {category}
-                        </Badge>
-                      ))}
-                      {searchQuery && (
-                        <Badge variant="secondary">
-                          "{searchQuery}"
-                        </Badge>
-                      )}
-                      {searchType && (
-                        <Badge variant="secondary" className="capitalize">
-                          {searchType}
-                        </Badge>
-                      )}
-                      {selectedProjectCondition && (
-                        <Badge variant="default" className="bg-blue-600 text-white hover:bg-blue-700">
-                          {selectedProjectCondition}
-                        </Badge>
-                      )}
+                {/* Project Condition Filter */}
+                <div className="space-y-3">
+                  <div className="text-center">
+                    <h3 className="text-sm font-medium text-foreground/80">Project Types</h3>
+                  </div>
+                  <div className="w-full mx-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <Button
+                        variant={!selectedProjectCondition ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedProjectCondition("")}
+                        className="text-xs px-2 py-1"
+                      >
+                        All Projects
+                      </Button>
+                      <Button
+                        variant={selectedProjectCondition === "New Project" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedProjectCondition("New Project")}
+                        className="text-xs px-2 py-1"
+                      >
+                        New Project
+                      </Button>
+                      <Button
+                        variant={selectedProjectCondition === "Ready Project" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedProjectCondition("Ready Project")}
+                        className="text-xs px-2 py-1"
+                      >
+                        Ready Project
+                      </Button>
+                      <Button
+                        variant={selectedProjectCondition === "Preleased" ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedProjectCondition("Preleased")}
+                        className="text-xs px-2 py-1"
+                      >
+                        Preleased
+                      </Button>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={clearFilters}>
-                    Clear All
-                  </Button>
                 </div>
-              )}
 
-              {/* Property Category Buttons */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Button 
-                  variant={selectedCategories.length === 0 ? "default" : "outline"} 
-                  className="h-auto p-4 flex-col gap-2 shadow-md"
-                  onClick={() => {
-                    setSelectedCategories([]);
-                    setSearchQuery("");
-                    setSelectedProjectCondition("");
-                  }}
-                >
-                  <Home className="h-6 w-6" />
-                  <span>All Properties</span>
-                </Button>
-                <Button 
-                  variant={selectedCategories.includes("residential") ? "default" : "outline"} 
-                  className="h-auto p-4 flex-col gap-2"
-                  onClick={() => handleCategoryToggle("residential")}
-                >
-                  <Building2 className="h-6 w-6" />
-                  <span>Residential</span>
-                </Button>
-                <Button 
-                  variant={selectedCategories.includes("commercial") ? "default" : "outline"} 
-                  className="h-auto p-4 flex-col gap-2"
-                  onClick={() => handleCategoryToggle("commercial")}
-                >
-                  <Building2 className="h-6 w-6" />
-                  <span>Commercial</span>
-                </Button>
-                <Button 
-                  variant={selectedCategories.includes("industrial") ? "default" : "outline"} 
-                  className="h-auto p-4 flex-col gap-2"
-                  onClick={() => handleCategoryToggle("industrial")}
-                >
-                  <Building2 className="h-6 w-6" />
-                  <span>Industrial</span>
-                </Button>
+                {/* Budget Filter */}
+                <div className="space-y-3">
+                  <div className="text-center">
+                    <h3 className="text-sm font-medium text-foreground/80">
+                      Budget Range (₹{searchType === 'rent' ? '/month' : ''})
+                    </h3>
+                  </div>
+                  <div className="w-full mx-auto space-y-3">
+                    {/* Quick Budget Buttons */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <Button
+                        variant={budgetRange.min === 0 && budgetRange.max === 0 && !showCustomBudget ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setBudgetRange({min: 0, max: 0});
+                          setShowCustomBudget(false);
+                        }}
+                        className="text-xs px-2 py-1"
+                      >
+                        Any Budget
+                      </Button>
+                      
+                      {/* Buy Budget Options */}
+                      {searchType === 'buy' ? (
+                        <>
+                          <Button
+                            variant={budgetRange.min === 0 && budgetRange.max === 5000000 && !showCustomBudget ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setBudgetRange({min: 0, max: 5000000});
+                              setShowCustomBudget(false);
+                            }}
+                            className="text-xs px-2 py-1"
+                          >
+                            Under 50L
+                          </Button>
+                          <Button
+                            variant={budgetRange.min === 5000000 && budgetRange.max === 10000000 && !showCustomBudget ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setBudgetRange({min: 5000000, max: 10000000});
+                              setShowCustomBudget(false);
+                            }}
+                            className="text-xs px-2 py-1"
+                          >
+                            50L - 1Cr
+                          </Button>
+                          <Button
+                            variant={budgetRange.min === 10000000 && budgetRange.max === 20000000 && !showCustomBudget ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setBudgetRange({min: 10000000, max: 20000000});
+                              setShowCustomBudget(false);
+                            }}
+                            className="text-xs px-2 py-1"
+                          >
+                            1Cr - 2Cr
+                          </Button>
+                          <Button
+                            variant={budgetRange.min === 20000000 && budgetRange.max === 0 && !showCustomBudget ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setBudgetRange({min: 20000000, max: 0});
+                              setShowCustomBudget(false);
+                            }}
+                            className="text-xs px-2 py-1"
+                          >
+                            Above 2Cr
+                          </Button>
+                        </>
+                      ) : (
+                        /* Rent Budget Options */
+                        <>
+                          <Button
+                            variant={budgetRange.min === 0 && budgetRange.max === 25000 && !showCustomBudget ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setBudgetRange({min: 0, max: 25000});
+                              setShowCustomBudget(false);
+                            }}
+                            className="text-xs px-2 py-1"
+                          >
+                            Under 25K
+                          </Button>
+                          <Button
+                            variant={budgetRange.min === 25000 && budgetRange.max === 50000 && !showCustomBudget ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setBudgetRange({min: 25000, max: 50000});
+                              setShowCustomBudget(false);
+                            }}
+                            className="text-xs px-2 py-1"
+                          >
+                            25K - 50K
+                          </Button>
+                          <Button
+                            variant={budgetRange.min === 50000 && budgetRange.max === 100000 && !showCustomBudget ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setBudgetRange({min: 50000, max: 100000});
+                              setShowCustomBudget(false);
+                            }}
+                            className="text-xs px-2 py-1"
+                          >
+                            50K - 1L
+                          </Button>
+                          <Button
+                            variant={budgetRange.min === 100000 && budgetRange.max === 0 && !showCustomBudget ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => {
+                              setBudgetRange({min: 100000, max: 0});
+                              setShowCustomBudget(false);
+                            }}
+                            className="text-xs px-2 py-1"
+                          >
+                            Above 1L
+                          </Button>
+                        </>
+                      )}
+                      
+                      <Button
+                        variant={showCustomBudget ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setShowCustomBudget(!showCustomBudget);
+                          if (!showCustomBudget) {
+                            setBudgetRange({min: 0, max: 0});
+                          }
+                        }}
+                        className="text-xs px-2 py-1"
+                      >
+                        Custom
+                      </Button>
+                    </div>
+                    
+                    {/* Custom Range Inputs - Only show when Custom is selected */}
+                    {showCustomBudget && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">
+                            Min {searchType === 'rent' ? 'Rent' : 'Price'}
+                          </label>
+                          <Input
+                            type="number"
+                            placeholder={`Min (₹${searchType === 'rent' ? '/month' : ''})`}
+                            value={budgetRange.min || ''}
+                            onChange={(e) => setBudgetRange({...budgetRange, min: parseInt(e.target.value) || 0})}
+                            className="text-sm h-9"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-muted-foreground">
+                            Max {searchType === 'rent' ? 'Rent' : 'Price'}
+                          </label>
+                          <Input
+                            type="number"
+                            placeholder={`Max (₹${searchType === 'rent' ? '/month' : ''})`}
+                            value={budgetRange.max || ''}
+                            onChange={(e) => setBudgetRange({...budgetRange, max: parseInt(e.target.value) || 0})}
+                            className="text-sm h-9"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                </div>
               </div>
             </div>
           </div>
         </GradientSpotlight>
       </section>
+
+      {/* Search Status */}
+      {(isSearching || selectedCategories.length > 0 || selectedProjectCondition || budgetRange.min > 0 || budgetRange.max > 0) && (
+        <section className="py-4 px-4 bg-background">
+          <div className="container mx-auto">
+            <div className="bg-muted/50 rounded-lg p-3 sm:p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Active filters:</span>
+                  <div className="flex gap-1 flex-wrap">
+                    {selectedCategories.map(category => (
+                      <Badge key={category} variant="secondary" className="capitalize text-xs">
+                        {category}
+                      </Badge>
+                    ))}
+                    {searchQuery && (
+                      <Badge variant="secondary" className="text-xs">
+                        "{searchQuery.length > 15 ? `${searchQuery.substring(0, 15)}...` : searchQuery}"
+                      </Badge>
+                    )}
+                    {searchType && (
+                      <Badge variant="secondary" className="capitalize text-xs">
+                        {searchType}
+                      </Badge>
+                    )}
+                    {selectedProjectCondition && (
+                      <Badge variant="default" className="bg-blue-600 text-white hover:bg-blue-700 text-xs">
+                        {selectedProjectCondition}
+                      </Badge>
+                    )}
+                    {(budgetRange.min > 0 || budgetRange.max > 0) && (
+                      <Badge variant="default" className="bg-green-600 text-white hover:bg-green-700 text-xs">
+                        ₹{searchType === 'rent' 
+                          ? `${budgetRange.min > 0 ? `${(budgetRange.min/1000).toFixed(0)}K` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max/1000).toFixed(0)}K` : '∞'}/mo`
+                          : `${budgetRange.min > 0 ? `${(budgetRange.min/100000).toFixed(0)}L` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max/100000).toFixed(0)}L` : '∞'}`
+                        }
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="self-start sm:self-auto">
+                  Clear All
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Properties Section */}
       <section aria-label="Properties" className="py-16 px-4 bg-background">
@@ -492,8 +692,12 @@ const Index = () => {
               {isSearching || selectedCategories.length > 0 ? 'Filtered Results' : 'Featured Properties'}
             </h2>
             <p className="text-muted-foreground">
-              {isSearching || selectedCategories.length > 0 || selectedProjectCondition
-                ? `Found ${getFilteredProperties().length} properties${searchQuery ? ` matching "${searchQuery}"` : ''}${selectedCategories.length > 0 ? ` in ${selectedCategories.join(', ')} categories` : ''}${selectedProjectCondition ? ` with ${selectedProjectCondition} condition` : ''}`
+              {isSearching || selectedCategories.length > 0 || selectedProjectCondition || budgetRange.min > 0 || budgetRange.max > 0
+                ? `Found ${getFilteredProperties().length} properties${searchQuery ? ` matching "${searchQuery}"` : ''}${selectedCategories.length > 0 ? ` in ${selectedCategories.join(', ')} categories` : ''}${selectedProjectCondition ? ` with ${selectedProjectCondition} condition` : ''}${(budgetRange.min > 0 || budgetRange.max > 0) ? ` in budget range ₹${
+                  searchType === 'rent' 
+                    ? `${budgetRange.min > 0 ? `${(budgetRange.min/1000).toFixed(0)}K` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max/1000).toFixed(0)}K` : '∞'}/month`
+                    : `${budgetRange.min > 0 ? `${(budgetRange.min/100000).toFixed(0)}L` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max/100000).toFixed(0)}L` : '∞'}`
+                }` : ''}`
                 : 'Discover some of our best properties available now'
               }
             </p>
@@ -575,7 +779,8 @@ const Index = () => {
                       {/* Price Badge */}
                       <div className="absolute top-3 right-3">
                         <Badge className="bg-primary text-primary-foreground">
-                          {formatPrice(property)}
+                            {(property.propertyType || 'Property')
+                            .charAt(0).toUpperCase() + (property.propertyType || 'Property').slice(1)}
                         </Badge>
                       </div>
                     </div>
@@ -585,9 +790,6 @@ const Index = () => {
                         <CardTitle className="line-clamp-2">
                           {property.title || 'Property'}
                         </CardTitle>
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {property.propertyType || 'Property'}
-                        </Badge>
                       </div>
                     </CardHeader>
 
@@ -627,12 +829,6 @@ const Index = () => {
 
                       {/* Property Enquiry */}
                       <div className="pt-4 border-t space-y-3 mt-auto">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Property Enquiry</span>
-                          <span className="text-xs text-muted-foreground">
-                            Owner: {property.ownerName}
-                          </span>
-                        </div>
                         
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline" className="w-full">
@@ -685,7 +881,7 @@ const Index = () => {
           )}
         </div>
       </section>
-    </main>
+    </>
   );
 };
 
