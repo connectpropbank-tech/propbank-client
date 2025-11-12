@@ -14,6 +14,7 @@ import { useEffect, useState, useRef } from "react";
 import { auth } from "../firebase";
 import { toast } from "@/hooks/use-toast";
 import { X } from "lucide-react";
+import { API_BASE_URL } from "@/services/visitService";
 
 const formSchema = z.object({
   propertyTitle: z.string().min(1, "Property title is required"),
@@ -183,7 +184,7 @@ const EditProperty = () => {
 
   const fetchPropertyDetails = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:8002/properties/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/properties/${id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -385,7 +386,7 @@ const EditProperty = () => {
       };
 
       // Send update request to backend
-      const response = await fetch(`http://localhost:8002/properties/${propertyId}`, {
+      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

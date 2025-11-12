@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { API_BASE_URL } from "@/services/visitService";
 
 interface GoogleAuthProps {}
 
@@ -39,7 +40,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   // Function to check if user already has phone number
   const checkUserPhoneNumber = async (uid: string) => {
     try {
-      const response = await fetch(`http://localhost:8002/users/${uid}`, {
+      const response = await fetch(`${API_BASE_URL}/users/${uid}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -71,7 +72,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
 
       console.log("Sending user data to backend:", userData);
 
-      const response = await fetch('http://localhost:8002/users', {
+      const response = await fetch('${API_BASE_URL}/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

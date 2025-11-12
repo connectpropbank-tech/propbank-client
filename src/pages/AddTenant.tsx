@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "../firebase";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { API_BASE_URL } from "@/services/visitService";
 
 interface TenantData {
   id: string;
@@ -70,7 +71,7 @@ const AddTenant = () => {
       if (!propertyId) return;
       
       try {
-        const response = await fetch(`http://localhost:8002/properties/${propertyId}`);
+        const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
         const data = await response.json();
         
         if (data.success) {
@@ -170,7 +171,7 @@ const AddTenant = () => {
 
     try {
       // First, get the current property data
-      const propertyResponse = await fetch(`http://localhost:8002/properties/${propertyId}`);
+      const propertyResponse = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
       const propertyData = await propertyResponse.json();
       
       if (!propertyData.success) {
@@ -192,7 +193,7 @@ const AddTenant = () => {
       const updatedTenants = [...existingTenants, ...newTenantInfos];
 
       // Update property with new tenants using property update API
-      const response = await fetch(`http://localhost:8002/properties/${propertyId}`, {
+      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "@/services/visitService";
 
 interface TenantInfo {
   id: string;
@@ -151,7 +152,7 @@ const PropertyDetails = () => {
 
   const fetchPropertyDetails = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:8002/properties/${id}`, {
+      const response = await fetch(`${API_BASE_URL}/properties/${id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

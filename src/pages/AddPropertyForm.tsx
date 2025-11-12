@@ -14,6 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { auth } from "../firebase";
 import { User } from "firebase/auth";
 import { useState, useRef } from "react";
+import { API_BASE_URL } from "@/services/visitService";
 
 const formSchema = z.object({
   // Property Basic Details
@@ -212,7 +213,7 @@ const AddPropertyForm = () => {
       };
 
       // Send to backend API
-      const response = await fetch('http://localhost:8002/properties', {
+      const response = await fetch(`${API_BASE_URL}/properties`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

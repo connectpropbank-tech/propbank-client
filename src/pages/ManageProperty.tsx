@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/services/visitService";
 
 interface TenantInfo {
   id: string;
@@ -128,7 +129,7 @@ const ManageProperty = () => {
     try {
       console.log("Fetching properties for user:", ownerUID);
       
-      const response = await fetch(`http://localhost:8002/properties?ownerUID=${ownerUID}`, {
+      const response = await fetch(`${API_BASE_URL}/properties?ownerUID=${ownerUID}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -303,7 +304,7 @@ const ManageProperty = () => {
   const handleToggleToSell = async (propertyId: string, propertyTitle: string) => {
     try {
       // Update the property listing type to 'sell'
-      const updateResponse = await fetch(`http://localhost:8002/properties/${propertyId}`, {
+      const updateResponse = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -317,7 +318,7 @@ const ManageProperty = () => {
       
       if (updateData.success) {
         // Create admin notification
-        const notificationResponse = await fetch('http://localhost:8002/admin/notifications', {
+        const notificationResponse = await fetch('${API_BASE_URL}/admin/notifications', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

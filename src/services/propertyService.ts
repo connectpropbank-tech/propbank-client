@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8002';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8002';
 
 interface Property {
   id: string;
@@ -45,6 +45,8 @@ class PropertyService {
       method: 'GET',
       headers,
     });
+
+    console.log("getAllProperties - Response status:", response.status);
 
     const data: PropertiesResponse = await response.json();
     

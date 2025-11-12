@@ -39,7 +39,7 @@ export interface ServiceRequestResponse {
   serviceRequest?: ServiceRequest;
 }
 
-const API_BASE_URL = 'http://localhost:8002';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8002';
 
 export const serviceApi = {
   // Get all services
