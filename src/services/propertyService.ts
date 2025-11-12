@@ -24,6 +24,7 @@ interface Property {
   updatedAt: string;
 }
 
+
 interface PropertiesResponse {
   success: boolean;
   properties: Property[];
