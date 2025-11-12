@@ -1,6 +1,6 @@
 import { auth } from '../firebase';
 
-export const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || '${API_BASE_URL}';
+export const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8002';
 
 interface Visit {
   id: string;
