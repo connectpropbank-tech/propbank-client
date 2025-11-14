@@ -41,7 +41,7 @@ class PropertyService {
 
   async getAllProperties(): Promise<Property[]> {
     const headers = await this.getHeaders();
-    
+
     const response = await fetch(`${API_BASE_URL}/properties`, {
       method: 'GET',
       headers,
