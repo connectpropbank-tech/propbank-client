@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL } from "@/services/visitService";
+import { API_BASE_URL } from "../utils/config";
 
 interface TenantInfo {
   id: string;
@@ -388,36 +388,38 @@ const ManageProperty = () => {
   console.log("ManageProperty render - User:", user, "Loading:", loading, "Properties:", properties.length);
 
   return (
-    <main className="container mx-auto py-8 px-4">
+    <main className="container mx-auto py-4 sm:py-8 px-4">
       <Helmet>
         <title>Manage Property — ShoPROP</title>
         <meta name="description" content="Manage your property listings, update property details, unit numbers, and building information." />
         <link rel="canonical" href="/manage-property" />
       </Helmet>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
-                <Building2 className="h-8 w-8 text-primary-foreground" />
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-primary shadow-glow flex-shrink-0">
+                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary-foreground" />
               </div>
-              <div>
-                <h1 className="text-3xl font-bold">Manage Your Properties</h1>
-                <p className="text-lg text-muted-foreground">Property Management Hub</p>
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold leading-tight">Manage Your Properties</h1>
+                <p className="text-sm sm:text-lg text-muted-foreground">Property Management Hub</p>
               </div>
             </div>
-            <Button 
-              className="px-12 py-3 rounded-lg border-2 border-primary/20 bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm"
-              variant="outline"
-              onClick={() => navigate("/select-property-type")}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Property
-            </Button>
+            <div className="flex-shrink-0 w-full sm:w-auto">
+              <Button 
+                className="w-full sm:w-auto px-6 sm:px-12 py-2 sm:py-3 rounded-lg border-2 border-primary/20 bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm"
+                variant="outline"
+                onClick={() => navigate("/select-property-type")}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Property
+              </Button>
+            </div>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Manage your listings and property portfolio.
           </p>
         </div>
@@ -428,37 +430,41 @@ const ManageProperty = () => {
           {/* Property Type Filter */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground/80">Property Types</h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
               <Button 
                 variant={!selectedPropertyType || selectedPropertyType === "all" ? "default" : "outline"} 
                 size="sm"
+                className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedPropertyType("")}
               >
-                <Home className="h-4 w-4 mr-2" />
+                <Home className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 All Properties
               </Button>
               <Button 
                 variant={selectedPropertyType === "residential" ? "default" : "outline"} 
                 size="sm"
+                className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedPropertyType(selectedPropertyType === "residential" ? "" : "residential")}
               >
-                <Building2 className="h-4 w-4 mr-2" />
+                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Residential
               </Button>
               <Button 
                 variant={selectedPropertyType === "commercial" ? "default" : "outline"} 
                 size="sm"
+                className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedPropertyType(selectedPropertyType === "commercial" ? "" : "commercial")}
               >
-                <Building2 className="h-4 w-4 mr-2" />
+                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Commercial
               </Button>
               <Button 
                 variant={selectedPropertyType === "industrial" ? "default" : "outline"} 
                 size="sm"
+                className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedPropertyType(selectedPropertyType === "industrial" ? "" : "industrial")}
               >
-                <Building2 className="h-4 w-4 mr-2" />
+                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Industrial
               </Button>
             </div>
@@ -467,10 +473,11 @@ const ManageProperty = () => {
           {/* Listing Type Filter */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground/80">Listing Types</h3>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2">
               <Button 
                 variant={!selectedListingType || selectedListingType === "all" ? "default" : "outline"} 
                 size="sm"
+                className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedListingType("")}
               >
                 All Listings
@@ -478,6 +485,7 @@ const ManageProperty = () => {
               <Button 
                 variant={selectedListingType === "rent" ? "default" : "outline"} 
                 size="sm"
+                className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedListingType(selectedListingType === "rent" ? "" : "rent")}
               >
                 For Rent
@@ -485,6 +493,7 @@ const ManageProperty = () => {
               <Button 
                 variant={selectedListingType === "sell" ? "default" : "outline"} 
                 size="sm"
+                className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedListingType(selectedListingType === "sell" ? "" : "sell")}
               >
                 For Sale
@@ -497,11 +506,11 @@ const ManageProperty = () => {
             <div className="bg-muted/50 rounded-lg p-3 sm:p-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Active filters:</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">Active filters:</span>
                   <div className="flex gap-1 flex-wrap">
                     {searchQuery && (
                       <Badge variant="secondary" className="text-xs">
-                        "{searchQuery.length > 15 ? `${searchQuery.substring(0, 15)}...` : searchQuery}"
+                        "{searchQuery.length > 12 ? `${searchQuery.substring(0, 12)}...` : searchQuery}"
                       </Badge>
                     )}
                     {selectedPropertyType && selectedPropertyType !== "all" && (
@@ -516,12 +525,12 @@ const ManageProperty = () => {
                     )}
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={clearAllFilters}>
+                <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-xs sm:text-sm">
                   Clear All
                 </Button>
               </div>
               <div className="mt-2">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Showing {filteredProperties.length} of {properties.length} properties
                 </p>
               </div>
@@ -552,92 +561,23 @@ const ManageProperty = () => {
             filteredProperties.length > 0 ? (
               filteredProperties.map((property, index) => (
                 <Card key={property.id} className="border-2 border-muted hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-start gap-4">
-                          <span className="text-xl font-semibold">{index + 1}.</span>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between gap-3 mb-2">
-                              <div className="flex items-center gap-2 flex-1">
-                                <div className="font-semibold text-lg">{property.title}</div>
-                                <span className="text-muted-foreground">({property.address}, {property.city}, {property.state} {property.zipCode})</span>
-                              </div>
-                              {/* Show Want to Sell toggle only for rent properties - positioned on the right */}
-                              {property.listingType === 'rent' && (
-                                <div className="flex items-center gap-3">
-                                  <span className="text-sm font-medium text-foreground">Want to Sell?</span>
-                                  {/* Toggle Switch with dark blue color */}
-                                  <button
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                      wantToSellToggles[property.id] ? 'bg-slate-800' : 'bg-gray-300'
-                                    }`}
-                                    onClick={() => {
-                                      const currentState = wantToSellToggles[property.id] || false;
-                                      
-                                      if (!currentState) {
-                                        // Ask for confirmation before changing to sell
-                                        const confirmed = window.confirm(
-                                          `Are you sure you want to change "${property.title}" from rent to sell?\n\nThis will permanently change the listing type and notify the admin.`
-                                        );
-                                        
-                                        if (confirmed) {
-                                          // Call the existing handleToggleToSell function
-                                          handleToggleToSell(property.id, property.title);
-                                          
-                                          // Also update the local toggle state
-                                          setWantToSellToggles(prev => ({
-                                            ...prev,
-                                            [property.id]: true
-                                          }));
-                                        }
-                                      } else {
-                                        // No confirmation needed to turn off
-                                        setWantToSellToggles(prev => ({
-                                          ...prev,
-                                          [property.id]: false
-                                        }));
-                                        console.log('Property no longer marked for sale:', property.id);
-                                      }
-                                    }}
-                                  >
-                                    <span
-                                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                        wantToSellToggles[property.id] ? 'translate-x-6' : 'translate-x-1'
-                                      }`}
-                                    />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                            {/* <div className="flex items-center gap-4 mb-3">
-                              <div className="text-lg font-semibold text-primary">
-                                {formatPrice(property.price)}
-                              </div>
-                            </div> */}
-                            <div className="flex gap-4 text-sm text-muted-foreground mb-2">
-                              <span>🏠 {property.propertyType.toUpperCase()}</span>
-                              {property.squareFeet > 0 && <span>📐 {property.squareFeet} sqft</span>}
-                              {property.updatedAt && (
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span>📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()} at {new Date(property.updatedAt).toLocaleTimeString()}</span>
-                                {property.listingType && (
-                                  <Badge className="bg-blue-600 text-white hover:bg-blue-700">
-                                    {property.listingType === 'rent' ? 'Rent' : property.listingType === 'sell' ? 'Sell' : property.listingType}
-                                  </Badge>
-                                )}
-                              </div>
-                             )}
-                            </div>
-                            
+                  <CardContent className="p-3 sm:p-6">
+                    <div className="flex flex-col space-y-3 sm:space-y-4">
+                      {/* Mobile: Header with number and action menu */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                          <span className="text-base sm:text-lg font-semibold text-primary flex-shrink-0 mt-0.5">{index + 1}.</span>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm sm:text-lg leading-tight text-gray-900 break-words">
+                              {property.title}
+                            </h3>
                           </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
+                        {/* Action Menu */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreVertical className="h-4 w-4" />
+                            <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-gray-100 flex-shrink-0">
+                              <MoreVertical className="h-4 w-4 sm:h-5 sm:w-5" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
@@ -677,6 +617,86 @@ const ManageProperty = () => {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
+
+                      {/* Address */}
+                      <div className="ml-5 sm:ml-8 space-y-1">
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words leading-relaxed">
+                          📍 {property.address.length > 30 ? `${property.address.substring(0, 30)}...` : property.address}
+                        </p>
+                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
+                          {property.city}, {property.state} {property.zipCode}
+                        </p>
+                      </div>
+
+                      {/* Property Details */}
+                      <div className="ml-5 sm:ml-8 space-y-2">
+                        <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground items-center">
+                          <span className="flex items-center gap-1 whitespace-nowrap">
+                            🏠 {property.propertyType.toUpperCase()}
+                          </span>
+                          {property.squareFeet > 0 && (
+                            <span className="flex items-center gap-1 whitespace-nowrap">
+                              📐 {property.squareFeet} sqft
+                            </span>
+                          )}
+                          {property.listingType && (
+                            <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs whitespace-nowrap">
+                              {property.listingType === 'rent' ? 'Rent' : property.listingType === 'sell' ? 'Sell' : property.listingType}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Last Modified */}
+                        {property.updatedAt && (
+                          <div className="text-xs sm:text-sm text-muted-foreground">
+                            📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()}
+                            <span className="hidden sm:inline"> at {new Date(property.updatedAt).toLocaleTimeString()}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Want to Sell Toggle - Only for rent properties */}
+                      {property.listingType === 'rent' && (
+                        <div className="ml-5 sm:ml-8 pt-2 border-t border-gray-100">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Want to Sell?</span>
+                            <button
+                              className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                                wantToSellToggles[property.id] ? 'bg-slate-800' : 'bg-gray-300'
+                              }`}
+                              onClick={() => {
+                                const currentState = wantToSellToggles[property.id] || false;
+                                
+                                if (!currentState) {
+                                  const confirmed = window.confirm(
+                                    `Are you sure you want to change "${property.title}" from rent to sell?\n\nThis will permanently change the listing type and notify the admin.`
+                                  );
+                                  
+                                  if (confirmed) {
+                                    handleToggleToSell(property.id, property.title);
+                                    setWantToSellToggles(prev => ({
+                                      ...prev,
+                                      [property.id]: true
+                                    }));
+                                  }
+                                } else {
+                                  setWantToSellToggles(prev => ({
+                                    ...prev,
+                                    [property.id]: false
+                                  }));
+                                  console.log('Property no longer marked for sale:', property.id);
+                                }
+                              }}
+                            >
+                              <span
+                                className={`inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform ${
+                                  wantToSellToggles[property.id] ? 'translate-x-5 sm:translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

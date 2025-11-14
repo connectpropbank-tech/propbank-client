@@ -14,7 +14,7 @@ import { toast } from "@/hooks/use-toast";
 import { auth } from "../firebase";
 import { User } from "firebase/auth";
 import { useState, useRef } from "react";
-import { API_BASE_URL } from "@/services/visitService";
+import { API_BASE_URL } from "../utils/config";
 
 const formSchema = z.object({
   // Property Basic Details

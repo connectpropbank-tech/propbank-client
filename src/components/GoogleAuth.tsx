@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { API_BASE_URL } from "@/services/visitService";
+import { API_BASE_URL } from "../utils/config";
 
 interface GoogleAuthProps {}
 
@@ -16,6 +16,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
   const [showPhoneInput, setShowPhoneInput] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -37,7 +38,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
     setUserLoggedIn(!!user && !showPhoneInput);
   }, [user, showPhoneInput]);
 
-  // Function to check if user already has phone number
+  // Function to check if user has completed registration (phone number AND role)
   const checkUserPhoneNumber = async (uid: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/users/${uid}`, {
@@ -49,11 +50,25 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
       
       if (response.ok) {
         const data = await response.json();
-        return data.user && data.user.phoneNumber;
+        // Both phone number and role must be present for complete registration
+        const hasCompleteData = data.user && 
+                               data.user.phoneNumber && 
+                               data.user.phoneNumber.trim() !== "" &&
+                               data.user.role && 
+                               data.user.role.trim() !== "";
+        
+        console.log("User registration check:", {
+          hasUser: !!data.user,
+          hasPhone: !!(data.user?.phoneNumber),
+          hasRole: !!(data.user?.role),
+          isComplete: hasCompleteData
+        });
+        
+        return hasCompleteData;
       }
       return false;
     } catch (error) {
-      console.error("Error checking user phone number:", error);
+      console.error("Error checking user registration completion:", error);
       return false;
     }
   };
@@ -72,7 +87,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
 
       console.log("Sending user data to backend:", userData);
 
-      const response = await fetch('${API_BASE_URL}/users', {
+      const response = await fetch(`${API_BASE_URL}/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,9 +99,11 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
       
       if (data.success) {
         console.log("✅ User saved to backend successfully:", data);
+        return true;
       } else {
         console.error("❌ Failed to save user to backend:", data.message);
         alert("Failed to save user data. Please try again.");
+        return false;
       }
     } catch (error) {
       console.error("❌ Error saving user to backend:", error);
@@ -95,25 +112,54 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   };
 
   const handlePhoneSubmit = async () => {
+    // Prevent double submission
+    if (isSubmitting) return;
+    
     if (!phoneNumber.trim()) {
-      alert("Please enter your phone number");
+      alert("Phone number is required to complete registration");
       return;
     }
 
     if (!/^\d{10}$/.test(phoneNumber.trim())) {
-      alert("Please enter a valid 10-digit phone number");
+      alert("Please enter a valid 10-digit phone number (numbers only)");
       return;
     }
 
-    if (!userRole) {
-      alert("Please select your role");
+    if (!userRole || userRole.trim() === "") {
+      alert("Please select your role to continue");
       return;
     }
 
     if (user) {
-      await saveUserToBackend(user, phoneNumber, userRole);
-      setShowPhoneInput(false);
-      setUserLoggedIn(true);
+      setIsSubmitting(true);
+      
+      try {
+        console.log("🔄 Submitting registration data...");
+        const saveSuccess = await saveUserToBackend(user, phoneNumber, userRole);
+        
+        if (saveSuccess) {
+          // Double-check that the data was actually saved by re-checking registration
+          console.log("🔍 Verifying registration completion...");
+          const isRegistrationComplete = await checkUserPhoneNumber(user.uid);
+          
+          if (isRegistrationComplete) {
+            setShowPhoneInput(false);
+            setUserLoggedIn(true);
+            console.log("✅ Registration completed and verified successfully");
+          } else {
+            alert("Registration verification failed. Your data may not have been saved properly. Please try again.");
+          }
+        } else {
+          // Keep the form open if save failed
+          console.log("❌ Registration not completed, keeping form open");
+          alert("Failed to save your registration data. Please check your connection and try again.");
+        }
+      } catch (error) {
+        console.error("❌ Error during registration:", error);
+        alert("An unexpected error occurred during registration. Please try again.");
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -151,9 +197,14 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                 Welcome, {user.displayName}!
               </CardTitle>
               <p className="text-gray-600 mt-2">{user.email}</p>
-              <p className="text-sm text-gray-600 mt-2">
-                Complete your registration by selecting your role and providing your phone number. 
-              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-3">
+                <p className="text-sm text-blue-800 font-medium mb-2">
+                  📋 Registration Required
+                </p>
+                <p className="text-xs text-blue-700">
+                  Both your role and phone number are required to access PropBank features. This information helps us provide you with the best experience and connect you with relevant opportunities.
+                </p>
+              </div>
             </CardHeader>
             
             <CardContent className="space-y-4">
@@ -200,9 +251,16 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
               <Button
                 onClick={handlePhoneSubmit}
                 className="w-full mt-6"
-                disabled={!phoneNumber || !userRole || phoneNumber.length !== 10}
+                disabled={!phoneNumber || !userRole || phoneNumber.length !== 10 || isSubmitting}
               >
-                Complete Registration
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Completing Registration...
+                  </div>
+                ) : (
+                  "Complete Registration"
+                )}
               </Button>
             </CardContent>
           </Card>

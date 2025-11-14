@@ -14,7 +14,7 @@ import { useEffect, useState, useRef } from "react";
 import { auth } from "../firebase";
 import { toast } from "@/hooks/use-toast";
 import { X } from "lucide-react";
-import { API_BASE_URL } from "@/services/visitService";
+import { API_BASE_URL } from "../utils/config";
 
 const formSchema = z.object({
   propertyTitle: z.string().min(1, "Property title is required"),

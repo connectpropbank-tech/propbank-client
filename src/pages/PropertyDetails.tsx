@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
-import { API_BASE_URL } from "@/services/visitService";
+import { API_BASE_URL } from "../utils/config";
 
 interface TenantInfo {
   id: string;

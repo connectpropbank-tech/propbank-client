@@ -11,7 +11,7 @@ import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "../firebase";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { API_BASE_URL } from "@/services/visitService";
+import { API_BASE_URL } from "../utils/config";
 
 interface TenantData {
   id: string;

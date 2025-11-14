@@ -10,10 +10,10 @@ const Auth: React.FC = () => {
           <div className="px-6 pt-6 pb-4 text-center bg-gradient-to-b from-white to-gray-50">
             <div className="mb-4">
               <div className="mx-auto w-14 h-14 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
-                <span className="text-xl font-bold text-white">SP</span>
+                <span className="text-xl font-bold text-white">PB</span>
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                Welcome to ShoPROP
+                Welcome to Propbank
               </h1>
               <p className="text-gray-600 text-sm">
                 Sign in to continue to your account
