@@ -569,7 +569,7 @@ const ManageProperty = () => {
                           <span className="text-base sm:text-lg font-semibold text-primary flex-shrink-0 mt-0.5">{index + 1}.</span>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-sm sm:text-lg leading-tight text-gray-900 break-words">
-                              {property.title}
+                              {property.title} (📍 {property.address}, {property.city}, {property.state} {property.zipCode})
                             </h3>
                           </div>
                         </div>
@@ -618,15 +618,7 @@ const ManageProperty = () => {
                         </DropdownMenu>
                       </div>
 
-                      {/* Address */}
-                      <div className="ml-5 sm:ml-8 space-y-1">
-                        <p className="text-xs sm:text-sm text-muted-foreground break-words leading-relaxed">
-                          📍 {property.address.length > 30 ? `${property.address.substring(0, 30)}...` : property.address}
-                        </p>
-                        <p className="text-xs sm:text-sm text-muted-foreground break-words">
-                          {property.city}, {property.state} {property.zipCode}
-                        </p>
-                      </div>
+
 
                       {/* Property Details */}
                       <div className="ml-5 sm:ml-8 space-y-2">
@@ -639,6 +631,12 @@ const ManageProperty = () => {
                               📐 {property.squareFeet} sqft
                             </span>
                           )}
+                          {/* Last Modified - Desktop only, between property type and listing type */}
+                          {property.updatedAt && (
+                            <span className="hidden sm:flex items-center gap-1 whitespace-nowrap">
+                              📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()} at {new Date(property.updatedAt).toLocaleTimeString()}
+                            </span>
+                          )}
                           {property.listingType && (
                             <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs whitespace-nowrap">
                               {property.listingType === 'rent' ? 'Rent' : property.listingType === 'sell' ? 'Sell' : property.listingType}
@@ -646,11 +644,10 @@ const ManageProperty = () => {
                           )}
                         </div>
 
-                        {/* Last Modified */}
+                        {/* Last Modified - Mobile only */}
                         {property.updatedAt && (
-                          <div className="text-xs sm:text-sm text-muted-foreground">
+                          <div className="sm:hidden text-xs text-muted-foreground">
                             📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()}
-                            <span className="hidden sm:inline"> at {new Date(property.updatedAt).toLocaleTimeString()}</span>
                           </div>
                         )}
                       </div>
