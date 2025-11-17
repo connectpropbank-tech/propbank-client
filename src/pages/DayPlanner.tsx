@@ -191,6 +191,7 @@ const DayPlanner = () => {
     return !visit.isCompleted && visitDate > now;
   });
   
+  
   const completedVisits = visits.filter(visit => {
     const visitDate = new Date(visit.visitDate);
     return visit.isCompleted || visitDate <= now;
