@@ -201,7 +201,7 @@ const DayPlanner = () => {
     return activeTab === 'active' ? activeVisits : completedVisits;
   };
 
-  
+
 
   return (
     <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
@@ -278,55 +278,48 @@ const DayPlanner = () => {
                     )
                     .map((visit) => (
                       <Card key={visit.id} className={`transition-all ${
-                        activeTab === 'visited' ? 'border-blue-200 bg-blue-50' : 'border-blue-200'
+                        activeTab === 'visited' ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200'
                       }`}>
-                        <CardContent className="p-3 sm:p-6">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 space-y-2">
-                              <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-wrap">
-                                <div className={`flex h-4 w-4 items-center justify-center rounded-full shadow-sm flex-shrink-0 mt-0.5 sm:mt-0 ${
-                                  activeTab === 'visited' ? 'bg-blue-600' : 'bg-primary'
-                                }`}>
-                                  {activeTab === 'visited' ? (
-                                    <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                                  ) : (
-                                    <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary-foreground" />
-                                  )}
-                                </div>
-                                <h3 className="text-sm sm:text-lg font-semibold leading-tight flex-1">
-                                  {visit.title}
-                                </h3>
-                                <div className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
-                                  {activeTab === 'visited' ? (
-                                    <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  ) : (
-                                    <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  )}
-                                  <span className="text-xs sm:text-sm font-medium">
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <div className={`flex h-10 w-10 items-center justify-center rounded-lg shadow-sm flex-shrink-0 ${
+                                activeTab === 'visited' ? 'bg-blue-600' : 'bg-blue-600'
+                              }`}>
+                                {activeTab === 'visited' ? (
+                                  <CheckCircle className="h-5 w-5 text-white" />
+                                ) : (
+                                  <MapPin className="h-5 w-5 text-white" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0 space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="text-base font-semibold text-gray-900 truncate">
+                                    {visit.title}
+                                  </h3>
+                                  <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ml-2 ${
+                                    activeTab === 'visited' 
+                                      ? 'bg-blue-100 text-blue-700' 
+                                      : 'bg-gray-100 text-gray-600'
+                                  }`}>
                                     {activeTab === 'visited' ? 'Visited' : 'Scheduled'}
                                   </span>
                                 </div>
-                              </div>
-                              {visit.description && (
-                                <p className="ml-6 sm:ml-7 text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                                  {visit.description}
-                                </p>
-                              )}
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 ml-6 sm:ml-7 text-xs sm:text-sm text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  <span className="text-xs sm:text-sm">{formatDate(visit.visitDate)}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  <span className="text-xs sm:text-sm">{formatTime(visit.visitDate)}</span>
-                                </div>
-                                {activeTab === 'active' && (
-                                  <div className="flex items-center gap-1">
-                                    <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
-                                    <span className="text-xs sm:text-sm">{visit.reminderTime} min before via {visit.reminderType}</span>
-                                  </div>
+                                {visit.description && (
+                                  <p className="text-sm text-gray-600 line-clamp-1">
+                                    {visit.description}
+                                  </p>
                                 )}
+                                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs text-gray-500">
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>{formatDate(visit.visitDate)}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{formatTime(visit.visitDate)}</span>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                             {activeTab === 'active' && (
@@ -334,9 +327,9 @@ const DayPlanner = () => {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => deleteVisit(visit.id)}
-                                className="text-destructive hover:text-destructive h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0"
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50 h-8 w-8 flex-shrink-0"
                               >
-                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             )}
                           </div>
