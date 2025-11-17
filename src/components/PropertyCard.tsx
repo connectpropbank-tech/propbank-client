@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export interface Property {
   id: string;
@@ -8,6 +9,7 @@ export interface Property {
   location: string;
   image?: string;
   type: "sale" | "rent";
+  furnishedCount?: number; // Number of furnished items
 }
 
 interface PropertyCardProps {
@@ -32,6 +34,14 @@ const PropertyCard = ({ property, ctaLabel = "View", onAction }: PropertyCardPro
       <CardHeader>
         <CardTitle className="text-lg">{property.title}</CardTitle>
         <p className="text-muted-foreground">{property.location}</p>
+        {/* Furnished Badge */}
+        {property.furnishedCount && property.furnishedCount > 0 && (
+          <div className="mt-2">
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              🛋️ Furnished ({property.furnishedCount} items)
+            </Badge>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex items-center justify-between">
         <div className="font-semibold">{property.price}</div>

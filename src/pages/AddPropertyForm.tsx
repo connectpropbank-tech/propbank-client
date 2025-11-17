@@ -4,17 +4,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Building2, Upload, X, Image as ImageIcon, CheckSquare } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { auth } from "../firebase";
 import { User } from "firebase/auth";
 import { useState, useRef } from "react";
 import { API_BASE_URL } from "../utils/config";
+import { FurnishedChecklistModal } from "@/components/FurnishedChecklistModal";
 
 const formSchema = z.object({
   // Property Basic Details
@@ -26,7 +27,6 @@ const formSchema = z.object({
   // Unit Details (conditional based on property type)
   unitNumber: z.string().optional(),
   floor: z.string().optional(),
-  buildingName: z.string().optional(),
   location: z.string().min(1, "Location is required"),
   
   // Area Details
@@ -34,7 +34,7 @@ const formSchema = z.object({
   plotArea: z.string().optional(),
   constructedArea: z.string().optional(),
   
-  // Tenant Information
+  // Tenant Information (conditional - required when property is rented)
   tenantName: z.string().optional(),
   personName: z.string().optional(),
   mobileNumber: z.string().optional(),
@@ -74,6 +74,15 @@ const formSchema = z.object({
   unitCondition: z.string().optional(),
   maintenanceToBePaidBy: z.string().optional(),
   projectCondition: z.string().optional(),
+  rentalStatus: z.string().optional(), // New field to track if property is rented
+  
+  // Furnished Checklist
+  furnishedChecklist: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    checked: z.boolean(),
+    category: z.enum(['basic', 'kitchen', 'bedroom', 'living', 'appliances', 'semifurnished', 'other'])
+  })).optional(),
   
   // Images & Comments
   images: z.array(z.string()).optional(),
@@ -88,6 +97,8 @@ const AddPropertyForm = () => {
   const selectedPropertyType = searchParams.get('type') || '';
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showFurnishedModal, setShowFurnishedModal] = useState(false);
+  const [furnishedChecklist, setFurnishedChecklist] = useState<any[]>([]);
   
   // Image handling functions
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,7 +153,6 @@ const AddPropertyForm = () => {
       listingType: "",
       unitNumber: "",
       floor: "",
-      buildingName: "",
       location: "",
       carpetArea: "",
       plotArea: "",
@@ -169,6 +179,8 @@ const AddPropertyForm = () => {
       unitCondition: "",
       maintenanceToBePaidBy: "",
       projectCondition: "",
+      rentalStatus: "",
+      furnishedChecklist: [],
       images: [],
       specificComments: "",
     },
@@ -193,6 +205,55 @@ const AddPropertyForm = () => {
           variant: "destructive",
         });
         return;
+      }
+
+      // Validate tenant details for rented properties
+      if (data.listingType === "rent" && data.rentalStatus === "rented") {
+        if (!data.tenantName || data.tenantName.trim() === "") {
+          toast({
+            title: "Missing Tenant Information",
+            description: "Please enter the tenant name for rented properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        if (!data.mobileNumber || data.mobileNumber.trim() === "") {
+          toast({
+            title: "Missing Tenant Contact",
+            description: "Please enter the tenant's mobile number for rented properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Validate agreement details for rented properties
+        if (!data.agreementPeriod || data.agreementPeriod.trim() === "") {
+          toast({
+            title: "Missing Agreement Information",
+            description: "Please enter the agreement period for rented properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data.agreementStartDate || data.agreementStartDate.trim() === "") {
+          toast({
+            title: "Missing Agreement Start Date",
+            description: "Please enter the agreement start date for rented properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data.agreementEndDate || data.agreementEndDate.trim() === "") {
+          toast({
+            title: "Missing Agreement End Date",
+            description: "Please enter the agreement end date for rented properties.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // Get current user
@@ -310,10 +371,11 @@ const AddPropertyForm = () => {
               <p className="text-lg text-muted-foreground">
                 Comprehensive Property Details
                 {selectedPropertyType && (
-                  <span className="ml-2 px-2 py-1 text-sm bg-primary/10 text-primary rounded-md capitalize">
-                    {selectedPropertyType}
+                  <span className="ml-2 px-2 py-1 text-sm bg-primary/10 text-primary rounded-md">
+                    {selectedPropertyType.charAt(0).toUpperCase() + selectedPropertyType.slice(1)}
                   </span>
                 )}
+
               </p>
             </div>
           </div>
@@ -396,6 +458,31 @@ const AddPropertyForm = () => {
                       </FormItem>
                     )}
                   />
+
+                  {/* Rental Status - Only show for rental properties */}
+                  {form.watch("listingType") === "rent" && (
+                    <FormField
+                      control={form.control}
+                      name="rentalStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rental Status</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select rental status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="available">Available for Rent</SelectItem>
+                              <SelectItem value="rented">Already Rented Out</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 {/* Unit Details */}
@@ -426,20 +513,6 @@ const AddPropertyForm = () => {
                         <FormLabel>Floor</FormLabel>
                         <FormControl>
                           <Input placeholder="Enter floor" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="buildingName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Building Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter building name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -514,82 +587,143 @@ const AddPropertyForm = () => {
                   )}
                 </div>
 
-                {/* Tenant Information */}
-                {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 border rounded-lg">
-                  <div className="lg:col-span-3">
-                    <h3 className="text-lg font-semibold mb-4">Tenant Information</h3>
+                {/* Tenant Information - Only show when property is already rented */}
+                {form.watch("listingType") === "rent" && form.watch("rentalStatus") === "rented" && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 border rounded-lg">
+                    <div className="lg:col-span-3">
+                      <h3 className="text-lg font-semibold mb-4">Current Tenant Information</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Since this property is already rented out, please provide the current tenant details.
+                      </p>
+                    </div>
+                    
+                    <FormField
+                      control={form.control}
+                      name="tenantName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tenant Name <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter tenant full name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="personName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Person Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter contact person name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="mobileNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Mobile Number <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter mobile number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="primaryNo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Primary Contact</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Primary contact number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="ultNo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Alternate Contact</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Alternate contact number" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Agreement Details Section */}
+                    <div className="lg:col-span-3 mt-6 pt-4 border-t">
+                      <h4 className="text-md font-medium mb-4 text-gray-700">Agreement Details</h4>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="agreementPeriod"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Agreement Period <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., 11 Months, 1 Year, 2 Years" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Enter the duration of the rental agreement
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="agreementStartDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Agreement Start Date <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            When did the rental agreement begin?
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="agreementEndDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Agreement End Date <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            When does the rental agreement expire?
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="tenantName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tenant Name :</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter tenant name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="personName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>person NAME</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter person name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="mobileNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mobile No ..</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter mobile number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="primaryNo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Primary No.</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Primary number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="ultNo"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ult No.</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ult number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div> */}
+                )}
 
                 {/* Monthly Rent */}
                 {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 border rounded-lg">
@@ -922,7 +1056,13 @@ const AddPropertyForm = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit Condition</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={(value) => {
+                          field.onChange(value);
+                          // Show furnished modal if furnished is selected
+                          if (value === 'furnished') {
+                            setShowFurnishedModal(true);
+                          }
+                        }} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select condition" />
@@ -938,6 +1078,26 @@ const AddPropertyForm = () => {
                       </FormItem>
                     )}
                   />
+
+                  {/* Furnished Checklist Button */}
+                  {form.watch('unitCondition') === 'furnished' && (
+                    <div className="col-span-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowFurnishedModal(true)}
+                        className="w-full"
+                      >
+                        <CheckSquare className="h-4 w-4 mr-2" />
+                        Manage Furnished Items Checklist
+                        {furnishedChecklist.filter(item => item.checked).length > 0 && (
+                          <span className="ml-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
+                            {furnishedChecklist.filter(item => item.checked).length} items selected
+                          </span>
+                        )}
+                      </Button>
+                    </div>
+                  )}
 
                                     <FormField
                     control={form.control}
@@ -1101,6 +1261,17 @@ const AddPropertyForm = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Furnished Checklist Modal */}
+      <FurnishedChecklistModal
+        isOpen={showFurnishedModal}
+        onClose={() => setShowFurnishedModal(false)}
+        onSave={(checklist) => {
+          setFurnishedChecklist(checklist);
+          form.setValue('furnishedChecklist', checklist);
+        }}
+        initialChecklist={furnishedChecklist}
+      />
     </main>
   );
 };

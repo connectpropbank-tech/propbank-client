@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Building2 } from "lucide-react";
+import { ArrowLeft, Building2, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -15,6 +15,7 @@ import { auth } from "../firebase";
 import { toast } from "@/hooks/use-toast";
 import { X } from "lucide-react";
 import { API_BASE_URL } from "../utils/config";
+import { FurnishedChecklistModal } from "@/components/FurnishedChecklistModal";
 
 const formSchema = z.object({
   propertyTitle: z.string().min(1, "Property title is required"),
@@ -23,7 +24,6 @@ const formSchema = z.object({
   listingType: z.string().min(1, "Listing type is required"),
   unitNumber: z.string().optional(),
   floor: z.string().optional(),
-  buildingName: z.string().optional(),
   location: z.string().min(1, "Location is required"),
   carpetArea: z.string().optional(),
   plotArea: z.string().optional(),
@@ -58,8 +58,15 @@ const formSchema = z.object({
   lockInPeriod: z.string().optional(),
   unitCondition: z.string().optional(),
   maintenanceToBePaidBy: z.string().optional(),
+  rentalStatus: z.string().optional(),
   images: z.array(z.string()).optional(),
   specificComments: z.string().optional(),
+  furnishedChecklist: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    checked: z.boolean(),
+    category: z.enum(['basic', 'kitchen', 'bedroom', 'living', 'appliances', 'other', 'semifurnished'])
+  })).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -72,7 +79,6 @@ interface Property {
   listingType: string;
   unitNumber: string;
   floor: string;
-  buildingName: string;
   location: string;
   carpetArea: string;
   plotArea: string;
@@ -107,8 +113,15 @@ interface Property {
   lockInPeriod: string;
   unitCondition: string;
   maintenanceToBePaidBy: string;
+  rentalStatus: string;
   images: string[];
   specificComments: string;
+  furnishedChecklist: {
+    id: string;
+    name: string;
+    checked: boolean;
+    category: 'basic' | 'kitchen' | 'bedroom' | 'living' | 'appliances' | 'other' | 'semifurnished';
+  }[];
   ownerUID: string;
   
   // Status and timestamps
@@ -126,6 +139,8 @@ const EditProperty = () => {
   const [property, setProperty] = useState<Property | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showFurnishedModal, setShowFurnishedModal] = useState(false);
+  const [furnishedChecklist, setFurnishedChecklist] = useState<any[]>([]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -136,7 +151,6 @@ const EditProperty = () => {
       listingType: "",
       unitNumber: "",
       floor: "",
-      buildingName: "",
       location: "",
       carpetArea: "",
       plotArea: "",
@@ -171,8 +185,10 @@ const EditProperty = () => {
       lockInPeriod: "",
       unitCondition: "",
       maintenanceToBePaidBy: "",
+      rentalStatus: "",
       images: [],
       specificComments: "",
+      furnishedChecklist: [],
     },
   });
 
@@ -207,7 +223,6 @@ const EditProperty = () => {
           listingType: propertyData.listingType || "",
           unitNumber: propertyData.unitNumber || "",
           floor: propertyData.floor || "",
-          buildingName: propertyData.buildingName || "",
           location: propertyData.location || propertyData.address || "",
           carpetArea: propertyData.carpetArea || "",
           plotArea: propertyData.plotArea || "",
@@ -242,9 +257,14 @@ const EditProperty = () => {
           lockInPeriod: propertyData.lockInPeriod || "",
           unitCondition: propertyData.unitCondition || "",
           maintenanceToBePaidBy: propertyData.maintenanceToBePaidBy || "",
+          rentalStatus: propertyData.rentalStatus || "",
           images: propertyData.images || [],
           specificComments: propertyData.specificComments || "",
+          furnishedChecklist: propertyData.furnishedChecklist || [],
         };
+
+        // Set the furnished checklist state
+        setFurnishedChecklist(propertyData.furnishedChecklist || []);
         
         console.log("Populating form with data:", formData);
         form.reset(formData);
@@ -383,6 +403,7 @@ const EditProperty = () => {
       const updateData = {
         ...data,
         ownerUID: currentUser.uid,
+        furnishedChecklist: furnishedChecklist,
       };
 
       // Send update request to backend
@@ -673,7 +694,12 @@ const EditProperty = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit Condition</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!isPropertyEditable()}>
+                        <Select onValueChange={(value) => {
+                          field.onChange(value);
+                          if (value === "furnished") {
+                            setShowFurnishedModal(true);
+                          }
+                        }} value={field.value} disabled={!isPropertyEditable()}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select condition" />
@@ -686,6 +712,20 @@ const EditProperty = () => {
                           </SelectContent>
                         </Select>
                         <FormMessage />
+                        
+                        {/* Furnished Checklist Button */}
+                        {form.watch("unitCondition") === "furnished" && (
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setShowFurnishedModal(true)}
+                            className="mt-2 w-full"
+                            disabled={!isPropertyEditable()}
+                          >
+                            <CheckSquare className="mr-2 h-4 w-4" />
+                            Manage Furnished Items ({furnishedChecklist.length} items)
+                          </Button>
+                        )}
                       </FormItem>
                     )}
                   />
@@ -833,6 +873,17 @@ const EditProperty = () => {
           </CardContent>
         </Card>
       </div>
+      
+      {/* Furnished Checklist Modal */}
+      <FurnishedChecklistModal
+        isOpen={showFurnishedModal}
+        onClose={() => setShowFurnishedModal(false)}
+        onSave={(checklist) => {
+          setFurnishedChecklist(checklist);
+          form.setValue("furnishedChecklist", checklist);
+        }}
+        initialChecklist={furnishedChecklist}
+      />
     </main>
   );
 };

@@ -115,74 +115,8 @@ const SiteHeader = () => {
           <span>Propbank</span>
         </Link>
         
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-5">
-          <NavigationMenu>
-            <NavigationMenuList className="gap-6">
-              <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <NavLink
-                    to="/manage-property"
-                    className={({ isActive }) =>
-                      `px-3 py-2 rounded-md transition-colors ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`
-                    }
-                  >
-                    Manage Property
-                  </NavLink>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-             
-              <NavigationMenuItem>
-                <NavigationMenuLink asChild>
-                  <NavLink
-                    to="/visit-planner"
-                    className={({ isActive }) =>
-                      `px-3 py-2 rounded-md transition-colors ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`
-                    }
-                  >
-                    Visit Planner
-                  </NavLink>
-                </NavigationMenuLink>
-              </NavigationMenuItem>
-              {user && (
-                <div className="relative group flex items-center mx-2" ref={dropdownRef}>
-                  <button
-                    className="rounded-full border-2 border-accent focus:outline-none transition-colors"
-                    style={{ width: 40, height: 40, overflow: 'hidden', background: 'var(--gradient-primary)' }}
-                    onClick={() => setIsOpen((open) => !open)}
-                    onMouseEnter={e => e.currentTarget.style.background = 'var(--gradient-primary)'}
-                    onMouseLeave={e => e.currentTarget.style.background = ''}
-                  >
-                    <img src={user.photoURL || "https://ui-avatars.com/api/?name=User"} alt="Profile" className="w-full h-full object-cover rounded-full" />
-                  </button>
-                  {isOpen && (
-                    <div className="absolute right-1 top-full mt-2 w-56 bg-white border rounded shadow-lg z-50">
-                      <div className="p-4 border-b">
-                        <div className="font-medium">{user.displayName || "No Name"}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{user.email}</div>
-                      </div>
-                      <button onClick={handleLogout} className="w-full text-left px-4 py-2 flex items-center gap-2 hover:bg-accent">
-                        <LogOut className="h-4 w-4" />
-                        Logout
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </NavigationMenuList>
-          </NavigationMenu>
-          {!user && (
-            <Button variant="ghost" asChild className="gap-2 hover:bg-[#21405a]}">
-              <Link to="/auth">
-                <LogIn className="h-4 w-4" />
-                Login
-              </Link>
-            </Button>
-          )}
-        </nav>
-
-        {/* Mobile Hamburger Menu */}
-        <div className="flex items-center gap-2 md:hidden">
+        {/* Hamburger Menu for All Dimensions */}
+        <div className="flex items-center gap-2">
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -251,68 +185,7 @@ const SiteHeader = () => {
                     Visit Planner
                   </NavLink>
 
-                  {/* Property Actions Section */}
-                  <div className="px-3 py-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide mt-4">
-                    Property Actions
-                  </div>
-
-                  {/* Buy */}
-                  <NavLink
-                    to="/buy"
-                    onClick={() => setIsOpen(false)}
-                    className={({ isActive }) =>
-                      `px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`
-                    }
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
-                    </svg>
-                    Buy Property
-                  </NavLink>
-
-                  {/* Sell */}
-                  <NavLink
-                    to="/sell"
-                    onClick={() => setIsOpen(false)}
-                    className={({ isActive }) =>
-                      `px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`
-                    }
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Sell Property
-                  </NavLink>
-
-
-
-                  {/* Rent Out */}
-                  <NavLink
-                    to="/rent-out"
-                    onClick={() => setIsOpen(false)}
-                    className={({ isActive }) =>
-                      `px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`
-                    }
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                    </svg>
-                    Rent Out Property
-                  </NavLink>
-
-                  {/* Pre-lease */}
-                  <NavLink
-                    to="/prelease"
-                    onClick={() => setIsOpen(false)}
-                    className={({ isActive }) =>
-                      `px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`
-                    }
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Pre-lease Property
-                  </NavLink>
+                 
 
                   {/* Auth Section */}
                   <div className="border-t pt-4 mt-4">

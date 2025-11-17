@@ -217,6 +217,20 @@ const Rent = () => {
                     )}
                   </div>
 
+                  {/* Furnished Status */}
+                  {property.furnishedChecklist && property.furnishedChecklist.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        🛋️ Furnished ({property.furnishedChecklist.length} items)
+                      </Badge>
+                      {property.rentalStatus === 'rented' && (
+                        <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                          Currently Rented
+                        </Badge>
+                      )}
+                    </div>
+                  )}
+
                   {/* Owner Info */}
                   <div className="pt-3 border-t border-muted">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">

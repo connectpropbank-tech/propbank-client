@@ -81,6 +81,8 @@ interface Property {
   images: string[];
   tenants?: TenantInfo[];
   buyers?: BuyerInfo[];
+  rentalStatus?: string; // 'available' or 'rented'
+  furnishedChecklist?: string[]; // Array of furnished items
   ownerUID: string;
   ownerName: string;
   ownerEmail: string;
@@ -630,6 +632,18 @@ const ManageProperty = () => {
                             <span className="flex items-center gap-1 whitespace-nowrap">
                               📐 {property.squareFeet} sqft
                             </span>
+                          )}
+                          {/* Furnished Indicator */}
+                          {property.furnishedChecklist && property.furnishedChecklist.length > 0 && (
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap">
+                              🛋️ Furnished ({property.furnishedChecklist.length} items)
+                            </Badge>
+                          )}
+                          {/* Rental Status Indicator */}
+                          {property.rentalStatus === 'rented' && (
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap">
+                              🏠 Currently Rented
+                            </Badge>
                           )}
                           {/* Last Modified - Desktop only, between property type and listing type */}
                           {property.updatedAt && (
