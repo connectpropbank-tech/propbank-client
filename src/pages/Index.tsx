@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import GradientSpotlight from "@/components/GradientSpotlight";
 import heroImage from "@/assets/hero-realestate.jpg";
-import { Link } from "react-router-dom";
-import { Building2, MapPin, Home, Bed, Bath, Square, Loader2, Search, Filter } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Building2, MapPin, Home, Bed, Bath, Square, Loader2, Search, Filter, Calendar, Settings, ArrowRight } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { propertyService, Property } from "@/services/propertyService";
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +47,7 @@ const getListingTypeBadge = (listingType?: string) => {
 };
 
 const Index = () => {
+  const navigate = useNavigate();
   const [properties, setProperties] = useState<Property[]>([]);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -334,158 +335,234 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Right Side: Enhanced Search Section */}
-              <div className="space-6 w-full max-w-2xl mx-auto lg:mx-0">
+              {/* Right Side: Quick Access Section */}
+              <div className="space-y-6 w-full max-w-2xl mx-auto lg:mx-0">
                 <div className="text-center space-y-4">
-                  <h2 className="text-2xl md:text-3xl font-bold">Find Your Dream Property</h2>
+                  <h2 className="text-2xl md:text-3xl font-bold">Quick Access</h2>
                   <p className="text-muted-foreground">
-                    Your dream property is just a search away.
+                    Manage your properties and plan visits with ease
                   </p>
                 </div>
                 
-                {/* Search Bar */}
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-white/20 space-y-4 sm:space-y-6 w-full">
-                <div className="w-full mx-auto">
-                  <div className="flex items-center gap-0 rounded-lg border border-input bg-background shadow-sm overflow-hidden">
-                    <Select value={searchType} onValueChange={setSearchType}>
-                      <SelectTrigger className="w-32 border-0 border-r border-input rounded-none bg-muted/50">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="buy">Buy</SelectItem>
-                        <SelectItem value="rent">Rent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search properties by location, type, or features..."
-                      className="flex-1 border-0 rounded-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    />
-                    
-                    <Button 
-                      onClick={handleSearch}
-                      className="rounded-none px-4"
-                      variant="default"
+                {/* Quick Access Cards */}
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-white/20 space-y-4 w-full">
+                  <div className="grid gap-4">
+                    {/* Manage Property Card */}
+                    <div 
+                      onClick={() => navigate('/manage-property')}
+                      className="group cursor-pointer bg-gradient-to-r from-secondary/20 to-secondary/10 backdrop-blur-sm border border-white/30 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:from-secondary/30 hover:to-secondary/20"
                     >
-                      <Search className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                      <div className="flex items-start gap-3 sm:gap-4">
+                        <div className="bg-secondary p-2 sm:p-3 rounded-lg flex-shrink-0">
+                          <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-secondary-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-foreground">Manage Property</h3>
+                            <span className="px-2 py-1 bg-secondary/10 text-secondary-foreground text-xs font-medium rounded-full self-start border border-secondary/20">
+                              Property Management
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+                            View, edit, and manage all your property listings in one place
+                          </p>
+                          <div className="flex items-center text-secondary-foreground group-hover:text-secondary-foreground/80 transition-colors">
+                            <span className="text-xs sm:text-sm font-medium">Get Started</span>
+                            <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-                {/* Property Category Filters */}
-                <div className="space-y-3">
-                  <div className="text-center">
-                    <h3 className="text-sm font-medium text-foreground/80">Property Types</h3>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full mx-auto">
-                    <Button 
-                      variant={selectedCategories.length === 0 ? "default" : "outline"} 
-                      className="h-auto p-3 flex-col gap-1 text-xs"
-                      onClick={() => {
-                        setSelectedCategories([]);
-                        setSearchQuery("");
-                        setSelectedProjectCondition("");
-                      }}
+                    {/* Visit Planner Card */}
+                    <div 
+                      onClick={() => navigate('/visit-planner')}
+                      className="group cursor-pointer bg-gradient-to-r from-secondary/20 to-secondary/10 backdrop-blur-sm border border-white/30 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:from-secondary/30 hover:to-secondary/20"
                     >
-                      <Home className="h-4 w-4" />
-                      <span>All Properties</span>
-                    </Button>
-                    <Button 
-                      variant={selectedCategories.includes("residential") ? "default" : "outline"} 
-                      className="h-auto p-3 flex-col gap-1 text-xs"
-                      onClick={() => handleCategoryToggle("residential")}
-                    >
-                      <Building2 className="h-4 w-4" />
-                      <span>Residential</span>
-                    </Button>
-                    <Button 
-                      variant={selectedCategories.includes("commercial") ? "default" : "outline"} 
-                      className="h-auto p-3 flex-col gap-1 text-xs"
-                      onClick={() => handleCategoryToggle("commercial")}
-                    >
-                      <Building2 className="h-4 w-4" />
-                      <span>Commercial</span>
-                    </Button>
-                    <Button 
-                      variant={selectedCategories.includes("industrial") ? "default" : "outline"} 
-                      className="h-auto p-3 flex-col gap-1 text-xs"
-                      onClick={() => handleCategoryToggle("industrial")}
-                    >
-                      <Building2 className="h-4 w-4" />
-                      <span>Industrial</span>
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Project Condition Filter */}
-                <div className="space-y-3">
-                  <div className="text-center">
-                    <h3 className="text-sm font-medium text-foreground/80">Project Types</h3>
-                  </div>
-                  <div className="w-full mx-auto">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <Button
-                        variant={!selectedProjectCondition ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedProjectCondition("")}
-                        className="text-xs px-2 py-1"
-                      >
-                        All Projects
-                      </Button>
-                      <Button
-                        variant={selectedProjectCondition === "New Project" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedProjectCondition("New Project")}
-                        className="text-xs px-2 py-1"
-                      >
-                        New Project
-                      </Button>
-                      <Button
-                        variant={selectedProjectCondition === "Ready Project" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedProjectCondition("Ready Project")}
-                        className="text-xs px-2 py-1"
-                      >
-                        Ready Project
-                      </Button>
-                      <Button
-                        variant={selectedProjectCondition === "Preleased" ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedProjectCondition("Preleased")}
-                        className="text-xs px-2 py-1"
-                      >
-                        Preleased
-                      </Button>
+                      <div className="flex items-start gap-3 sm:gap-4">
+                        <div className="bg-secondary p-2 sm:p-3 rounded-lg flex-shrink-0">
+                          <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-secondary-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-foreground">Visit Planner</h3>
+                            <span className="px-2 py-1 bg-secondary/10 text-secondary-foreground text-xs font-medium rounded-full self-start border border-secondary/20">
+                              Schedule Visits
+                            </span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+                            Schedule and organize property visits with clients efficiently
+                          </p>
+                          <div className="flex items-center text-secondary-foreground group-hover:text-secondary-foreground/80 transition-colors">
+                            <span className="text-xs sm:text-sm font-medium">Plan Visits</span>
+                            <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </GradientSpotlight>
+      </section>
 
-                {/* Budget Filter */}
+      {/* Search Section */}
+      <section className="py-8 sm:py-12 px-4">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Find Your Dream Property</h2>
+            <p className="text-gray-600 text-base sm:text-lg">
+              Your dream property is just a search away
+            </p>
+          </div>
+          
+          {/* Main Search Bar */}
+          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border">
+            {/* Search Input */}
+            <div className="mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+                <div className="flex items-center gap-0 rounded-lg border border-input bg-background shadow-sm overflow-hidden w-full">
+                  <Select value={searchType} onValueChange={setSearchType}>
+                    <SelectTrigger className="w-20 sm:w-32 border-0 border-r border-input rounded-none bg-muted/50 text-xs sm:text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="buy">Buy</SelectItem>
+                      <SelectItem value="rent">Rent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by location, type, or features..."
+                    className="flex-1 border-0 rounded-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-xs sm:text-sm"
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  />
+                  
+                  <Button 
+                    onClick={handleSearch}
+                    className="rounded-none px-3 sm:px-6 text-xs sm:text-sm"
+                    variant="default"
+                  >
+                    <Search className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Search</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Filters Grid - Mobile Responsive */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Property Types */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-foreground text-center sm:text-left">Property Types</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                  <Button 
+                    variant={selectedCategories.length === 0 ? "default" : "outline"} 
+                    size="sm"
+                    className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
+                    onClick={() => {
+                      setSelectedCategories([]);
+                      setSearchQuery("");
+                      setSelectedProjectCondition("");
+                    }}
+                  >
+                    <Home className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>All</span>
+                  </Button>
+                  <Button 
+                    variant={selectedCategories.includes("residential") ? "default" : "outline"} 
+                    size="sm"
+                    className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
+                    onClick={() => handleCategoryToggle("residential")}
+                  >
+                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>Residential</span>
+                  </Button>
+                  <Button 
+                    variant={selectedCategories.includes("commercial") ? "default" : "outline"} 
+                    size="sm"
+                    className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
+                    onClick={() => handleCategoryToggle("commercial")}
+                  >
+                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>Commercial</span>
+                  </Button>
+                  <Button 
+                    variant={selectedCategories.includes("industrial") ? "default" : "outline"} 
+                    size="sm"
+                    className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
+                    onClick={() => handleCategoryToggle("industrial")}
+                  >
+                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>Industrial</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Project Types & Budget - Two Column Layout on Mobile */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                {/* Project Types */}
                 <div className="space-y-3">
-                  <div className="text-center">
-                    <h3 className="text-sm font-medium text-foreground/80">
-                      Budget Range (₹{searchType === 'rent' ? '/month' : ''})
-                    </h3>
+                  <h3 className="text-sm font-medium text-foreground">Project Types</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={!selectedProjectCondition ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedProjectCondition("")}
+                      className="text-xs"
+                    >
+                      All Projects
+                    </Button>
+                    <Button
+                      variant={selectedProjectCondition === "New Project" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedProjectCondition("New Project")}
+                      className="text-xs"
+                    >
+                      New Project
+                    </Button>
+                    <Button
+                      variant={selectedProjectCondition === "Ready Project" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedProjectCondition("Ready Project")}
+                      className="text-xs"
+                    >
+                      Ready Project
+                    </Button>
+                    <Button
+                      variant={selectedProjectCondition === "Preleased" ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setSelectedProjectCondition("Preleased")}
+                      className="text-xs"
+                    >
+                      Preleased
+                    </Button>
                   </div>
-                  <div className="w-full mx-auto space-y-3">
-                    {/* Quick Budget Buttons */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                </div>
+
+                {/* Budget Range */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-foreground">
+                    Budget Range (₹{searchType === 'rent' ? '/month' : ''})
+                  </h3>
+                  {!showCustomBudget ? (
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
-                        variant={budgetRange.min === 0 && budgetRange.max === 0 && !showCustomBudget ? "default" : "outline"}
+                        variant={budgetRange.min === 0 && budgetRange.max === 0 ? "default" : "outline"}
                         size="sm"
                         onClick={() => {
                           setBudgetRange({min: 0, max: 0});
                           setShowCustomBudget(false);
                         }}
-                        className="text-xs px-2 py-1"
+                        className="text-xs col-span-2"
                       >
                         Any Budget
                       </Button>
                       
-                      {/* Buy Budget Options */}
                       {searchType === 'buy' ? (
                         <>
                           <Button
@@ -495,7 +572,7 @@ const Index = () => {
                               setBudgetRange({min: 0, max: 5000000});
                               setShowCustomBudget(false);
                             }}
-                            className="text-xs px-2 py-1"
+                            className="text-xs"
                           >
                             Under 50L
                           </Button>
@@ -506,7 +583,7 @@ const Index = () => {
                               setBudgetRange({min: 5000000, max: 10000000});
                               setShowCustomBudget(false);
                             }}
-                            className="text-xs px-2 py-1"
+                            className="text-xs"
                           >
                             50L - 1Cr
                           </Button>
@@ -517,7 +594,7 @@ const Index = () => {
                               setBudgetRange({min: 10000000, max: 20000000});
                               setShowCustomBudget(false);
                             }}
-                            className="text-xs px-2 py-1"
+                            className="text-xs"
                           >
                             1Cr - 2Cr
                           </Button>
@@ -528,13 +605,12 @@ const Index = () => {
                               setBudgetRange({min: 20000000, max: 0});
                               setShowCustomBudget(false);
                             }}
-                            className="text-xs px-2 py-1"
+                            className="text-xs"
                           >
                             Above 2Cr
                           </Button>
                         </>
                       ) : (
-                        /* Rent Budget Options */
                         <>
                           <Button
                             variant={budgetRange.min === 0 && budgetRange.max === 25000 && !showCustomBudget ? "default" : "outline"}
@@ -543,7 +619,7 @@ const Index = () => {
                               setBudgetRange({min: 0, max: 25000});
                               setShowCustomBudget(false);
                             }}
-                            className="text-xs px-2 py-1"
+                            className="text-xs"
                           >
                             Under 25K
                           </Button>
@@ -554,7 +630,7 @@ const Index = () => {
                               setBudgetRange({min: 25000, max: 50000});
                               setShowCustomBudget(false);
                             }}
-                            className="text-xs px-2 py-1"
+                            className="text-xs"
                           >
                             25K - 50K
                           </Button>
@@ -565,7 +641,7 @@ const Index = () => {
                               setBudgetRange({min: 50000, max: 100000});
                               setShowCustomBudget(false);
                             }}
-                            className="text-xs px-2 py-1"
+                            className="text-xs"
                           >
                             50K - 1L
                           </Button>
@@ -576,7 +652,7 @@ const Index = () => {
                               setBudgetRange({min: 100000, max: 0});
                               setShowCustomBudget(false);
                             }}
-                            className="text-xs px-2 py-1"
+                            className="text-xs"
                           >
                             Above 1L
                           </Button>
@@ -584,56 +660,57 @@ const Index = () => {
                       )}
                       
                       <Button
-                        variant={showCustomBudget ? "default" : "outline"}
+                        variant="outline"
                         size="sm"
-                        onClick={() => {
-                          setShowCustomBudget(!showCustomBudget);
-                          if (!showCustomBudget) {
-                            setBudgetRange({min: 0, max: 0});
-                          }
-                        }}
-                        className="text-xs px-2 py-1"
+                        onClick={() => setShowCustomBudget(true)}
+                        className="text-xs col-span-2"
                       >
-                        Custom
+                        Custom Range
                       </Button>
                     </div>
-                    
-                    {/* Custom Range Inputs - Only show when Custom is selected */}
-                    {showCustomBudget && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">
-                            Min {searchType === 'rent' ? 'Rent' : 'Price'}
-                          </label>
-                          <Input
-                            type="number"
-                            placeholder={`Min (₹${searchType === 'rent' ? '/month' : ''})`}
-                            value={budgetRange.min || ''}
-                            onChange={(e) => setBudgetRange({...budgetRange, min: parseInt(e.target.value) || 0})}
-                            className="text-sm h-9"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-muted-foreground">
-                            Max {searchType === 'rent' ? 'Rent' : 'Price'}
-                          </label>
-                          <Input
-                            type="number"
-                            placeholder={`Max (₹${searchType === 'rent' ? '/month' : ''})`}
-                            value={budgetRange.max || ''}
-                            onChange={(e) => setBudgetRange({...budgetRange, max: parseInt(e.target.value) || 0})}
-                            className="text-sm h-9"
-                          />
-                        </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Input
+                          type="number"
+                          placeholder="Min Budget"
+                          value={budgetRange.min || ''}
+                          onChange={(e) => setBudgetRange({...budgetRange, min: parseInt(e.target.value) || 0})}
+                          className="text-sm"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Max Budget"
+                          value={budgetRange.max || ''}
+                          onChange={(e) => setBudgetRange({...budgetRange, max: parseInt(e.target.value) || 0})}
+                          className="text-sm"
+                        />
                       </div>
-                    )}
-                  </div>
-                </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowCustomBudget(false)}
+                        className="w-full text-xs"
+                      >
+                        Back to Presets
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Clear Filters Button */}
+            {(selectedCategories.length > 0 || selectedProjectCondition || budgetRange.min > 0 || budgetRange.max > 0 || searchQuery.trim()) && (
+              <div className="mt-4 sm:mt-6 text-center">
+                <Button variant="ghost" onClick={clearFilters} size="sm">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Clear All Filters
+                </Button>
+              </div>
+            )}
           </div>
-        </GradientSpotlight>
+        </div>
       </section>
 
       {/* Search Status */}
@@ -683,6 +760,8 @@ const Index = () => {
           </div>
         </section>
       )}
+
+
 
       {/* Properties Section */}
       <section aria-label="Properties" className="py-16 px-4 bg-background">

@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, MapPin, Home, Calendar } from "lucide-react";
+import { ArrowLeft, Eye, MapPin, Home, Calendar, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +112,8 @@ interface Property {
   // Unit Condition & Maintenance
   unitCondition: string;
   maintenanceToBePaidBy: string;
+  rentalStatus: string;
+  furnishedChecklist: string[];
   
   // Legacy fields
   description: string;
@@ -382,7 +384,7 @@ const PropertyDetails = () => {
             )}
 
             {/* Agreement & Security Details */}
-            {(property.securityDeposit || property.agreementPeriod || property.noticePeriod) && (
+            {(property.securityDeposit || property.agreementPeriod || property.agreementStartDate || property.agreementEndDate || property.noticePeriod) && (
               <Card>
                 <CardHeader>
                   <CardTitle>Agreement & Security</CardTitle>
@@ -431,7 +433,7 @@ const PropertyDetails = () => {
             )}
 
             {/* Unit Condition & Maintenance */}
-            {(property.unitCondition || property.maintenanceToBePaidBy) && (
+            {(property.unitCondition || property.maintenanceToBePaidBy || property.rentalStatus) && (
               <Card>
                 <CardHeader>
                   <CardTitle>Unit Condition & Maintenance</CardTitle>
@@ -450,6 +452,45 @@ const PropertyDetails = () => {
                         <p className="text-sm">{property.maintenanceToBePaidBy}</p>
                       </div>
                     )}
+                    {property.rentalStatus && (
+                      <div>
+                        <label className="text-sm font-medium text-muted-foreground">Rental Status</label>
+                        <p className="text-sm capitalize">{property.rentalStatus}</p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Furnished Checklist */}
+            {property.furnishedChecklist && property.furnishedChecklist.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    Furnished Items ({property.furnishedChecklist.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Items included with this furnished property
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {property.furnishedChecklist.map((item, index) => (
+                      <div key={index} className="flex items-center space-x-3 bg-green-50 border border-green-200 rounded-lg p-3 hover:bg-green-100 transition-colors">
+                        <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm font-medium text-gray-800">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 pt-3 border-t bg-blue-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <p className="text-sm font-medium text-blue-800">
+                        This property comes with {property.furnishedChecklist.length} furnished items included
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

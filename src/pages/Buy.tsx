@@ -69,7 +69,8 @@ const Buy = () => {
     title: property.title || 'Property',
     price: property.price > 0 ? `₹${property.price.toLocaleString()}` : 'Price on request',
     location: property.address || property.city || 'Location not specified',
-    type: 'sale'
+    type: 'sale',
+    furnishedCount: property.furnishedChecklist?.length || 0
   });
 
   // Step 1: Property Type Selection

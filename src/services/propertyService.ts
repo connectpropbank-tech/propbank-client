@@ -16,6 +16,8 @@ interface Property {
   bathrooms: number;
   squareFeet: number;
   images: string[];
+  rentalStatus?: string; // 'available' | 'rented'
+  furnishedChecklist?: string[]; // Array of furnished items
   ownerUID: string;
   ownerName: string;
   ownerEmail: string;

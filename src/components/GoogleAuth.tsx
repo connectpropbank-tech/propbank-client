@@ -272,7 +272,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                   Sign in or Create an Account
                 </h1>
                 <p className="text-gray-600 text-sm">
-                  Join ShoPROP to manage your properties and connect with tenants, buyers, and agents.
+                  Join Propbank to manage your properties and connect with tenants, buyers, and agents.
                 </p>
               </div>
               
