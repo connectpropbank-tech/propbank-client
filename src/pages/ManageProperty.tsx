@@ -75,8 +75,6 @@ interface Property {
   listingType: string; // 'rent' or 'sell'
   monthlyRent: string;
   sellingPrice: string;
-  bedrooms: number;
-  bathrooms: number;
   squareFeet: number;
   images: string[];
   tenants?: TenantInfo[];
@@ -89,6 +87,7 @@ interface Property {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  unitNumber?: string;
 }
 
 const ManageProperty = () => {
@@ -387,8 +386,8 @@ const ManageProperty = () => {
     }
   };
 
-  console.log("ManageProperty render - User:", user, "Loading:", loading, "Properties:", properties.length);
-
+  console.log("ManageProperty render - User:", user, "Loading:", loading, "Properties:", properties.length, properties);
+ 
   return (
     <main className="container mx-auto py-4 sm:py-8 px-4">
       <Helmet>
@@ -571,7 +570,9 @@ const ManageProperty = () => {
                           <span className="text-base sm:text-lg font-semibold text-primary flex-shrink-0 mt-0.5">{index + 1}.</span>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-semibold text-sm sm:text-lg leading-tight text-gray-900 break-words">
-                              {property.title} (📍 {property.address}, {property.city}, {property.state} {property.zipCode})
+                              {property.title}
+                              {property.unitNumber ? ` (${property.unitNumber})` : ""}
+                              {property.address ? `, ${property.address}` : ""}
                             </h3>
                           </div>
                         </div>
@@ -592,7 +593,7 @@ const ManageProperty = () => {
                               Edit Property
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            {property.listingType === 'rent' && (
+                            {property.listingType === 'rent' && property.rentalStatus !== 'available' && (
                               <DropdownMenuItem onClick={() => handleAddTenant(property.id)}>
                                 {property.tenants && property.tenants.length > 0 ? (
                                   <>
@@ -633,16 +634,15 @@ const ManageProperty = () => {
                               📐 {property.squareFeet} sqft
                             </span>
                           )}
-                          {/* Furnished Indicator */}
-                          {property.furnishedChecklist && property.furnishedChecklist.length > 0 && (
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap">
-                              🛋️ Furnished ({property.furnishedChecklist.length} items)
-                            </Badge>
-                          )}
+                         
                           {/* Rental Status Indicator */}
-                          {property.rentalStatus === 'rented' && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap">
-                              🏠 Currently Rented
+                          {property.listingType === 'rent' && property.rentalStatus && (
+                            <Badge variant="outline" className={
+                              property.rentalStatus === 'available'
+                                ? 'bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap'
+                                : 'bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap'
+                            }>
+                              {property.rentalStatus === 'available' ? 'Available for Rent' : 'Currently Rented'}
                             </Badge>
                           )}
                           {/* Last Modified - Desktop only, between property type and listing type */}
@@ -650,6 +650,16 @@ const ManageProperty = () => {
                             <span className="hidden sm:flex items-center gap-1 whitespace-nowrap">
                               📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()} at {new Date(property.updatedAt).toLocaleTimeString()}
                             </span>
+                          )}
+                           {/* Rental Status Indicator */}
+                          {property.listingType === 'rent' && property.rentalStatus && (
+                            <Badge variant="outline" className={
+                              property.rentalStatus === 'available'
+                                ? 'bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap'
+                                : 'bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap'
+                            }>
+                              {property.rentalStatus === 'available' ? 'Available for Rent' : 'Currently Rented'}
+                            </Badge>
                           )}
                           {property.listingType && (
                             <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs whitespace-nowrap">

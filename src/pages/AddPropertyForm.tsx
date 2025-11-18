@@ -535,56 +535,36 @@ const AddPropertyForm = () => {
                 </div>
 
                 {/* Area Details */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 border rounded-lg">
-                  <div className="lg:col-span-3">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 border rounded-lg">
+                  <div className="lg:col-span-2">
                     <h3 className="text-lg font-semibold">Area (in sqft)</h3>
                   </div>
-                  
                   <FormField
                     control={form.control}
                     name="carpetArea"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Sqft Carpet</FormLabel>
+                        <FormLabel>Carpet Area (Sqft)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Carpet area" {...field} />
+                          <Input placeholder="Enter carpet area" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-
-                  {selectedPropertyType === "industrial" && (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="plotArea"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Plot Area(Sq. m)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Plot area" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="constructedArea"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Constructed area(Sq. ft)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Constructed area" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
-                  )}
+                  <FormField
+                    control={form.control}
+                    name="constructedArea"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Built-up Area (Sqft)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Enter built-up area" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 {/* Tenant Information - Only show when property is already rented */}
@@ -625,9 +605,7 @@ const AddPropertyForm = () => {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="mobileNumber"
+                    <FormField control={form.control} name="mobileNumber"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Mobile Number <span className="text-red-500">*</span></FormLabel>
@@ -638,24 +616,8 @@ const AddPropertyForm = () => {
                         </FormItem>
                       )}
                     />
-
-                    <FormField
-                      control={form.control}
-                      name="primaryNo"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Primary Contact</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Primary contact number" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="ultNo"
+                    
+                    <FormField control={form.control} name="ultNo"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Alternate Contact</FormLabel>
@@ -1099,51 +1061,55 @@ const AddPropertyForm = () => {
                     </div>
                   )}
 
-                                    <FormField
-                    control={form.control}
-                    name="maintenanceToBePaidBy"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Maintenance Payment By</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select who pays" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="owner">Owner</SelectItem>
-                            <SelectItem value="tenant">Tenant</SelectItem>
-                            <SelectItem value="shared">Shared</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {form.watch("listingType") !== "sell" && (
+                    <FormField
+                      control={form.control}
+                      name="maintenanceToBePaidBy"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Maintenance Payment By</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select who pays" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="owner">Owner</SelectItem>
+                              <SelectItem value="tenant">Tenant</SelectItem>
+                              <SelectItem value="shared">Shared</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
-                  <FormField
-                    control={form.control}
-                    name="projectCondition"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Project Condition</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select project condition" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="New Project">New Project</SelectItem>
-                            <SelectItem value="Ready Project">Ready Project</SelectItem>
-                            <SelectItem value="Preleased">Preleased</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {form.watch("listingType") !== "rent" && (
+                    <FormField
+                      control={form.control}
+                      name="projectCondition"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Project Condition</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select project condition" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="New Project">New Project</SelectItem>
+                              <SelectItem value="Ready Project">Ready Project</SelectItem>
+                              <SelectItem value="Preleased">Preleased</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 {/* Images & Comments */}

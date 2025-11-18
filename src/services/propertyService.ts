@@ -24,6 +24,7 @@ interface Property {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  unitNumber?: string; // Optional unit number
 }
 
 

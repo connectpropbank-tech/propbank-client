@@ -59,10 +59,9 @@ const HomePage = () => {
   const [showCustomBudget, setShowCustomBudget] = useState<boolean>(false);
   const observerTarget = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  
-  // Use SearchContext for shared state
-  const { 
-    searchQuery, 
+
+  const {
+    searchQuery,
     setSearchQuery,
     searchType, 
     setSearchType,
@@ -76,13 +75,9 @@ const HomePage = () => {
 
   const ITEMS_PER_PAGE = 12;
 
-
   useEffect(() => {
     loadAllProperties();
-    
-    // Set up the search trigger for header filters
     setOnSearchTrigger(() => handleSearch);
-    
     return () => {
       setOnSearchTrigger(null);
     };
@@ -192,8 +187,6 @@ const HomePage = () => {
       });
     }
 
-    // Filter by categories (property types) - use SearchContext categories for header filters
-    // or local selectedCategories for homepage category buttons
     const categoriesToFilter = selectedCategories.length > 0 ? selectedCategories : [];
     
     if (categoriesToFilter.length > 0) {
@@ -256,7 +249,7 @@ const HomePage = () => {
     setShowCustomBudget(false);
     setIsSearching(false);
     setPage(1);
-    
+
     const initialProperties = allProperties.slice(0, ITEMS_PER_PAGE);
     setProperties(initialProperties);
     setHasMore(allProperties.length > ITEMS_PER_PAGE);
@@ -266,7 +259,6 @@ const HomePage = () => {
     const newCategories = selectedCategories.includes(categoryId) 
       ? selectedCategories.filter(id => id !== categoryId)
       : [...selectedCategories, categoryId];
-    
     setSelectedCategories(newCategories);
   };
 
@@ -290,22 +282,15 @@ const HomePage = () => {
     }
   }, [selectedCategories, selectedListingTypes, searchQuery, searchType, selectedProjectCondition, budgetRange, allProperties, getFilteredProperties]);
 
-  const formatPrice = (property: Property): string => {
-    if (property.price > 0) {
-      return `₹${property.price.toLocaleString()}`;
-    }
-    return "Contact for price";
-  };
 
   return (
     <>
       <Helmet>
         <title>Propbank — Buy, Sell & Rent Properties</title>
-        <meta name="description" content="Buy, sell, or rent properties with ShoPROP. Modern PWA for real estate with buyer/tenant and seller/landlord profiles." />
+        <meta name="description" content="Buy, sell, or rent properties with Propbank. Modern PWA for real estate with buyer/tenant and seller/landlord profiles." />
         <link rel="canonical" href="/" />
       </Helmet>
 
-      {/* Hero Section */}
       <section aria-label="Hero" className="relative">
         <GradientSpotlight className="">
           <div className="container mx-auto py-16">
@@ -313,10 +298,10 @@ const HomePage = () => {
               <div className="space-y-8 flex flex-col items-center text-center lg:items-start lg:text-left">
                 <div className="space-y-6">
                   <h1 className="text-3xl font-bold leading-tight md:text-2xl lg:text-3xl">
-                    Your Go-To Hub for Buying, Selling, and Renting
+                    Your Smart Hub for Property Management
                   </h1>
                   <p className="text-lg text-muted-foreground">
-                    Find, list, and manage — all in one platform
+                    Manage, list your properties and find your dream house— all in one platform
                   </p>
                 </div>
                 
@@ -332,10 +317,7 @@ const HomePage = () => {
 
               <div className="space-y-6 w-full max-w-2xl mx-auto lg:mx-0">
                 <div className="text-center space-y-4">
-                  <h2 className="text-2xl md:text-3xl font-bold">Quick Access</h2>
-                  <p className="text-muted-foreground">
-                    Manage your properties and plan visits with ease
-                  </p>
+                  <h2 className="text-muted-foreground">Manage your properties and plan visits with ease</h2>
                 </div>
               
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-white/20 space-y-4 w-full">
@@ -401,19 +383,14 @@ const HomePage = () => {
         </GradientSpotlight>
       </section>
 
-      {/* Search Section */}
       <section className="py-8 sm:py-12 px-4">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-6 sm:mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Find Your Dream Property</h2>
-            <p className="text-gray-600 text-base sm:text-lg">
-              Your dream property is just a search away
-            </p>
+            <p className="text-gray-600 text-base sm:text-lg">Your dream property is just a search away</p>
           </div>
           
-          {/* Main Search Bar */}
           <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border">
-            {/* Search Input */}
             <div className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
                 <div className="flex items-center gap-0 rounded-lg border border-input bg-background shadow-sm overflow-hidden w-full">
@@ -706,7 +683,6 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Search Status */}
       {(isSearching || selectedCategories.length > 0 || selectedProjectCondition || budgetRange.min > 0 || budgetRange.max > 0) && (
         <section className="py-4 px-4 bg-background">
           <div className="container mx-auto">
@@ -754,9 +730,6 @@ const HomePage = () => {
         </section>
       )}
 
-
-
-      {/* Properties Section */}
       <section aria-label="Properties" className="py-16 px-4 bg-background">
         <div className="container mx-auto space-y-8 px-4">
           <div className="text-center space-y-4">
@@ -794,130 +767,139 @@ const HomePage = () => {
           ) : (
             <>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 px-2">
-                {properties.map((property) => (
-                  <Card key={property.id} className="overflow-hidden hover:shadow-lg transition-shadow group flex flex-col h-full p-2">
-                    {/* Property Image */}
-                    <div className="relative aspect-video overflow-hidden">
-                      <img
-                        src={
-                          property.images && property.images.length > 0 && property.images[0] 
-                            ? property.images[0] 
-                            : getPlaceholderImage(property.propertyType)
-                        }
-                        alt={property.title || 'Property'}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          // If the original image fails, try the placeholder
-                          if (target.src !== getPlaceholderImage(property.propertyType)) {
-                            target.src = getPlaceholderImage(property.propertyType);
-                          } else {
-                            // If placeholder also fails, show the animated house fallback
-                            target.style.display = 'none';
-                            const fallback = target.nextElementSibling as HTMLElement;
-                            if (fallback) {
-                              fallback.style.display = 'flex';
+                {properties
+                  .filter(property => property.listingType === "rent" && property.rentalStatus === "available")
+                  .map((property) => (
+                    <Card key={property.id} className="overflow-hidden hover:shadow-lg transition-shadow group flex flex-col h-full p-2">
+                      {/* Property Image */}
+                      <div className="relative aspect-video overflow-hidden">
+                        <img src={
+                            property.images && property.images.length > 0 && property.images[0] 
+                              ? property.images[0] 
+                              : getPlaceholderImage(property.propertyType)}
+                          alt={property.title || 'Property'}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            // If the original image fails, try the placeholder
+                            if (target.src !== getPlaceholderImage(property.propertyType)) {
+                              target.src = getPlaceholderImage(property.propertyType);
+                            } else {
+                              // If placeholder also fails, show the animated house fallback
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) {
+                                fallback.style.display = 'flex';
+                              }
                             }
-                          }
-                        }}
-                      />
-                      <div 
-                        className="w-full h-full hidden items-center justify-center"
-                        style={{ 
-                          background: property.propertyType?.toLowerCase().includes('commercial') 
-                            ? 'linear-gradient(135deg, #f0f9ff, #e0e7ff)' 
-                            : property.propertyType?.toLowerCase().includes('residential')
-                            ? 'linear-gradient(135deg, #fef7cd, #fef3c7)'
-                            : 'linear-gradient(135deg, #f1f5f9, #e2e8f0)'
-                        }}
-                      >
-                        <div className="text-center">
-                          <p className="text-xs text-muted-foreground/80 font-medium mt-2 capitalize">
-                            {property.propertyType || 'Property'}
-                          </p>
-                          <p className="text-xs text-muted-foreground/60 mt-1">
-                            No Image Available
-                          </p>
+                          }}
+                        />
+                        <div 
+                          className="w-full h-full hidden items-center justify-center"
+                          style={{ 
+                            background: property.propertyType?.toLowerCase().includes('commercial') 
+                              ? 'linear-gradient(135deg, #f0f9ff, #e0e7ff)' 
+                              : property.propertyType?.toLowerCase().includes('residential')
+                              ? 'linear-gradient(135deg, #fef7cd, #fef3c7)'
+                              : 'linear-gradient(135deg, #f1f5f9, #e2e8f0)'
+                          }}
+                        >
+                          <div className="text-center">
+                            <p className="text-xs text-muted-foreground/80 font-medium mt-2 capitalize">
+                              {property.propertyType || 'Property'}
+                            </p>
+                            <p className="text-xs text-muted-foreground/60 mt-1">
+                              No Image Available
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      
-                      {/* Listing Type Badge */}
-                      {property.listingType && (
-                        <div className="absolute top-3 left-3">
-                          {getListingTypeBadge(property.listingType)}
-                        </div>
-                      )}
-
-                      {/* Price Badge */}
-                      <div className="absolute top-3 right-3">
-                        <Badge className="bg-primary text-primary-foreground">
-                            {(property.propertyType || 'Property')
-                            .charAt(0).toUpperCase() + (property.propertyType || 'Property').slice(1)}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <CardHeader>
-                      <div className="flex items-center gap-2">
-                        <CardTitle className="line-clamp-2">
-                          {property.title || 'Property'}
-                        </CardTitle>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent className="flex-1 flex flex-col space-y-4">
-                      {/* Location */}
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {property.address || property.city || 'Location not specified'}
-                        </p>
-                      </div>
-
-                      {/* Property Details */}
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        {property.bedrooms > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Bed className="h-4 w-4" />
-                            <span>{property.bedrooms}</span>
-                          </div>
-                        )}
-                        {property.bathrooms > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Bath className="h-4 w-4" />
-                            <span>{property.bathrooms}</span>
-                          </div>
-                        )}
-                        {property.squareFeet > 0 && (
-                          <div className="flex items-center gap-1">
-                            <Square className="h-4 w-4" />
-                            <span>{property.squareFeet} sq ft</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Spacer to push content to bottom */}
-                      <div className="flex-1"></div>
-
-                      {/* Property Enquiry */}
-                      <div className="pt-4 border-t space-y-3 mt-auto">
                         
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="w-full">
-                            Enquire about this property
+                        {/* Listing Type Badge */}
+                        {property.listingType && (
+                          <div className="absolute top-3 left-3">
+                            {getListingTypeBadge(property.listingType)}
+                          </div>
+                        )}
+
+                        {/* Price Badge */}
+                        <div className="absolute top-3 right-3">
+                          <Badge className="bg-primary text-primary-foreground">
+                              {(property.propertyType || 'Property')
+                              .charAt(0).toUpperCase() + (property.propertyType || 'Property').slice(1)}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <CardHeader>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="line-clamp-2">
+                            {property.title}
+                            {(property.unitNumber || property.address) && (
+                              <span className="text-muted-foreground font-normal">
+                                {' ('}
+                                {property.unitNumber ? property.unitNumber : ''}
+                                {property.unitNumber && property.address ? ', ' : ''}
+                                {property.address ? property.address : ''}
+                                {')'}
+                              </span>
+                            )}
+                          </CardTitle>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="flex-1 flex flex-col space-y-4">
+                        {/* Location */}
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {property.address || property.city || 'Location not specified'}
+                          </p>
+                        </div>
+
+                        {/* Property Details */}
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          {property.bedrooms > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Bed className="h-4 w-4" />
+                              <span>{property.bedrooms}</span>
+                            </div>
+                          )}
+                          {property.bathrooms > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Bath className="h-4 w-4" />
+                              <span>{property.bathrooms}</span>
+                            </div>
+                          )}
+                          {property.squareFeet > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Square className="h-4 w-4" />
+                              <span>{property.squareFeet} sq ft</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Spacer to push content to bottom */}
+                        <div className="flex-1"></div>
+
+                        {/* Property Enquiry */}
+                        <div className="pt-4 border-t space-y-3 mt-auto">
+                          
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="w-full">
+                              Enquire about this property
+                            </Button>
+                          </div>
+
+                          {/* View Details Button */}
+                          <Button asChild className="w-full" variant="default">
+                            <Link to={`/property/${property.id}`}>
+                              View Full Details
+                            </Link>
                           </Button>
                         </div>
-
-                        {/* View Details Button */}
-                        <Button asChild className="w-full" variant="default">
-                          <Link to={`/property/${property.id}`}>
-                            View Full Details
-                          </Link>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
 
               {/* Infinite Scroll Trigger */}
