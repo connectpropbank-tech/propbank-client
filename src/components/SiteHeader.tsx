@@ -3,48 +3,10 @@ import { useState, useEffect, useRef } from "react";
 import { Menu, X, LogOut, LogIn, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-} from "@/components/ui/navigation-menu";
 import { auth, signOutUser } from "@/firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
-import { API_BASE_URL } from "../../utils/config";
-
-const topLevelNavItems = [
-  { to: "/manage-property", label: "Manage Property" },
-  { to: "/day-planner", label: "My Day Planner" },
-];
-
-const realEstateItems = [
-  { to: "/sell", label: "Sell", hasPropertyTypes: true },
-  { to: "/buy", label: "Buy", hasPropertyTypes: true },
-  { to: "/rent", label: "Find Rental", hasPropertyTypes: true },
-  { to: "/rent-out", label: "Rent Out", hasPropertyTypes: true },
-  { to: "/prelease", label: "Pre lease Property", hasPropertyTypes: true },
-  { to: "/new-projects", label: "New Projects", hasPropertyTypes: false },
-];
-
-const propertyTypes = [
-  { to: "/residential", label: "Residential" },
-  { to: "/commercial", label: "Commercial" },
-  { to: "/industrial", label: "Industrial" },
-];
-
-// Create flattened nav items for mobile
-const getAllNavItemsFlat = () => {
-  const items = [...topLevelNavItems];
-  realEstateItems.forEach(item => {
-    items.push(item);
-  });
-  return items;
-};
-
-const allNavItemsFlat = getAllNavItemsFlat();
+import { API_BASE_URL } from "../utils/config";
+import axios from "axios";
 
 const SiteHeader = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -56,7 +18,7 @@ const SiteHeader = () => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
-        fetchUserPhone(firebaseUser.uid);
+        getUserPhone(firebaseUser.uid);
       } else {
         setUserPhone("");
       }
@@ -64,26 +26,24 @@ const SiteHeader = () => {
     return () => unsubscribe();
   }, []);
 
-  // Function to fetch user phone number
-  const fetchUserPhone = async (uid: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users/${uid}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user && data.user.phoneNumber) {
-          setUserPhone(data.user.phoneNumber);
-        }
+  const getUserPhone = async (uid: string) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/users/${uid}`, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.status === 200) {
+      const data = response.data;
+      if (data.user && data.user.phoneNumber) {
+        setUserPhone(data.user.phoneNumber);
       }
-    } catch (error) {
-      console.error("Error fetching user phone:", error);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching user phone:", error);
+  }
+};
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -114,8 +74,7 @@ const SiteHeader = () => {
           <span className="h-6 w-6 rounded-md bg-gradient-primary shadow-glow"></span>
           <span>Propbank</span>
         </Link>
-        
-        {/* Hamburger Menu for All Dimensions */}
+  
         <div className="flex items-center gap-2">
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
@@ -125,15 +84,12 @@ const SiteHeader = () => {
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-[300px] sm:w-[400px] overflow-y-auto">
+
               <div className="flex flex-col gap-6 pt-6 pb-6 min-h-full">
-                {/* User Profile Section - Mobile */}
                 {user && (
                   <div className="flex items-start gap-4 p-4 bg-accent/30 rounded-xl border border-accent/50">
-                    <img 
-                      src={user.photoURL || "https://ui-avatars.com/api/?name=User"} 
-                      alt="Profile" 
-                      className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0"
-                    />
+                    <img src={user.photoURL || "https://ui-avatars.com/api/?name=User"} alt="Profile" 
+                      className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0"/>
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="font-semibold text-sm text-gray-900 truncate">
                         {user.displayName || "No Name"}
@@ -151,16 +107,9 @@ const SiteHeader = () => {
                   </div>
                 )}
                 
-                {/* Navigation Items */}
                 <nav className="flex flex-col gap-2">
-                  <div className="px-3 py-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                    Main Menu
-                  </div>
-                  
                   {/* Manage Property */}
-                  <NavLink
-                    to="/manage-property"
-                    onClick={() => setIsOpen(false)}
+                  <NavLink to="/manage-property" onClick={() => setIsOpen(false)}
                     className={({ isActive }) =>
                       `px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`
                     }
@@ -172,9 +121,7 @@ const SiteHeader = () => {
                   </NavLink>
 
                   {/* Visit Planner */}
-                  <NavLink
-                    to="/visit-planner"
-                    onClick={() => setIsOpen(false)}
+                  <NavLink to="/visit-planner" onClick={() => setIsOpen(false)}
                     className={({ isActive }) =>
                       `px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`
                     }
@@ -185,31 +132,20 @@ const SiteHeader = () => {
                     Visit Planner
                   </NavLink>
 
-                 
-
-                  {/* Auth Section */}
                   <div className="border-t pt-4 mt-4">
                     {user ? (
-                      <Button
-                        variant="ghost"
-                        onClick={handleLogout}
-                        className="w-full justify-start gap-3 px-3 py-3 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <LogOut className="h-5 w-5" />
-                        Logout
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        asChild
-                        className="w-full justify-start gap-3 px-3 py-3"
-                      >
-                        <Link to="/auth" onClick={() => setIsOpen(false)}>
-                          <LogIn className="h-5 w-5" />
-                          Login
-                        </Link>
-                      </Button>
-                    )}
+                      <Button variant="ghost" onClick={handleLogout}
+                        className="w-full justify-start gap-3 px-3 py-3 text-red-600 hover:text-red-700 hover:bg-red-50">
+                        <LogOut className="h-5 w-5" /> Logout
+                      </Button>) 
+                      : 
+                      (
+                        <Button variant="ghost" asChild className="w-full justify-start gap-3 px-3 py-3">
+                          <Link to="/auth" onClick={() => setIsOpen(false)}>
+                            <LogIn className="h-5 w-5" /> Login
+                          </Link>
+                        </Button>
+                      )}
                   </div>
                 </nav>
               </div>

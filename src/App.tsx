@@ -7,29 +7,21 @@ import { HelmetProvider } from "react-helmet-async";
 import { useEffect, useState } from "react";
 import { auth } from "./firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
-import SiteHeader from "@/components/layout/SiteHeader";
-import SiteFooter from "@/components/layout/SiteFooter";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 import { SearchProvider } from "@/contexts/SearchContext";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Buy from "./pages/Buy";
-import Rent from "./pages/Rent";
-import Sell from "./pages/Sell";
-import RentOut from "./pages/RentOut";
-import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import ManageProperty from "./pages/ManageProperty";
 import AddPropertyForm from "./pages/AddPropertyForm";
 import SelectPropertyType from "./pages/SelectPropertyType";
 import AddTenant from "./pages/AddTenant";
-import AddBuyer from "./pages/AddBuyer";
 import PropertyDetails from "./pages/PropertyDetails";
 import RequestServices from "./pages/RequestServices";
 import EditProperty from "./pages/EditProperty";
-import DayPlanner from "./pages/DayPlanner";
-import Prelease from "./pages/Prelease";
 import SearchResults from "./pages/SearchResults";
-import GoogleAuth from "./components/GoogleAuth";
+import VisitPlanner from "./pages/VisitPlanner";
 
 const queryClient = new QueryClient();
 
@@ -80,22 +72,15 @@ const App = () => (
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/" element={<Index />} />
                   <Route element={<ProtectedRoute />}>
-                  <Route path="/buy" element={<Buy />} />
-                  <Route path="/rent" element={<Rent />} />
-                  <Route path="/sell" element={<Sell />} />
-                  <Route path="/rent-out" element={<RentOut />} />
-                  <Route path="/prelease" element={<Prelease />} />
-                  <Route path="/search" element={<SearchResults />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="/manage-property" element={<ManageProperty/>} />
-                  <Route path="/select-property-type" element={<SelectPropertyType />} />
-                  <Route path="/add-property" element={<AddPropertyForm />} />
-                  <Route path="/property/:propertyId" element={<PropertyDetails />} />
-                  <Route path="/edit-property/:propertyId" element={<EditProperty />} />
-                  <Route path="/add-tenant/:propertyId" element={<AddTenant />} />
-                  <Route path="/add-buyer/:propertyId" element={<AddBuyer />} />
-                  <Route path="/request-services/:propertyId" element={<RequestServices />} />
-                  <Route path="/visit-planner" element={<DayPlanner />} />
+                    <Route path="/search" element={<SearchResults />} />
+                    <Route path="/manage-property" element={<ManageProperty />} />
+                    <Route path="/select-property-type" element={<SelectPropertyType />} />
+                    <Route path="/add-property" element={<AddPropertyForm />} />
+                    <Route path="/property/:propertyId" element={<PropertyDetails />} />
+                    <Route path="/edit-property/:propertyId" element={<EditProperty />} />
+                    <Route path="/add-tenant/:propertyId" element={<AddTenant />} />
+                    <Route path="/request-services/:propertyId" element={<RequestServices />} />
+                    <Route path="/visit-planner" element={<VisitPlanner />} />
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

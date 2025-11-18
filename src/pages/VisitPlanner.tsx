@@ -6,18 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, Bell, Mail, MessageSquare, Plus, Trash2, MapPin, CheckCircle, Loader2 } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Calendar, Clock, Bell, Plus, Trash2, MapPin, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { visitService, Visit, CreateVisitRequest } from "@/services/visitService";
 import { auth } from "@/firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { TimePicker } from "@/components/ui/time-picker";
 
-// Using Visit interface from service instead of Task
-// interface Task extends Visit {}
 
-const DayPlanner = () => {
+const VisitPlanner = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [isAddingVisit, setIsAddingVisit] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
@@ -51,13 +49,11 @@ const DayPlanner = () => {
   const loadVisits = async () => {
     try {
       setLoading(true);
-      // Load both active and completed visits
       const [activeVisits, completedVisits] = await Promise.all([
         visitService.getVisitsByUser(undefined, 'active'),
         visitService.getVisitsByUser(undefined, 'completed')
       ]);
       
-      // Combine and mark them accordingly
       const allVisits = [
         ...activeVisits.map(v => ({ ...v, isCompleted: false })),
         ...completedVisits.map(v => ({ ...v, isCompleted: true }))
@@ -116,8 +112,7 @@ const DayPlanner = () => {
       };
 
       await visitService.createVisit(visitRequest);
-      
-      // Reset form
+    
       setFormData({
         title: '',
         description: '',
@@ -128,7 +123,6 @@ const DayPlanner = () => {
       });
       setIsAddingVisit(false);
       
-      // Reload visits
       await loadVisits();
       
       toast({
@@ -146,8 +140,6 @@ const DayPlanner = () => {
       setSubmitting(false);
     }
   };
-
-
 
   const deleteVisit = async (visitId: string) => {
     try {
@@ -184,38 +176,33 @@ const DayPlanner = () => {
     });
   };
 
-  // Filter visits based on completion status and time
   const now = new Date();
   const activeVisits = visits.filter(visit => {
     const visitDate = new Date(visit.visitDate);
     return !visit.isCompleted && visitDate > now;
   });
   
-  
   const completedVisits = visits.filter(visit => {
     const visitDate = new Date(visit.visitDate);
     return visit.isCompleted || visitDate <= now;
   });
 
-  // Get visits based on active tab
   const getCurrentVisits = () => {
     return activeTab === 'active' ? activeVisits : completedVisits;
   };
 
-  
-
   return (
     <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
       <Helmet>
-        <title>Visit Planner — ShoPROP</title>
-        <meta name="description" content="Schedule property visits, set reminders, and track your visit progress with ShoPROP Visit Planner." />
-        <link rel="canonical" href="/day-planner" />
+        <title>Visit Planner — Propbank</title>
+        <meta name="description" content="Schedule property visits, set reminders, and track your visit progress with Propbank Visit Planner." />
+        <link rel="canonical" href="/visit-planner" />
       </Helmet>
 
       <div className="space-y-4 sm:space-y-8">
         <div className="text-center space-y-2 sm:space-y-4">
           <div className="flex items-center justify-center gap-2 sm:gap-3">
-            <div className="flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
+            <div className="flex h-8 w-8 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-gradient-primary">
               <Calendar className="h-4 w-4 sm:h-6 sm:w-6 text-primary-foreground" />
             </div>
             <h1 className="text-xl sm:text-3xl font-bold">Visit Planner</h1>
@@ -223,11 +210,8 @@ const DayPlanner = () => {
           <p className="text-sm sm:text-base text-muted-foreground">Schedule property visits, set reminders, and track your progress</p>
         </div>
 
-        {/* Main Content Layout */}
         <div className="grid lg:grid-cols-3 gap-4 sm:gap-8">
-          {/* Left Side - Visit Lists and Tabs */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* Visit Planning Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid grid-cols-2 w-full">
                 <TabsTrigger value="active" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
@@ -245,7 +229,6 @@ const DayPlanner = () => {
               </TabsList>
             </Tabs>
 
-            {/* Visit Lists Content */}
             <div className="space-y-3 sm:space-y-4">
               {loading ? (
                 <div className="text-center py-8 sm:py-12">
@@ -253,7 +236,8 @@ const DayPlanner = () => {
                   <h3 className="text-base sm:text-lg font-semibold mb-1 sm:mb-2">Loading visits...</h3>
                   <p className="text-sm sm:text-base text-muted-foreground">Please wait while we fetch your visits</p>
                 </div>
-              ) : getCurrentVisits().length === 0 ? (
+              ) 
+              : getCurrentVisits().length === 0 ? (
                 <div className="text-center py-8 sm:py-12">
                   {activeTab === 'active' ? (
                     <>
@@ -269,38 +253,37 @@ const DayPlanner = () => {
                     </>
                   )}
                 </div>
-              ) : (
+                ) : 
+                (
                 <div className="grid gap-3 sm:gap-4">
-                  {getCurrentVisits()
-                    .sort((a, b) => 
+                  {getCurrentVisits().sort((a, b) => 
                       activeTab === 'active' 
                         ? new Date(a.visitDate).getTime() - new Date(b.visitDate).getTime()
                         : new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime()
-                    )
-                    .map((visit) => (
+                    ).map((visit) => (
                       <Card key={visit.id} className={`transition-all ${
-                        activeTab === 'visited' ? 'border-blue-200 bg-blue-50' : 'border-blue-200'
-                      }`}>
+                        activeTab === 'visited' ? 'border-blue-200 bg-blue-50' : 'border-blue-200'}`}>
                         <CardContent className="p-3 sm:p-6">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 space-y-2">
                               <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-wrap">
                                 <div className={`flex h-4 w-4 items-center justify-center rounded-full shadow-sm flex-shrink-0 mt-0.5 sm:mt-0 ${
-                                  activeTab === 'visited' ? 'bg-blue-600' : 'bg-primary'
-                                }`}>
-                                  {activeTab === 'visited' ? (
+                                  activeTab === 'visited' ? 'bg-blue-600' : 'bg-primary-600'}`}>
+                                  {activeTab === 'visited' ? 
+                                  (
                                     <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-white" />
-                                  ) : (
+                                  ) : 
+                                  (
                                     <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-primary-foreground" />
                                   )}
                                 </div>
-                                <h3 className="text-sm sm:text-lg font-semibold leading-tight flex-1">
-                                  {visit.title}
-                                </h3>
+                                <h3 className="text-sm sm:text-lg font-semibold leading-tight flex-1">{visit.title}</h3>
                                 <div className="flex items-center gap-1 text-muted-foreground flex-shrink-0">
-                                  {activeTab === 'visited' ? (
+                                  {activeTab === 'visited' ? 
+                                  (
                                     <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
-                                  ) : (
+                                  ) : 
+                                  (
                                     <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                                   )}
                                   <span className="text-xs sm:text-sm font-medium">
@@ -331,12 +314,8 @@ const DayPlanner = () => {
                               </div>
                             </div>
                             {activeTab === 'active' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => deleteVisit(visit.id)}
-                                className="text-destructive hover:text-destructive h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0"
-                              >
+                              <Button variant="ghost" size="icon"  onClick={() => deleteVisit(visit.id)}
+                                className="text-destructive hover:text-destructive h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
                                 <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                               </Button>
                             )}
@@ -349,19 +328,11 @@ const DayPlanner = () => {
             </div>
           </div>
 
-          {/* Right Side - Schedule Button and Form */}
           <div className="space-y-3 sm:space-y-4">
-            {/* Schedule New Visit Button */}
-            <Button 
-              onClick={() => setIsAddingVisit(true)}
-              className="gap-2 w-full text-sm sm:text-base"
-              size="lg"
-            >
-              <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
-              Schedule New Visit
+            <Button onClick={() => setIsAddingVisit(true)}  size="lg" className="gap-2 w-full text-sm sm:text-base">
+              <Plus className="h-3 w-3 sm:h-4 sm:w-4" /> Schedule New Visit
             </Button>
 
-            {/* Add Task Form */}
             {isAddingVisit && (
               <Card>
                 <CardHeader className="pb-3 sm:pb-6">
@@ -375,41 +346,21 @@ const DayPlanner = () => {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-                    {/* Title */}
                     <div className="space-y-1 sm:space-y-2">
-                      <Label htmlFor="title" className="text-xs sm:text-sm">Property/Visit Title *</Label>
-                      <Input
-                        id="title"
-                        value={formData.title}
-                        onChange={(e) => handleInputChange('title', e.target.value)}
-                        placeholder="e.g., Visit Apartment in Downtown"
-                        className="text-sm"
-                        required
-                      />
+                      <Label htmlFor="title" className="text-xs sm:text-sm">Visit Title *</Label>
+                      <Input id="title" value={formData.title} className="text-sm" required
+                        onChange={(e) => handleInputChange('title', e.target.value)}placeholder="E.g., Visit Apartment in Downtown"/>
                     </div>
 
-                    {/* Date */}
                     <div className="space-y-1 sm:space-y-2">
                       <Label htmlFor="date" className="text-xs sm:text-sm">Visit Date *</Label>
-                      <Input
-                        id="date"
-                        type="date"
-                        value={formData.date}
-                        onChange={(e) => handleInputChange('date', e.target.value)}
-                        className="text-sm"
-                        required
-                        min={new Date().toISOString().split('T')[0]}
+                      <Input id="date" type="date" value={formData.date} className="text-sm" required
+                        onChange={(e) => handleInputChange('date', e.target.value)} min={new Date().toISOString().split('T')[0]}
                       />
                     </div>
 
-                    {/* Time */}
-                    <TimePicker
-                      value={formData.time}
-                      onChange={(time) => handleInputChange('time', time)}
-                      required
-                    />
+                    <TimePicker value={formData.time} onChange={(time) => handleInputChange('time', time)} required />
 
-                    {/* Reminder */}
                     <div className="space-y-1 sm:space-y-2">
                       <Label htmlFor="reminderTime" className="text-xs sm:text-sm">Email Reminder</Label>
                       <Select value={formData.reminderTime.toString()} onValueChange={(value) => handleInputChange('reminderTime', parseInt(value))}>
@@ -427,44 +378,26 @@ const DayPlanner = () => {
                       </Select>
                     </div>
 
-                    {/* Description */}
                     <div className="space-y-1 sm:space-y-2">
                       <Label htmlFor="description" className="text-xs sm:text-sm">Visit Details</Label>
-                      <Textarea
-                        id="description"
-                        value={formData.description}
-                        onChange={(e) => handleInputChange('description', e.target.value)}
-                        placeholder="Property address, contact person, special notes..."
-                        rows={3}
-                        className="resize-none text-sm"
-                      />
+                      <Textarea id="description" value={formData.description} rows={3} className="resize-none text-sm"
+                        onChange={(e) => handleInputChange('description', e.target.value)} 
+                        placeholder="Property address, contact person, special notes..."/>
                     </div>
 
-                    {/* Action Buttons */}
                     <div className="flex flex-col gap-2 pt-3 sm:pt-4 border-t">
-                      <Button 
-                        type="submit" 
-                        className="flex items-center gap-2 w-full text-sm sm:text-base"
-                        disabled={submitting}
-                      >
+                      <Button type="submit" disabled={submitting}
+                        className="flex items-center gap-2 w-full text-sm sm:text-base">
                         {submitting ? (
-                          <>
-                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                            Scheduling...
-                          </>
-                        ) : (
-                          <>
-                            <Calendar className="h-3 w-3 sm:h-4 sm:w-4" />
-                            Schedule Visit
-                          </>
+                          <><Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />Scheduling...</>
+                        ) : 
+                        (
+                          <> <Calendar className="h-3 w-3 sm:h-4 sm:w-4" /> Schedule Visit </>
                         )}
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsAddingVisit(false)}
-                        className="w-full text-sm sm:text-base"
-                      >
+
+                      <Button type="button" variant="outline" onClick={() => setIsAddingVisit(false)} 
+                        className="w-full text-sm sm:text-base">
                         Cancel
                       </Button>
                     </div>
@@ -474,9 +407,10 @@ const DayPlanner = () => {
             )}
           </div>
         </div>
+
       </div>
     </main>
   );
 };
 
-export default DayPlanner;
+export default VisitPlanner;

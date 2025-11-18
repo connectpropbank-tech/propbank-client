@@ -46,7 +46,7 @@ const getListingTypeBadge = (listingType?: string) => {
   return null;
 };
 
-const Index = () => {
+const HomePage = () => {
   const navigate = useNavigate();
   const [properties, setProperties] = useState<Property[]>([]);
   const [allProperties, setAllProperties] = useState<Property[]>([]);
@@ -75,7 +75,6 @@ const Index = () => {
   } = useSearch();
 
   const ITEMS_PER_PAGE = 12;
-
 
 
   useEffect(() => {
@@ -310,11 +309,8 @@ const Index = () => {
       <section aria-label="Hero" className="relative">
         <GradientSpotlight className="">
           <div className="container mx-auto py-16">
-            {/* Main Layout: Left side (Text + Image) and Right side (Search) */}
             <div className="grid lg:grid-cols-2 gap-12 items-center justify-center">
-              {/* Left Side: Text and Image */}
               <div className="space-y-8 flex flex-col items-center text-center lg:items-start lg:text-left">
-                {/* Text Content */}
                 <div className="space-y-6">
                   <h1 className="text-3xl font-bold leading-tight md:text-2xl lg:text-3xl">
                     Your Go-To Hub for Buying, Selling, and Renting
@@ -324,7 +320,6 @@ const Index = () => {
                   </p>
                 </div>
                 
-                {/* Image */}
                 <div className="glass-panel shadow-elegant rounded-xl overflow-hidden">
                   <img
                     src={heroImage}
@@ -335,7 +330,6 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Right Side: Quick Access Section */}
               <div className="space-y-6 w-full max-w-2xl mx-auto lg:mx-0">
                 <div className="text-center space-y-4">
                   <h2 className="text-2xl md:text-3xl font-bold">Quick Access</h2>
@@ -343,11 +337,10 @@ const Index = () => {
                     Manage your properties and plan visits with ease
                   </p>
                 </div>
-                
-                {/* Quick Access Cards */}
+              
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-white/20 space-y-4 w-full">
                   <div className="grid gap-4">
-                    {/* Manage Property Card */}
+
                     <div 
                       onClick={() => navigate('/manage-property')}
                       className="group cursor-pointer bg-gradient-to-r from-secondary/20 to-secondary/10 backdrop-blur-sm border border-white/30 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:from-secondary/30 hover:to-secondary/20"
@@ -964,4 +957,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default HomePage;
