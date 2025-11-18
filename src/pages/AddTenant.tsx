@@ -27,7 +27,6 @@ interface TenantData {
   previousAddress: string;
   employmentStatus: string;
   employer: string;
-  monthlyIncome: string;
   notes: string;
 }
 
@@ -54,7 +53,6 @@ const AddTenant = () => {
       previousAddress: '',
       employmentStatus: '',
       employer: '',
-      monthlyIncome: '',
       notes: ''
     }
   ]);
@@ -78,7 +76,6 @@ const AddTenant = () => {
           const property = data.property;
           setPropertyTitle(property.title);
           
-          // Set existing tenants if any
           if (property.tenants && property.tenants.length > 0) {
             setExistingTenants(property.tenants.map((tenant: any) => ({
               id: tenant.id,
@@ -94,7 +91,6 @@ const AddTenant = () => {
               previousAddress: tenant.previousAddress,
               employmentStatus: tenant.employmentStatus,
               employer: tenant.employer,
-              monthlyIncome: tenant.monthlyIncome,
               notes: tenant.notes
             })));
           }
@@ -107,13 +103,8 @@ const AddTenant = () => {
     fetchPropertyData();
   }, [propertyId]);
 
-
-
   const handleInputChange = (tenantId: string, field: keyof TenantData, value: string) => {
-    setTenants(prev => 
-      prev.map(tenant => 
-        tenant.id === tenantId ? { ...tenant, [field]: value } : tenant
-      )
+    setTenants(prev => prev.map(tenant => tenant.id === tenantId ? { ...tenant, [field]: value } : tenant)
     );
   };
 
@@ -132,7 +123,6 @@ const AddTenant = () => {
       previousAddress: '',
       employmentStatus: '',
       employer: '',
-      monthlyIncome: '',
       notes: ''
     };
     setTenants(prev => [...prev, newTenant]);
@@ -154,12 +144,8 @@ const AddTenant = () => {
     return tenant.firstName && tenant.lastName && tenant.email && tenant.phone;
   };
 
-
-
   const handleSubmit = async () => {
-    // Validate all tenants
     const invalidTenants = tenants.filter(tenant => !validateTenant(tenant));
-    
     if (invalidTenants.length > 0) {
       toast({
         title: "Error",
@@ -170,7 +156,6 @@ const AddTenant = () => {
     }
 
     try {
-      // First, get the current property data
       const propertyResponse = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
       const propertyData = await propertyResponse.json();
       
@@ -234,17 +219,14 @@ const AddTenant = () => {
     }
   };
 
-
-
   return (
     <main className="container mx-auto py-8 px-4 pb-20">
       <Helmet>
         <title>Add Tenant — Property Management</title>
-        <meta name="description" content="Add tenant information for rental property" />
+        <meta name="description" content="Add tenant details for rental property" />
       </Helmet>
 
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
           <Button variant="ghost" onClick={() => navigate("/manage-property")} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -266,7 +248,6 @@ const AddTenant = () => {
           </div>
         </div>
 
-        {/* Existing Tenants Section */}
         {existingTenants.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
@@ -341,7 +322,6 @@ const AddTenant = () => {
         )}
 
         <div className="space-y-6">
-          {/* Section Header */}
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-2xl font-bold">
@@ -360,7 +340,6 @@ const AddTenant = () => {
             </Button>
           </div>
 
-          {/* Tenant Forms */}
           {tenants.map((tenant, index) => (
             <Card key={tenant.id} className="border-2">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
@@ -507,10 +486,7 @@ const AddTenant = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor={`employmentStatus-${tenant.id}`}>Employment Status</Label>
-                        <Select 
-                          value={tenant.employmentStatus} 
-                          onValueChange={(value) => handleInputChange(tenant.id, 'employmentStatus', value)}
-                        >
+                        <Select value={tenant.employmentStatus} onValueChange={(value) => handleInputChange(tenant.id, 'employmentStatus', value)}>
                           <SelectTrigger>
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
@@ -523,42 +499,27 @@ const AddTenant = () => {
                           </SelectContent>
                         </Select>
                       </div>
+
                       <div>
                         <Label htmlFor={`employer-${tenant.id}`}>Employer/Company</Label>
-                        <Input
-                          id={`employer-${tenant.id}`}
-                          value={tenant.employer}
-                          onChange={(e) => handleInputChange(tenant.id, 'employer', e.target.value)}
-                          placeholder="Company name"
-                        />
+                        <Input id={`employer-${tenant.id}`}  value={tenant.employer} placeholder="Company name"
+                          onChange={(e) => handleInputChange(tenant.id, 'employer', e.target.value)}/>
                       </div>
+
                     </div>
-                    <div>
-                      <Label htmlFor={`monthlyIncome-${tenant.id}`}>Monthly Income</Label>
-                      <Input
-                        id={`monthlyIncome-${tenant.id}`}
-                        value={tenant.monthlyIncome}
-                        onChange={(e) => handleInputChange(tenant.id, 'monthlyIncome', e.target.value)}
-                        placeholder="5000"
-                      />
-                    </div>
+
                     <div>
                       <Label htmlFor={`notes-${tenant.id}`}>Additional Notes</Label>
-                      <Textarea
-                        id={`notes-${tenant.id}`}
-                        value={tenant.notes}
-                        onChange={(e) => handleInputChange(tenant.id, 'notes', e.target.value)}
-                        placeholder="Any additional notes about the tenant"
-                        rows={3}
-                      />
+                      <Textarea id={`notes-${tenant.id}`} value={tenant.notes}  rows={3} placeholder="Any additional notes about the tenant"
+                        onChange={(e) => handleInputChange(tenant.id, 'notes', e.target.value)} />
                     </div>
+
                   </div>
                 </div>
               </CardContent>
             </Card>
           ))}
           
-          {/* Submit Button */}
           <div className="flex justify-end">
             <Button onClick={handleSubmit} size="lg" className="px-8">
               <UserPlus className="h-4 w-4 mr-2" />
