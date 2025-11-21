@@ -19,9 +19,18 @@ import SelectPropertyType from "./pages/SelectPropertyType";
 import AddTenant from "./pages/AddTenant";
 import PropertyDetails from "./pages/PropertyDetails";
 import RequestServices from "./pages/RequestServices";
+import InspectionReport from "./pages/InspectionReport";
+import Review from "./pages/Review";
+import LegalServices from "./pages/LegalServices";
+import OtherServices from "./pages/OtherServices";
+import AttachDocuments from "./pages/AttachDocuments";
+import RenewAgreement from "./pages/RenewAgreement";
+import TerminateAgreement from "./pages/TerminateAgreement";
 import EditProperty from "./pages/EditProperty";
 import SearchResults from "./pages/SearchResults";
 import VisitPlanner from "./pages/VisitPlanner";
+import ArchivedProperties from "./pages/ArchivedProperties";
+import AdminPortal from "./pages/AdminPortal";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +80,7 @@ const App = () => (
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/" element={<Index />} />
+                  <Route path="/admin" element={<AdminPortal />} />
                   <Route element={<ProtectedRoute />}>
                     <Route path="/search" element={<SearchResults />} />
                     <Route path="/manage-property" element={<ManageProperty />} />
@@ -80,7 +90,15 @@ const App = () => (
                     <Route path="/edit-property/:propertyId" element={<EditProperty />} />
                     <Route path="/add-tenant/:propertyId" element={<AddTenant />} />
                     <Route path="/request-services/:propertyId" element={<RequestServices />} />
+                    <Route path="/inspection-report/:propertyId" element={<InspectionReport />} />
+                    <Route path="/review/:propertyId" element={<Review />} />
+                    <Route path="/legal-services/:propertyId" element={<LegalServices />} />
+                    <Route path="/other-services/:propertyId" element={<OtherServices />} />
+                    <Route path="/attach-documents/:propertyId" element={<AttachDocuments />} />
+                    <Route path="/renew-agreement/:propertyId" element={<RenewAgreement />} />
+                    <Route path="/terminate-agreement/:propertyId" element={<TerminateAgreement />} />
                     <Route path="/visit-planner" element={<VisitPlanner />} />
+                    <Route path="/archived-properties" element={<ArchivedProperties />} />
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

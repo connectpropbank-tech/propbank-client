@@ -81,6 +81,7 @@ const formSchema = z.object({
     id: z.string(),
     name: z.string(),
     checked: z.boolean(),
+    quantity: z.number().min(1).default(1),
     category: z.enum(['basic', 'kitchen', 'bedroom', 'living', 'appliances', 'semifurnished', 'other'])
   })).optional(),
   
@@ -848,56 +849,6 @@ const AddPropertyForm = () => {
                   )}
                 </div>
 
-                {/* Payment & Escalation - Only for Rent */}
-                {form.watch("listingType") === "rent" && (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 border rounded-lg">
-                    <div className="lg:col-span-3">
-                      <h3 className="text-lg font-semibold mb-4">Payment Details</h3>
-                    </div>
-
-                  <FormField
-                    control={form.control}
-                    name="paymentDueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Payment Due Date (Day of the Month)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter payment due day (e.g., 5th)" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="escalationPercentage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Annual Escalation (Optional) – % or ₹ per Year</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter escalation rate (e.g., 5% or ₹5000/year)" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="escalationAmount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Escalation Amount (in ₹)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter escalation amount" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  </div>
-                )}
 
 
                 {/* Security & Agreement - Only for Rent */}
@@ -1018,13 +969,7 @@ const AddPropertyForm = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit Condition</FormLabel>
-                        <Select onValueChange={(value) => {
-                          field.onChange(value);
-                          // Show furnished modal if furnished is selected
-                          if (value === 'furnished') {
-                            setShowFurnishedModal(true);
-                          }
-                        }} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select condition" />
@@ -1041,25 +986,33 @@ const AddPropertyForm = () => {
                     )}
                   />
 
-                  {/* Furnished Checklist Button */}
-                  {form.watch('unitCondition') === 'furnished' && (
-                    <div className="col-span-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setShowFurnishedModal(true)}
-                        className="w-full"
-                      >
-                        <CheckSquare className="h-4 w-4 mr-2" />
-                        Manage Furnished Items Checklist
-                        {furnishedChecklist.filter(item => item.checked).length > 0 && (
-                          <span className="ml-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
-                            {furnishedChecklist.filter(item => item.checked).length} items selected
-                          </span>
-                        )}
-                      </Button>
-                    </div>
-                  )}
+                  {/* Furnished Checklist Button - Aligned with Unit Condition */}
+                  <FormField
+                    control={form.control}
+                    name="furnishedChecklist"
+                    render={() => (
+                      <FormItem className="lg:col-span-2">
+                        <FormLabel>Furnished Items Checklist</FormLabel>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowFurnishedModal(true)}
+                          className="w-full"
+                        >
+                          <CheckSquare className="h-4 w-4 mr-2" />
+                          Manage Furnished Items Checklist
+                          {furnishedChecklist.filter(item => item.checked).length > 0 && (
+                            <span className="ml-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
+                              {furnishedChecklist.filter(item => item.checked).length} items selected
+                            </span>
+                          )}
+                        </Button>
+                        <FormDescription className="text-xs text-muted-foreground">
+                          Add items included with this property (available for all unit conditions)
+                        </FormDescription>
+                      </FormItem>
+                    )}
+                  />
 
                   {form.watch("listingType") !== "sell" && (
                     <FormField

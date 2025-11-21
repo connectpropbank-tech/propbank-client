@@ -1,16 +1,31 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Wrench, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Upload, X, Image as ImageIcon, Wrench, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
-import { serviceApi, Service, ServiceRequest } from "@/services/serviceApi";
+import { useState, useEffect, useRef } from "react";
 import { auth } from "@/firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
+import { API_BASE_URL } from "@/utils/config";
+
+interface ServiceRequestForm {
+  serviceType: string;
+  image: string | null;
+  comment: string;
+}
+
+const SERVICE_TYPES = [
+  "Plumbing Issue",
+  "Leakage/ Seepage Issue",
+  "Fixtures issue",
+  "Painting work",
+  "Electrical Issue",
+  "Any other"
+];
 
 const RequestServices = () => {
   const { propertyId } = useParams();
@@ -18,133 +33,246 @@ const RequestServices = () => {
   const { toast } = useToast();
   
   const [user, setUser] = useState<User | null>(null);
-  const [services, setServices] = useState<Service[]>([]);
-  const [userRequests, setUserRequests] = useState<ServiceRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [requesting, setRequesting] = useState<string | null>(null);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
-  const [message, setMessage] = useState("");
-  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [userPhone, setUserPhone] = useState<string>("");
+  const [submitting, setSubmitting] = useState<string | null>(null);
+  const [serviceForms, setServiceForms] = useState<Record<string, ServiceRequestForm>>(() => {
+    const initial: Record<string, ServiceRequestForm> = {};
+    SERVICE_TYPES.forEach(type => {
+      initial[type] = {
+        serviceType: type,
+        image: null,
+        comment: ""
+      };
+    });
+    return initial;
+  });
+
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        // Fetch user phone number from backend
+        try {
+          const response = await fetch(`${API_BASE_URL}/users/${currentUser.uid}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.user && data.user.phoneNumber) {
+              setUserPhone(data.user.phoneNumber);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user phone:", error);
+        }
+      } else {
+        setUserPhone("");
+      }
     });
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
+  const handleImageUpload = (serviceType: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [servicesData, requestsData] = await Promise.all([
-        serviceApi.getServices(),
-        serviceApi.getServiceRequests(user!.uid)
-      ]);
-      setServices(servicesData);
-      setUserRequests(requestsData);
-    } catch (error: any) {
+    if (!file.type.startsWith('image/')) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to load services",
+        title: "Invalid File",
+        description: "Please upload an image file",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setServiceForms(prev => ({
+        ...prev,
+        [serviceType]: {
+          ...prev[serviceType],
+          image: result
+        }
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = (serviceType: string) => {
+    setServiceForms(prev => ({
+      ...prev,
+      [serviceType]: {
+        ...prev[serviceType],
+        image: null
+      }
+    }));
+    // Reset file input
+    if (fileInputRefs.current[serviceType]) {
+      fileInputRefs.current[serviceType]!.value = '';
     }
   };
 
-  const handleRequestService = async (service: Service) => {
-    if (!user) return;
-    
-    if (!message.trim()) {
+  const handleCommentChange = (serviceType: string, comment: string) => {
+    setServiceForms(prev => ({
+      ...prev,
+      [serviceType]: {
+        ...prev[serviceType],
+        comment
+      }
+    }));
+  };
+
+  const handleSubmitRequest = async (serviceType: string) => {
+    if (!user) {
       toast({
-        title: "Message Required",
-        description: "Please provide a message with your service request",
+        title: "Login Required",
+        description: "Please login to raise a request",
+        variant: "destructive"
+      });
+      navigate("/auth");
+      return;
+    }
+
+    const form = serviceForms[serviceType];
+    
+    if (!form.comment.trim()) {
+      toast({
+        title: "Comment Required",
+        description: "Please provide a comment describing the issue",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      setRequesting(service.id);
-      await serviceApi.createServiceRequest({
-        userUID: user.uid,
-        serviceId: service.id,
-        propertyId: propertyId,
-        message: message
+      setSubmitting(serviceType);
+
+      // Fetch property details to get owner information
+      let property = null;
+      let ownerPhoneNumber = '';
+      let ownerEmail = '';
+      let ownerName = '';
+      let propertyTitle = '';
+      let propertyAddress = '';
+
+      if (propertyId) {
+        try {
+          const propertyResponse = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
+          if (propertyResponse.ok) {
+            const propertyData = await propertyResponse.json();
+            if (propertyData.success && propertyData.property) {
+              property = propertyData.property;
+              propertyTitle = property.title || '';
+              propertyAddress = property.address || property.city || property.location || 'Not specified';
+              ownerName = property.ownerName || 'Unknown Owner';
+              ownerEmail = property.ownerEmail || '';
+
+              // Fetch owner's phone number
+              if (property.ownerUID) {
+                try {
+                  const ownerResponse = await fetch(`${API_BASE_URL}/users/${property.ownerUID}`);
+                  if (ownerResponse.ok) {
+                    const ownerData = await ownerResponse.json();
+                    if (ownerData.user && ownerData.user.phoneNumber) {
+                      ownerPhoneNumber = ownerData.user.phoneNumber;
+                    }
+                    if (ownerData.user && ownerData.user.email && !ownerEmail) {
+                      ownerEmail = ownerData.user.email;
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error fetching owner details:", error);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching property details:", error);
+        }
+      }
+
+      // Prepare notification payload
+      const notificationPayload = {
+        type: 'service_request',
+        title: `Service Request: ${serviceType}`,
+        message: `User ${user.displayName || user.email || 'Unknown User'} has raised a ${serviceType} request${propertyId ? ` for property: ${propertyTitle || propertyId}` : ''}. ${form.comment}`,
+        propertyId: propertyId || '',
+        ownerId: property?.ownerUID || '',
+        ownerName: ownerName,
+        ownerPhone: ownerPhoneNumber || property?.primaryNo || '',
+        ownerEmail: ownerEmail,
+        // User details (person who raised the request)
+        userId: user.uid || '',
+        userName: user.displayName || user.email || 'Unknown User',
+        userEmail: user.email || '',
+        userPhone: userPhone || user.phoneNumber || '',
+        // Property details
+        propertyTitle: propertyTitle,
+        propertyAddress: propertyAddress,
+        propertyListingType: property?.listingType || 'rent',
+        // Service request specific fields
+        serviceType: serviceType,
+        serviceComment: form.comment,
+        serviceImage: form.image || '',
+        timestamp: new Date().toISOString(),
+        isRead: false,
+        priority: 'high'
+      };
+
+      console.log(`📤 Sending Service Request:`, notificationPayload);
+
+      const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationPayload),
       });
 
-      toast({
-        title: "Request Submitted Successfully",
-        description: "One of our members will reach out to you soon!",
-      });
+      const notificationData = await notificationResponse.json();
+      
+      if (notificationData.success) {
+        toast({
+          title: "Request Submitted",
+          description: `Your ${serviceType} request has been sent to the admin. They will contact you soon.`,
+        });
 
-      setShowRequestForm(false);
-      setMessage("");
-      setSelectedService(null);
-      await loadData(); // Refresh requests
-    } catch (error: any) {
+        // Reset form after successful submission
+        setServiceForms(prev => ({
+          ...prev,
+          [serviceType]: {
+            serviceType: serviceType,
+            image: null,
+            comment: ""
+          }
+        }));
+        if (fileInputRefs.current[serviceType]) {
+          fileInputRefs.current[serviceType]!.value = '';
+        }
+      } else {
+        throw new Error(notificationData.message || 'Failed to submit request');
+      }
+    } catch (error) {
+      console.error(`Error submitting ${serviceType} request:`, error);
       toast({
         title: "Error",
-        description: error.message || "Failed to submit service request",
+        description: "Failed to submit request. Please try again later.",
         variant: "destructive"
       });
     } finally {
-      setRequesting(null);
+      setSubmitting(null);
     }
   };
-
-  const handleServiceClick = (service: Service) => {
-    setSelectedService(service);
-    setShowRequestForm(true);
-    setMessage("");
-  };
-
-  const getStatusColor = (status: ServiceRequest['status']) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusIcon = (status: ServiceRequest['status']) => {
-    switch (status) {
-      case 'pending': return <AlertCircle className="h-4 w-4" />;
-      case 'in_progress': return <Wrench className="h-4 w-4" />;
-      case 'completed': return <CheckCircle className="h-4 w-4" />;
-      case 'cancelled': return <AlertCircle className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading services...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <main className="container mx-auto py-8 px-4">
       <Helmet>
-        <title>Request Services — Property Management</title>
-        <meta name="description" content="Request maintenance and services for your property" />
+        <title>Raise a Request — Property Management</title>
+        <meta name="description" content="Raise maintenance and service requests for your property" />
       </Helmet>
 
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Button variant="ghost" onClick={() => navigate("/manage-property")} className="mb-4">
@@ -157,133 +285,121 @@ const RequestServices = () => {
               <Wrench className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Request Services</h1>
-              <p className="text-lg text-muted-foreground">Request maintenance and services for Property ID: {propertyId}</p>
+              <h1 className="text-3xl font-bold">5. RAISE A REQUEST</h1>
+              <p className="text-lg text-muted-foreground">
+                {propertyId ? `Property ID: ${propertyId}` : "Submit maintenance and service requests"}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Service Request Form Modal */}
-        {showRequestForm && selectedService && (
-          <Card className="mb-8 border-primary">
-            <CardHeader>
-              <CardTitle>Request Service: {selectedService.name}</CardTitle>
-              <CardDescription>
-                {selectedService.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="message">Message *</Label>
-                <Textarea
-                  id="message"
-                  placeholder="Please describe your requirements, preferred timing, and any special instructions..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={4}
-                />
-              </div>
-              <div className="flex gap-4">
-                <Button 
-                  onClick={() => handleRequestService(selectedService)}
-                  disabled={requesting === selectedService.id || !message.trim()}
-                >
-                  {requesting === selectedService.id ? "Submitting..." : "Submit Request"}
-                </Button>
-                <Button variant="outline" onClick={() => setShowRequestForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Service Request Forms */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Service Request Forms</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {SERVICE_TYPES.map((serviceType) => {
+                const form = serviceForms[serviceType];
+                const isSubmitting = submitting === serviceType;
 
-        {/* Your Service Requests */}
-        {userRequests.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold mb-4">Your Service Requests</h2>
-            <div className="space-y-4">
-              {userRequests.map((request) => (
-                <Card key={request.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{request.serviceName}</CardTitle>
-                      <Badge className={getStatusColor(request.status)}>
-                        {getStatusIcon(request.status)}
-                        <span className="ml-1 capitalize">{request.status.replace('_', ' ')}</span>
-                      </Badge>
+                return (
+                  <div key={serviceType} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold">{serviceType}</h3>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-2">{request.message}</p>
-                    {request.adminNotes && (
-                      <div className="bg-blue-50 p-3 rounded-md">
-                        <p className="text-sm font-medium text-blue-800">Admin Notes:</p>
-                        <p className="text-sm text-blue-700">{request.adminNotes}</p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Image Upload */}
+                      <div className="space-y-2">
+                        <Label>Image</Label>
+                        <div className="space-y-2">
+                          {form.image ? (
+                            <div className="relative">
+                              <img
+                                src={form.image}
+                                alt={`${serviceType} image`}
+                                className="w-full h-32 object-cover rounded-md border"
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-2 right-2"
+                                onClick={() => removeImage(serviceType)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="border-2 border-dashed rounded-md p-4 flex flex-col items-center justify-center h-32">
+                              <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => fileInputRefs.current[serviceType]?.click()}
+                                className="w-full"
+                              >
+                                <Upload className="h-4 w-4 mr-2" />
+                                Upload Image
+                              </Button>
+                              <input
+                                ref={(el) => {
+                                  fileInputRefs.current[serviceType] = el;
+                                }}
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => handleImageUpload(serviceType, e)}
+                                className="hidden"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Requested on: {new Date(request.createdAt).toLocaleDateString()}
-                    </p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* Available Services */}
-        <div>
-          <h2 className="text-2xl font-bold mb-4">Available Services</h2>
-          
-          {/* Legal Services */}
-          <div className="mb-8">
-            <h3 className="text-xl font-semibold mb-4">Legal Services - Consultation Free**</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {services.filter(s => s.category === 'legal').map((service) => (
-                <Card key={service.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleServiceClick(service)}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline">{service.code}</Badge>
-                      <Wrench className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <CardTitle className="text-lg">{service.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{service.description}</p>
-                    <Button className="w-full mt-4" variant="outline">
-                      Request Service
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+                      {/* Comment */}
+                      <div className="space-y-2">
+                        <Label htmlFor={`comment-${serviceType}`}>Comment</Label>
+                        <Textarea
+                          id={`comment-${serviceType}`}
+                          placeholder="Describe the issue..."
+                          value={form.comment}
+                          onChange={(e) => handleCommentChange(serviceType, e.target.value)}
+                          rows={5}
+                          className="resize-none"
+                        />
+                      </div>
 
-          {/* Other Related Services */}
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Other Related Services</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {services.filter(s => s.category === 'other').map((service) => (
-                <Card key={service.id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleServiceClick(service)}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline">{service.code}</Badge>
-                      <Wrench className="h-5 w-5 text-muted-foreground" />
+                      {/* Raise Request Button */}
+                      <div className="space-y-2 flex flex-col">
+                        <Label>&nbsp;</Label>
+                        <Button
+                          type="button"
+                          onClick={() => handleSubmitRequest(serviceType)}
+                          disabled={isSubmitting || !form.comment.trim()}
+                          className="w-full cursor-pointer"
+                          size="sm"
+                          variant="default"
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Raising Request...
+                            </>
+                          ) : (
+                            "Raise a Request"
+                          )}
+                        </Button>
+                      </div>
                     </div>
-                    <CardTitle className="text-lg">{service.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{service.description}</p>
-                    <Button className="w-full mt-4" variant="outline">
-                      Request Service
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );

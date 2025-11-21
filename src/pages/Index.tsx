@@ -12,7 +12,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { propertyService, Property } from "@/services/propertyService";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/firebase";
+import { User, onAuthStateChanged } from "firebase/auth";
 import { useSearch } from "@/contexts/SearchContext";
+import { API_BASE_URL } from "@/utils/config";
 
 // Utility function to get placeholder image URL
 const getPlaceholderImage = (propertyType?: string): string => {
@@ -59,6 +61,9 @@ const HomePage = () => {
   const [showCustomBudget, setShowCustomBudget] = useState<boolean>(false);
   const observerTarget = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const [user, setUser] = useState<User | null>(null);
+  const [userPhone, setUserPhone] = useState<string>("");
+  const [sendingEnquiry, setSendingEnquiry] = useState<string | null>(null); // Track which property enquiry is being sent
 
   const {
     searchQuery,
@@ -74,14 +79,39 @@ const HomePage = () => {
   } = useSearch();
 
   const ITEMS_PER_PAGE = 12;
+  const hasLoadedRef = useRef(false); // Track if properties have been loaded
 
+  // Get current user and their phone number
   useEffect(() => {
-    loadAllProperties();
-    setOnSearchTrigger(() => handleSearch);
-    return () => {
-      setOnSearchTrigger(null);
-    };
-  }, [setOnSearchTrigger]);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        // Fetch user phone number from backend
+        try {
+          const response = await fetch(`${API_BASE_URL}/users/${firebaseUser.uid}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.user && data.user.phoneNumber) {
+              setUserPhone(data.user.phoneNumber);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user phone:", error);
+        }
+      } else {
+        setUserPhone("");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Load properties only once on mount
+  useEffect(() => {
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadAllProperties();
+    }
+  }, []); // Empty dependency array - only run on mount
 
   // Infinite scroll observer
   useEffect(() => {
@@ -222,7 +252,7 @@ const HomePage = () => {
     return filtered;
   }, [allProperties, searchQuery, searchType, selectedCategories, selectedListingTypes, selectedProjectCondition, budgetRange]);
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     setIsSearching(true);
 
     const filteredProperties = getFilteredProperties();
@@ -238,7 +268,15 @@ const HomePage = () => {
         description: "No properties found matching your search criteria.",
       });
     }
-  };
+  }, [searchQuery, selectedCategories, getFilteredProperties, setIsSearching, toast]);
+
+  // Set search trigger after handleSearch is defined
+  useEffect(() => {
+    setOnSearchTrigger(() => handleSearch);
+    return () => {
+      setOnSearchTrigger(null);
+    };
+  }, [handleSearch, setOnSearchTrigger]);
 
   const clearFilters = () => {
     setSearchQuery("");
@@ -262,8 +300,241 @@ const HomePage = () => {
     setSelectedCategories(newCategories);
   };
 
+  // Generic function to raise a request to admin
+  const handleRaiseRequest = async (property: Property, requestType: string, requestTitle: string, requestMessage: string) => {
+    // Check if user is logged in
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      toast({
+        title: "Login Required",
+        description: "Please login to raise a request.",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    const requestUser = currentUser;
+    const requestKey = `${property.id}_${requestType}`;
+
+    setSendingEnquiry(requestKey);
+    try {
+      // Fetch current user's phone number from backend if not already available
+      let requestUserPhone = userPhone || requestUser.phoneNumber || '';
+      if (!requestUserPhone && currentUser.uid) {
+        try {
+          const userResponse = await fetch(`${API_BASE_URL}/users/${currentUser.uid}`);
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            if (userData.user && userData.user.phoneNumber) {
+              requestUserPhone = userData.user.phoneNumber;
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user phone:", error);
+        }
+      }
+
+      // Fetch owner's phone number from user service
+      let ownerPhoneNumber = '';
+      let ownerEmail = property.ownerEmail || '';
+      if (property.ownerUID) {
+        try {
+          const ownerResponse = await fetch(`${API_BASE_URL}/users/${property.ownerUID}`);
+          if (ownerResponse.ok) {
+            const ownerData = await ownerResponse.json();
+            if (ownerData.user) {
+              if (ownerData.user.phoneNumber) {
+                ownerPhoneNumber = ownerData.user.phoneNumber;
+              }
+              if (ownerData.user.email && !ownerEmail) {
+                ownerEmail = ownerData.user.email;
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching owner details:", error);
+        }
+      }
+
+      // Prepare notification payload
+      const notificationPayload = {
+        type: requestType,
+        title: requestTitle,
+        message: requestMessage,
+        propertyId: property.id || '',
+        ownerId: property.ownerUID || '',
+        ownerName: property.ownerName || 'Unknown Owner',
+        ownerPhone: ownerPhoneNumber || property.primaryNo || '',
+        ownerEmail: ownerEmail || '',
+        // User details (person who raised the request)
+        userId: requestUser.uid || '',
+        userName: requestUser.displayName || requestUser.email || 'Unknown User',
+        userEmail: requestUser.email || '',
+        userPhone: requestUserPhone || '',
+        // Property details
+        propertyTitle: property.title || '',
+        propertyAddress: property.address || property.city || property.location || 'Not specified',
+        propertyListingType: property.listingType || 'rent',
+        timestamp: new Date().toISOString(),
+        isRead: false,
+        priority: 'high'
+      };
+
+      console.log(`📤 Sending ${requestType} Request:`, notificationPayload);
+
+      const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationPayload),
+      });
+
+      const notificationData = await notificationResponse.json();
+      
+      if (notificationData.success) {
+        toast({
+          title: "Request Sent",
+          description: "Your request has been sent to the admin. They will contact you soon.",
+        });
+      } else {
+        throw new Error(notificationData.message || 'Failed to send request');
+      }
+    } catch (error) {
+      console.error(`Error sending ${requestType} request:`, error);
+      toast({
+        title: "Error",
+        description: "Failed to send request. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEnquiry(null);
+    }
+  };
+
+  // Handle property enquiry - send notification to admin
+  const handleEnquireProperty = async (property: Property) => {
+    // Check if user is logged in - get current user from auth directly
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      toast({
+        title: "Login Required",
+        description: "Please login to enquire about properties.",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    // Use currentUser instead of user state for reliability
+    const enquiryUser = currentUser;
+
+    setSendingEnquiry(property.id);
+    try {
+      // Fetch current user's phone number from backend if not already available
+      let enquiryUserPhone = userPhone || enquiryUser.phoneNumber || '';
+      if (!enquiryUserPhone && currentUser.uid) {
+        try {
+          const userResponse = await fetch(`${API_BASE_URL}/users/${currentUser.uid}`);
+          if (userResponse.ok) {
+            const userData = await userResponse.json();
+            if (userData.user && userData.user.phoneNumber) {
+              enquiryUserPhone = userData.user.phoneNumber;
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user phone:", error);
+          // Continue without phone number
+        }
+      }
+
+      // Fetch owner's phone number from user service
+      let ownerPhoneNumber = '';
+      let ownerEmail = property.ownerEmail || '';
+      if (property.ownerUID) {
+        try {
+          const ownerResponse = await fetch(`${API_BASE_URL}/users/${property.ownerUID}`);
+          if (ownerResponse.ok) {
+            const ownerData = await ownerResponse.json();
+            if (ownerData.user) {
+              if (ownerData.user.phoneNumber) {
+                ownerPhoneNumber = ownerData.user.phoneNumber;
+              }
+              if (ownerData.user.email && !ownerEmail) {
+                ownerEmail = ownerData.user.email;
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching owner details:", error);
+          // Continue without phone number
+        }
+      }
+
+      // Prepare notification payload with all required fields
+      const notificationPayload = {
+        type: 'property_enquiry',
+        title: 'Property Enquiry Request',
+        message: `User ${enquiryUser.displayName || enquiryUser.email || 'Unknown User'} is interested in property: ${property.title || property.id}`,
+        propertyId: property.id || '',
+        ownerId: property.ownerUID || '',
+        ownerName: property.ownerName || 'Unknown Owner',
+        ownerPhone: ownerPhoneNumber || property.primaryNo || '',
+        ownerEmail: ownerEmail || '',
+        // User details (person who enquired) - currently logged in user
+        userId: enquiryUser.uid || '',
+        userName: enquiryUser.displayName || enquiryUser.email || 'Unknown User',
+        userEmail: enquiryUser.email || '',
+        userPhone: enquiryUserPhone || '',
+        // Property details
+        propertyTitle: property.title || '',
+        propertyAddress: property.address || property.city || property.location || 'Not specified',
+        propertyListingType: property.listingType || 'rent',
+        timestamp: new Date().toISOString(),
+        isRead: false,
+        priority: 'high'
+      };
+
+      // Debug: Log the payload being sent
+      console.log("📤 Sending Property Enquiry Notification:", notificationPayload);
+
+      const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationPayload),
+      });
+
+      const notificationData = await notificationResponse.json();
+      
+      if (notificationData.success) {
+        toast({
+          title: "Enquiry Sent",
+          description: "Your enquiry has been sent to the admin. They will contact you soon.",
+        });
+      } else {
+        throw new Error(notificationData.message || 'Failed to send enquiry');
+      }
+    } catch (error) {
+      console.error('Error sending property enquiry:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send enquiry. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEnquiry(null);
+    }
+  };
+
   // Auto-apply filters when categories, search query, search type, or header filters change
+  // Note: Only filter when we have properties loaded (allProperties.length > 0)
   useEffect(() => {
+    // Don't run if properties haven't been loaded yet
+    if (allProperties.length === 0) return;
+    
     if (selectedCategories.length > 0 || selectedListingTypes?.length > 0 || searchQuery.trim() || selectedProjectCondition || budgetRange.min > 0 || budgetRange.max > 0) {
       setIsSearching(true);
       const filteredProperties = getFilteredProperties();
@@ -280,7 +551,8 @@ const HomePage = () => {
       setPage(1);
       setHasMore(allProperties.length > ITEMS_PER_PAGE);
     }
-  }, [selectedCategories, selectedListingTypes, searchQuery, searchType, selectedProjectCondition, budgetRange, allProperties, getFilteredProperties]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategories, selectedListingTypes, searchQuery, searchType, selectedProjectCondition, budgetRange, allProperties.length]);
 
 
   return (
@@ -290,6 +562,33 @@ const HomePage = () => {
         <meta name="description" content="Buy, sell, or rent properties with Propbank. Modern PWA for real estate with buyer/tenant and seller/landlord profiles." />
         <link rel="canonical" href="/" />
       </Helmet>
+      
+      <style>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-8px) rotate(2deg);
+          }
+        }
+        @keyframes bounce {
+          0%, 100% {
+            transform: translateY(0) scale(1);
+          }
+          50% {
+            transform: translateY(-10px) scale(1.1);
+          }
+        }
+        @keyframes glow {
+          0%, 100% {
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+          }
+          50% {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.4);
+          }
+        }
+      `}</style>
 
       <section aria-label="Hero" className="relative">
         <GradientSpotlight className="">
@@ -321,29 +620,48 @@ const HomePage = () => {
                 </div>
               
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-white/20 space-y-4 w-full">
-                  <div className="grid gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                     <div 
                       onClick={() => navigate('/manage-property')}
-                      className="group cursor-pointer bg-gradient-to-r from-secondary/20 to-secondary/10 backdrop-blur-sm border border-white/30 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:from-secondary/30 hover:to-secondary/20"
+                      className="group cursor-pointer bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-md transition-shadow"
                     >
-                      <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="bg-secondary p-2 sm:p-3 rounded-lg flex-shrink-0">
-                          <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-secondary-foreground" />
+                      <div className="flex flex-col items-center text-center gap-4">
+                        <div className="relative bg-gradient-to-br from-blue-400/20 to-blue-600/30 p-3 sm:p-4 rounded-xl flex-shrink-0 border border-gray-200 flex items-center justify-center shadow-sm">
+                          <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg shadow-md"></div>
+                            <img 
+                              src="/icons/icon-512.png" 
+                              alt="Propbank Logo" 
+                              className="relative h-10 w-10 sm:h-14 sm:w-14 object-contain drop-shadow-lg"
+                              style={{
+                                filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))',
+                              }}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const fallback = target.nextElementSibling as HTMLElement;
+                                if (fallback) {
+                                  fallback.style.display = 'block';
+                                }
+                              }}
+                            />
+                            <Settings className="h-6 w-6 sm:h-8 sm:w-8 text-white hidden drop-shadow-lg" />
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                            <h3 className="text-base sm:text-lg font-semibold text-foreground">Manage Property</h3>
-                            <span className="px-2 py-1 bg-secondary/10 text-secondary-foreground text-xs font-medium rounded-full self-start border border-secondary/20">
+                        <div className="flex-1 w-full">
+                          <div className="flex flex-col items-center gap-2 mb-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-black">Manage Property</h3>
+                            <span className="px-2 py-1 bg-gray-100 text-black text-xs font-medium rounded-full border border-gray-200">
                               Property Management
                             </span>
                           </div>
-                          <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+                          <p className="text-xs sm:text-sm text-gray-600 mb-3">
                             View, edit, and manage all your property listings in one place
                           </p>
-                          <div className="flex items-center text-secondary-foreground group-hover:text-secondary-foreground/80 transition-colors">
+                          <div className="flex items-center justify-center text-black">
                             <span className="text-xs sm:text-sm font-medium">Get Started</span>
-                            <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                            <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                           </div>
                         </div>
                       </div>
@@ -352,25 +670,32 @@ const HomePage = () => {
                     {/* Visit Planner Card */}
                     <div 
                       onClick={() => navigate('/visit-planner')}
-                      className="group cursor-pointer bg-gradient-to-r from-secondary/20 to-secondary/10 backdrop-blur-sm border border-white/30 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] hover:from-secondary/30 hover:to-secondary/20"
+                      className="group cursor-pointer bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-md transition-shadow"
                     >
-                      <div className="flex items-start gap-3 sm:gap-4">
-                        <div className="bg-secondary p-2 sm:p-3 rounded-lg flex-shrink-0">
-                          <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-secondary-foreground" />
+                      <div className="flex flex-col items-center text-center gap-4">
+                        <div className="relative bg-gradient-to-br from-purple-400/20 to-purple-600/30 p-3 sm:p-4 rounded-xl flex-shrink-0 border border-gray-200 flex items-center justify-center shadow-sm">
+                          <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center">
+                            <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg shadow-md"></div>
+                            <Calendar className="relative h-6 w-6 sm:h-8 sm:w-8 text-white drop-shadow-lg" 
+                              style={{
+                                filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))',
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
-                            <h3 className="text-base sm:text-lg font-semibold text-foreground">Visit Planner</h3>
-                            <span className="px-2 py-1 bg-secondary/10 text-secondary-foreground text-xs font-medium rounded-full self-start border border-secondary/20">
+                        <div className="flex-1 w-full">
+                          <div className="flex flex-col items-center gap-2 mb-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-black">Visit Planner</h3>
+                            <span className="px-2 py-1 bg-gray-100 text-black text-xs font-medium rounded-full border border-gray-200">
                               Schedule Visits
                             </span>
                           </div>
-                          <p className="text-xs sm:text-sm text-muted-foreground mb-3">
+                          <p className="text-xs sm:text-sm text-gray-600 mb-3">
                             Schedule and organize property visits with clients efficiently
                           </p>
-                          <div className="flex items-center text-secondary-foreground group-hover:text-secondary-foreground/80 transition-colors">
+                          <div className="flex items-center justify-center text-black">
                             <span className="text-xs sm:text-sm font-medium">Plan Visits</span>
-                            <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                            <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                           </div>
                         </div>
                       </div>
@@ -768,7 +1093,11 @@ const HomePage = () => {
             <>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 px-2">
                 {properties
-                  .filter(property => property.listingType === "rent" && property.rentalStatus === "available")
+                  .filter(property => 
+                    // Show available rental properties OR all properties for sale
+                    (property.listingType === "rent" && property.rentalStatus === "available") ||
+                    (property.listingType === "sell")
+                  )
                   .map((property) => (
                     <Card key={property.id} className="overflow-hidden hover:shadow-lg transition-shadow group flex flex-col h-full p-2">
                       {/* Property Image */}
@@ -881,14 +1210,17 @@ const HomePage = () => {
                         {/* Spacer to push content to bottom */}
                         <div className="flex-1"></div>
 
-                        {/* Property Enquiry */}
+                        {/* Property Actions */}
                         <div className="pt-4 border-t space-y-3 mt-auto">
-                          
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" className="w-full">
-                              Enquire about this property
-                            </Button>
-                          </div>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="w-full"
+                            onClick={() => handleEnquireProperty(property)}
+                            disabled={sendingEnquiry?.includes(property.id) || !auth.currentUser}
+                          >
+                            {sendingEnquiry?.includes(property.id) ? "Sending..." : "Enquire"}
+                          </Button>
 
                           {/* View Details Button */}
                           <Button asChild className="w-full" variant="default">

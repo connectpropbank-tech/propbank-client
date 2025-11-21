@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { Building2, Plus, Edit3, MessageSquare, MoreVertical, Users, UserPlus, Eye, Edit, Trash2, Wrench, Filter, Home, X } from "lucide-react";
+import { Building2, Plus, Edit3, MessageSquare, MoreVertical, Users, UserPlus, Eye, Edit, Archive, Wrench, Filter, Home, X, FileText, Star, Scale, Paperclip, RefreshCw, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
@@ -16,8 +16,20 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "../utils/config";
+
+interface SpouseInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  employmentStatus: string;
+  employer: string;
+  notes: string;
+}
 
 interface TenantInfo {
   id: string;
@@ -26,6 +38,8 @@ interface TenantInfo {
   email: string;
   phone: string;
   emergencyContact: string;
+  isMarried: boolean;
+  spouse: SpouseInfo | null;
   leaseStartDate: string;
   leaseEndDate: string;
   monthlyRent: string;
@@ -84,10 +98,13 @@ interface Property {
   ownerUID: string;
   ownerName: string;
   ownerEmail: string;
-  isActive: boolean;
+  wantToSell?: boolean; // Toggle for "Want to Sell?" - can be toggled ON/OFF
+  status: string; // 'active' or 'inactive' (default: 'active')
+  isActive: boolean; // Legacy field, kept for backward compatibility
   createdAt: string;
   updatedAt: string;
   unitNumber?: string;
+  userRole?: string; // 'owner' or 'tenant' - indicates the current user's relationship to the property
 }
 
 const ManageProperty = () => {
@@ -142,8 +159,21 @@ const ManageProperty = () => {
       if (data.success) {
         console.log("Properties fetched successfully:", data.properties);
         console.log("First property sample:", data.properties?.[0]);
-        setProperties(data.properties || []);
-        setFilteredProperties(data.properties || []);
+        // Filter to only show active properties (status === 'active')
+        // Default to 'active' if status is not set (backward compatibility)
+        const activeProperties = (data.properties || []).filter((p: Property) => {
+          return (p.status === 'active' || (!p.status && p.isActive !== false));
+        });
+        console.log("Active properties count:", activeProperties.length, "out of", data.properties?.length || 0);
+        setProperties(activeProperties);
+        setFilteredProperties(activeProperties);
+        
+        // Initialize wantToSell toggles from property data
+        const initialToggles: {[key: string]: boolean} = {};
+        activeProperties.forEach((p: Property) => {
+          initialToggles[p.id] = p.wantToSell || false;
+        });
+        setWantToSellToggles(initialToggles);
       } else {
         console.error("Failed to fetch properties:", data.message);
         setProperties([]);
@@ -287,6 +317,99 @@ const ManageProperty = () => {
     navigate(`/property/${propertyId}`);
   };
 
+  const handleToggleStatus = async (propertyId: string, isInactive: boolean) => {
+    if (!user) return;
+    
+    try {
+      console.log(`Toggling property ${propertyId} to ${isInactive ? 'inactive' : 'active'}`);
+      const updateData = {
+        ownerUID: user.uid,
+        status: isInactive ? 'inactive' : 'active', // Set status to 'inactive' or 'active'
+        // isActive remains unchanged - keep independent from status
+        rentalStatus: isInactive ? 'inactive' : 'available'
+      };
+      console.log('Update data:', updateData);
+      
+      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      const data = await response.json();
+      console.log('Update response:', data);
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: isInactive 
+            ? "Property set to inactive and archived" 
+            : "Property set to active and unarchived"
+        });
+        // Refresh properties list (this will filter out inactive properties)
+        fetchProperties(user.uid);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to update property status",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error updating property status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update property status. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleArchive = async (propertyId: string) => {
+    if (!user) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ownerUID: user.uid,
+          status: 'inactive', // Set status to 'inactive'
+          // isActive remains unchanged - keep independent from status
+          rentalStatus: 'inactive'
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Property archived successfully"
+        });
+        // Refresh properties list
+        fetchProperties(user.uid);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to archive property",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error("Error archiving property:", error);
+      toast({
+        title: "Error",
+        description: "Failed to archive property. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleAddTenant = (propertyId: string) => {
     // Navigate to add tenant page
     navigate(`/add-tenant/${propertyId}`);
@@ -300,6 +423,66 @@ const ManageProperty = () => {
   const handleRequestServices = (propertyId: string) => {
     // Navigate to request services page
     navigate(`/request-services/${propertyId}`);
+  };
+
+  const handleToggleWantToSell = async (propertyId: string, propertyTitle: string, newValue: boolean) => {
+    if (!user) return;
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ownerUID: user.uid,
+          wantToSell: newValue
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: newValue 
+            ? "Admin has been notified that you want to sell this property" 
+            : "Want to Sell status updated"
+        });
+        
+        // Update local toggle state
+        setWantToSellToggles(prev => ({
+          ...prev,
+          [propertyId]: newValue
+        }));
+        
+        // Refresh properties list
+        fetchProperties(user.uid);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to update property",
+          variant: "destructive"
+        });
+        // Revert toggle state on error
+        setWantToSellToggles(prev => ({
+          ...prev,
+          [propertyId]: !newValue
+        }));
+      }
+    } catch (error) {
+      console.error("Error updating want to sell status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update property. Please try again.",
+        variant: "destructive"
+      });
+      // Revert toggle state on error
+      setWantToSellToggles(prev => ({
+        ...prev,
+        [propertyId]: !newValue
+      }));
+    }
   };
 
   const handleToggleToSell = async (propertyId: string, propertyTitle: string) => {
@@ -409,7 +592,7 @@ const ManageProperty = () => {
                 <p className="text-sm sm:text-lg text-muted-foreground">Property Management Hub</p>
               </div>
             </div>
-            <div className="flex-shrink-0 w-full sm:w-auto">
+            <div className="flex-shrink-0 w-full sm:w-auto flex gap-2">
               <Button 
                 className="w-full sm:w-auto px-6 sm:px-12 py-2 sm:py-3 rounded-lg border-2 border-primary/20 bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm"
                 variant="outline"
@@ -417,6 +600,14 @@ const ManageProperty = () => {
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Property
+              </Button>
+              <Button 
+                className="w-full sm:w-auto px-6 sm:px-12 py-2 sm:py-3 rounded-lg border-2 border-orange-200 bg-orange-50 hover:bg-orange-100 transition-colors shadow-sm"
+                variant="outline"
+                onClick={() => navigate("/archived-properties")}
+              >
+                <Archive className="h-4 w-4 mr-2" />
+                Archived Properties
               </Button>
             </div>
           </div>
@@ -569,11 +760,22 @@ const ManageProperty = () => {
                         <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
                           <span className="text-base sm:text-lg font-semibold text-primary flex-shrink-0 mt-0.5">{index + 1}.</span>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-sm sm:text-lg leading-tight text-gray-900 break-words">
-                              {property.title}
-                              {property.unitNumber ? ` (${property.unitNumber})` : ""}
-                              {property.address ? `, ${property.address}` : ""}
-                            </h3>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-semibold text-sm sm:text-lg leading-tight text-gray-900 break-words">
+                                {property.title}
+                                {property.unitNumber ? ` (${property.unitNumber})` : ""}
+                                {property.address ? `, ${property.address}` : ""}
+                              </h3>
+                              {/* Tenant Badge - Only show for tenant properties, not for owner properties */}
+                              {property.userRole === 'tenant' && (
+                                <Badge 
+                                  variant="secondary"
+                                  className="bg-purple-100 text-purple-800 hover:bg-purple-200 border-purple-300"
+                                >
+                                  Tenant
+                                </Badge>
+                              )}
+                            </div>
                           </div>
                         </div>
                         {/* Action Menu */}
@@ -593,7 +795,8 @@ const ManageProperty = () => {
                               Edit Property
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            {property.listingType === 'rent' && property.rentalStatus !== 'available' && (
+                            {/* Show "Add Tenant Info" only for properties Available for Rent */}
+                            {property.listingType === 'rent' && property.rentalStatus === 'available' && (
                               <DropdownMenuItem onClick={() => handleAddTenant(property.id)}>
                                 {property.tenants && property.tenants.length > 0 ? (
                                   <>
@@ -612,11 +815,50 @@ const ManageProperty = () => {
                               <Wrench className="h-4 w-4 mr-2" />
                               Request Services
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-red-600">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete Property
+                            <DropdownMenuItem onClick={() => navigate(`/inspection-report/${property.id}`)}>
+                              <FileText className="h-4 w-4 mr-2" />
+                              Inspection Report
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/review/${property.id}`)}>
+                              <Star className="h-4 w-4 mr-2" />
+                              Review
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/legal-services/${property.id}`)}>
+                              <Scale className="h-4 w-4 mr-2" />
+                              Legal Services
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/other-services/${property.id}`)}>
+                              <Wrench className="h-4 w-4 mr-2" />
+                              Other Related Services
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => navigate(`/attach-documents/${property.id}`)}>
+                              <Paperclip className="h-4 w-4 mr-2" />
+                              2. Attach Documents
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => navigate(`/renew-agreement/${property.id}`)}>
+                              <RefreshCw className="h-4 w-4 mr-2" />
+                              3. Go for Renewal
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => navigate(`/terminate-agreement/${property.id}`)}
+                              className="text-red-600"
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              4. Terminate Agreement
+                            </DropdownMenuItem>
+                            {property.rentalStatus === 'inactive' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-orange-600"
+                                  onClick={() => handleArchive(property.id)}
+                                >
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  Archive Property
+                                </DropdownMenuItem>
+                              </>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -635,31 +877,43 @@ const ManageProperty = () => {
                             </span>
                           )}
                          
-                          {/* Rental Status Indicator */}
-                          {property.listingType === 'rent' && property.rentalStatus && (
-                            <Badge variant="outline" className={
-                              property.rentalStatus === 'available'
-                                ? 'bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap'
-                                : 'bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap'
-                            }>
-                              {property.rentalStatus === 'available' ? 'Available for Rent' : 'Currently Rented'}
-                            </Badge>
-                          )}
                           {/* Last Modified - Desktop only, between property type and listing type */}
                           {property.updatedAt && (
                             <span className="hidden sm:flex items-center gap-1 whitespace-nowrap">
                               📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()} at {new Date(property.updatedAt).toLocaleTimeString()}
                             </span>
                           )}
-                           {/* Rental Status Indicator */}
-                          {property.listingType === 'rent' && property.rentalStatus && (
-                            <Badge variant="outline" className={
-                              property.rentalStatus === 'available'
-                                ? 'bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap'
-                                : 'bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap'
-                            }>
-                              {property.rentalStatus === 'available' ? 'Available for Rent' : 'Currently Rented'}
-                            </Badge>
+                           {/* Rental Status Toggle and Indicator */}
+                          {property.listingType === 'rent' && (
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  id={`status-${property.id}`}
+                                  checked={property.status === 'inactive'}
+                                  onCheckedChange={(checked) => handleToggleStatus(property.id, checked)}
+                                />
+                                <Label 
+                                  htmlFor={`status-${property.id}`}
+                                  className="text-xs text-muted-foreground cursor-pointer"
+                                >
+                                  {property.status === 'inactive' ? 'Inactive' : 'Active'}
+                                </Label>
+                              </div>
+                              {property.status && property.status !== 'inactive' && (
+                                <Badge variant="outline" className={
+                                  property.rentalStatus === 'available'
+                                    ? 'bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap'
+                                    : 'bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap'
+                                }>
+                                  {property.rentalStatus === 'available' ? 'Available for Rent' : 'Currently Rented'}
+                                </Badge>
+                              )}
+                              {property.status === 'inactive' && (
+                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs whitespace-nowrap">
+                                  Inactive (Archived)
+                                </Badge>
+                              )}
+                            </div>
                           )}
                           {property.listingType && (
                             <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs whitespace-nowrap">
@@ -687,25 +941,32 @@ const ManageProperty = () => {
                               }`}
                               onClick={() => {
                                 const currentState = wantToSellToggles[property.id] || false;
+                                const newValue = !currentState;
                                 
-                                if (!currentState) {
+                                if (newValue) {
+                                  // Toggling ON - confirm with user
                                   const confirmed = window.confirm(
-                                    `Are you sure you want to change "${property.title}" from rent to sell?\n\nThis will permanently change the listing type and notify the admin.`
+                                    `Are you sure you want to mark "${property.title}" as "Want to Sell"?\n\nThis will notify the admin with your property and contact details.`
                                   );
                                   
                                   if (confirmed) {
-                                    handleToggleToSell(property.id, property.title);
+                                    // Optimistically update UI
                                     setWantToSellToggles(prev => ({
                                       ...prev,
                                       [property.id]: true
                                     }));
+                                    // Call API
+                                    handleToggleWantToSell(property.id, property.title, true);
                                   }
                                 } else {
+                                  // Toggling OFF - no confirmation needed
+                                  // Optimistically update UI
                                   setWantToSellToggles(prev => ({
                                     ...prev,
                                     [property.id]: false
                                   }));
-                                  console.log('Property no longer marked for sale:', property.id);
+                                  // Call API
+                                  handleToggleWantToSell(property.id, property.title, false);
                                 }
                               }}
                             >

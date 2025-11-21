@@ -1,6 +1,6 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { Menu, X, LogOut, LogIn, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, LogIn, ChevronDown, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { auth, signOutUser } from "@/firebase";
@@ -13,18 +13,20 @@ const SiteHeader = () => {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [userPhone, setUserPhone] = useState<string>("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      if (firebaseUser) {
+      // Skip user API call on admin page (unprotected route, no user needed)
+      if (firebaseUser && location.pathname !== "/admin") {
         getUserPhone(firebaseUser.uid);
       } else {
         setUserPhone("");
       }
     });
     return () => unsubscribe();
-  }, []);
+  }, [location.pathname]);
 
   const getUserPhone = async (uid: string) => {
   try {
@@ -130,6 +132,16 @@ const SiteHeader = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                     Visit Planner
+                  </NavLink>
+
+                  {/* Admin Portal */}
+                  <NavLink to="/admin" onClick={() => setIsOpen(false)}
+                    className={({ isActive }) =>
+                      `px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 ${isActive ? "bg-accent text-accent-foreground" : "hover:bg-accent hover:text-accent-foreground"}`
+                    }
+                  >
+                    <Shield className="w-5 h-5" />
+                    Admin Portal
                   </NavLink>
 
                   <div className="border-t pt-4 mt-4">

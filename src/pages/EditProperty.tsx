@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Building2, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,9 +47,6 @@ const formSchema = z.object({
   rentToDate1: z.string().optional(),
   rentFromDate2: z.string().optional(),
   rentToDate2: z.string().optional(),
-  paymentDueDate: z.string().optional(),
-  escalationPercentage: z.string().optional(),
-  escalationAmount: z.string().optional(),
   securityDeposit: z.string().optional(),
   agreementPeriod: z.string().optional(),
   agreementStartDate: z.string().optional(),
@@ -65,6 +62,7 @@ const formSchema = z.object({
     id: z.string(),
     name: z.string(),
     checked: z.boolean(),
+    quantity: z.number().min(1).default(1),
     category: z.enum(['basic', 'kitchen', 'bedroom', 'living', 'appliances', 'other', 'semifurnished'])
   })).optional(),
 });
@@ -102,9 +100,6 @@ interface Property {
   rentToDate1: string;
   rentFromDate2: string;
   rentToDate2: string;
-  paymentDueDate: string;
-  escalationPercentage: string;
-  escalationAmount: string;
   securityDeposit: string;
   agreementPeriod: string;
   agreementStartDate: string;
@@ -174,9 +169,6 @@ const EditProperty = () => {
       rentToDate1: "",
       rentFromDate2: "",
       rentToDate2: "",
-      paymentDueDate: "",
-      escalationPercentage: "",
-      escalationAmount: "",
       securityDeposit: "",
       agreementPeriod: "",
       agreementStartDate: "",
@@ -246,9 +238,6 @@ const EditProperty = () => {
           rentToDate1: propertyData.rentToDate1 || "",
           rentFromDate2: propertyData.rentFromDate2 || "",
           rentToDate2: propertyData.rentToDate2 || "",
-          paymentDueDate: propertyData.paymentDueDate || "",
-          escalationPercentage: propertyData.escalationPercentage || "",
-          escalationAmount: propertyData.escalationAmount || "",
           securityDeposit: propertyData.securityDeposit || "",
           agreementPeriod: propertyData.agreementPeriod || "",
           agreementStartDate: propertyData.agreementStartDate || "",
@@ -263,8 +252,35 @@ const EditProperty = () => {
           furnishedChecklist: propertyData.furnishedChecklist || [],
         };
 
+        // Normalize furnished checklist - handle both old string[] format and new object format
+        const normalizeFurnishedChecklist = (checklist: any) => {
+          if (!checklist || !Array.isArray(checklist)) return [];
+          
+          return checklist.map((item: any) => {
+            // If it's already in the new format (object with id, name, etc.)
+            if (typeof item === 'object' && item !== null && item.name) {
+              return {
+                ...item,
+                quantity: item.quantity || 1,
+                checked: item.checked !== undefined ? item.checked : true
+              };
+            }
+            // If it's the old string format, convert it
+            if (typeof item === 'string') {
+              return {
+                id: `legacy-${Date.now()}-${Math.random()}`,
+                name: item,
+                checked: true,
+                quantity: 1,
+                category: 'other'
+              };
+            }
+            return item;
+          });
+        };
+        
         // Set the furnished checklist state
-        setFurnishedChecklist(propertyData.furnishedChecklist || []);
+        setFurnishedChecklist(normalizeFurnishedChecklist(propertyData.furnishedChecklist));
         
         console.log("Populating form with data:", formData);
         form.reset(formData);
@@ -683,7 +699,7 @@ const EditProperty = () => {
                 </div>
 
                 {/* Unit Condition & Maintenance */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 border rounded-lg">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 border rounded-lg">
                   <div className="lg:col-span-2">
                     <h3 className="text-lg font-semibold mb-6">Unit Condition & Maintenance</h3>
                   </div>
@@ -694,12 +710,7 @@ const EditProperty = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Unit Condition</FormLabel>
-                        <Select onValueChange={(value) => {
-                          field.onChange(value);
-                          if (value === "furnished") {
-                            setShowFurnishedModal(true);
-                          }
-                        }} value={field.value} disabled={!isPropertyEditable()}>
+                        <Select onValueChange={field.onChange} value={field.value} disabled={!isPropertyEditable()}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select condition" />
@@ -712,46 +723,63 @@ const EditProperty = () => {
                           </SelectContent>
                         </Select>
                         <FormMessage />
-                        
-                        {/* Furnished Checklist Button */}
-                        {form.watch("unitCondition") === "furnished" && (
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={() => setShowFurnishedModal(true)}
-                            className="mt-2 w-full"
-                            disabled={!isPropertyEditable()}
-                          >
-                            <CheckSquare className="mr-2 h-4 w-4" />
-                            Manage Furnished Items ({furnishedChecklist.length} items)
-                          </Button>
-                        )}
                       </FormItem>
                     )}
                   />
 
+                  {/* Furnished Checklist Button - Aligned with Unit Condition */}
                   <FormField
                     control={form.control}
-                    name="maintenanceToBePaidBy"
-                    render={({ field }) => (
+                    name="furnishedChecklist"
+                    render={() => (
                       <FormItem>
-                        <FormLabel>Maintenance To Be Paid By</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} disabled={!isPropertyEditable()}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select who pays" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="owner">Owner</SelectItem>
-                            <SelectItem value="tenant">Tenant</SelectItem>
-                            <SelectItem value="shared">Shared</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
+                        <FormLabel>Furnished Items Checklist</FormLabel>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setShowFurnishedModal(true)}
+                          className="w-full"
+                          disabled={!isPropertyEditable()}
+                        >
+                          <CheckSquare className="mr-2 h-4 w-4" />
+                          Manage Furnished Items Checklist
+                          {furnishedChecklist.filter((item: any) => item.checked).length > 0 && (
+                            <span className="ml-2 bg-primary text-primary-foreground px-2 py-1 rounded text-xs">
+                              {furnishedChecklist.filter((item: any) => item.checked).length} items selected
+                            </span>
+                          )}
+                        </Button>
+                        <FormDescription className="text-xs text-muted-foreground">
+                          Add items included with this property (available for all unit conditions)
+                        </FormDescription>
                       </FormItem>
                     )}
                   />
+
+                  {form.watch("listingType") !== "sell" && (
+                    <FormField
+                      control={form.control}
+                      name="maintenanceToBePaidBy"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Maintenance To Be Paid By</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!isPropertyEditable()}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select who pays" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="owner">Owner</SelectItem>
+                              <SelectItem value="tenant">Tenant</SelectItem>
+                              <SelectItem value="shared">Shared</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 {/* Images */}

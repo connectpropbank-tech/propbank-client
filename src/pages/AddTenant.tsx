@@ -1,17 +1,36 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, User, FileText, MapPin, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, UserPlus, User, FileText, MapPin, Trash2, Plus, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "../firebase";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { API_BASE_URL } from "../utils/config";
+
+interface SpouseData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  employmentStatus: string;
+  employer: string;
+  notes: string;
+}
+
+interface UserInfo {
+  uid: string;
+  name: string;
+  email: string;
+  photoURL: string;
+  phoneNumber: string;
+}
 
 interface TenantData {
   id: string;
@@ -20,6 +39,10 @@ interface TenantData {
   email: string;
   phone: string;
   emergencyContact: string;
+  userUID?: string; // Map to platform user if found
+  userInfo?: UserInfo | null; // Store user info for display
+  isMarried: boolean;
+  spouse: SpouseData | null;
   leaseStartDate: string;
   leaseEndDate: string;
   monthlyRent: string;
@@ -27,7 +50,13 @@ interface TenantData {
   previousAddress: string;
   employmentStatus: string;
   employer: string;
+  monthlyIncome: string;
+  paymentDueDate: string;
+  escalationPercentage: string;
+  escalationAmount: string;
   notes: string;
+  searchError?: string; // Error message if user not found
+  searchingUser?: boolean; // Loading state for user search
 }
 
 const AddTenant = () => {
@@ -46,6 +75,10 @@ const AddTenant = () => {
       email: '',
       phone: '',
       emergencyContact: '',
+      userUID: undefined,
+      userInfo: null,
+      isMarried: false,
+      spouse: null,
       leaseStartDate: '',
       leaseEndDate: '',
       monthlyRent: '',
@@ -53,7 +86,13 @@ const AddTenant = () => {
       previousAddress: '',
       employmentStatus: '',
       employer: '',
-      notes: ''
+      monthlyIncome: '',
+      paymentDueDate: '',
+      escalationPercentage: '',
+      escalationAmount: '',
+      notes: '',
+      searchError: undefined,
+      searchingUser: false
     }
   ]);
 
@@ -84,6 +123,8 @@ const AddTenant = () => {
               email: tenant.email,
               phone: tenant.phone,
               emergencyContact: tenant.emergencyContact,
+              isMarried: tenant.isMarried || false,
+              spouse: tenant.spouse || null,
               leaseStartDate: tenant.leaseStartDate,
               leaseEndDate: tenant.leaseEndDate,
               monthlyRent: tenant.monthlyRent,
@@ -91,6 +132,10 @@ const AddTenant = () => {
               previousAddress: tenant.previousAddress,
               employmentStatus: tenant.employmentStatus,
               employer: tenant.employer,
+              monthlyIncome: tenant.monthlyIncome || '',
+              paymentDueDate: tenant.paymentDueDate || '',
+              escalationPercentage: tenant.escalationPercentage || '',
+              escalationAmount: tenant.escalationAmount || '',
               notes: tenant.notes
             })));
           }
@@ -103,9 +148,168 @@ const AddTenant = () => {
     fetchPropertyData();
   }, [propertyId]);
 
+  const searchUserByPhone = async (tenantId: string, phoneNumber: string) => {
+    if (!phoneNumber || phoneNumber.trim().length < 10) {
+      // Clear user info if phone is too short
+      setTenants(prev => prev.map(tenant => 
+        tenant.id === tenantId 
+          ? { ...tenant, userInfo: null, userUID: undefined, searchError: undefined, searchingUser: false }
+          : tenant
+      ));
+      return;
+    }
+
+    // Set searching state
+    setTenants(prev => prev.map(tenant => 
+      tenant.id === tenantId 
+        ? { ...tenant, searchingUser: true, searchError: undefined }
+        : tenant
+    ));
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/search?phone=${encodeURIComponent(phoneNumber)}`);
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        // User found - auto-fill tenant fields and show user info
+        const user = data.user;
+        const nameParts = user.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        setTenants(prev => prev.map(tenant => 
+          tenant.id === tenantId 
+            ? {
+                ...tenant,
+                firstName: firstName,
+                lastName: lastName,
+                email: user.email || tenant.email,
+                phone: phoneNumber,
+                userUID: user.uid,
+                userInfo: {
+                  uid: user.uid,
+                  name: user.name,
+                  email: user.email,
+                  photoURL: user.photoURL || '',
+                  phoneNumber: user.phoneNumber
+                },
+                searchingUser: false,
+                searchError: undefined
+              }
+            : tenant
+        ));
+
+        toast({
+          title: "User Found",
+          description: `Found user: ${user.name}`,
+        });
+      } else {
+        // User not found
+        setTenants(prev => prev.map(tenant => 
+          tenant.id === tenantId 
+            ? {
+                ...tenant,
+                userInfo: null,
+                userUID: undefined,
+                searchingUser: false,
+                searchError: data.message || "User is not found. Please ask to sign up with our platform to continue."
+              }
+            : tenant
+        ));
+
+        toast({
+          title: "User Not Found",
+          description: data.message || "User is not found. Please ask to sign up with our platform to continue.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error searching user:', error);
+      setTenants(prev => prev.map(tenant => 
+        tenant.id === tenantId 
+          ? {
+              ...tenant,
+              searchingUser: false,
+              searchError: "Failed to search user. Please try again."
+            }
+          : tenant
+      ));
+    }
+  };
+
   const handleInputChange = (tenantId: string, field: keyof TenantData, value: string) => {
-    setTenants(prev => prev.map(tenant => tenant.id === tenantId ? { ...tenant, [field]: value } : tenant)
-    );
+    setTenants(prev => prev.map(tenant => {
+      if (tenant.id === tenantId) {
+        const updated = { ...tenant, [field]: value };
+        
+        // If phone number changed, search for user (debounced)
+        if (field === 'phone') {
+          // Clear previous user info when phone changes
+          updated.userInfo = null;
+          updated.userUID = undefined;
+          updated.searchError = undefined;
+          
+          // Debounce the search
+          const timeoutId = setTimeout(() => {
+            searchUserByPhone(tenantId, value);
+          }, 1000); // Wait 1 second after user stops typing
+          
+          // Store timeout ID to clear if phone changes again
+          if ((tenant as any).searchTimeoutId) {
+            clearTimeout((tenant as any).searchTimeoutId);
+          }
+          (updated as any).searchTimeoutId = timeoutId;
+        }
+        
+        return updated;
+      }
+      return tenant;
+    }));
+  };
+
+  const handleSpouseChange = (tenantId: string, field: keyof SpouseData, value: string) => {
+    setTenants(prev => prev.map(tenant => {
+      if (tenant.id === tenantId) {
+        const updatedSpouse = tenant.spouse || {
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          employmentStatus: '',
+          employer: '',
+          notes: ''
+        };
+        return {
+          ...tenant,
+          spouse: {
+            ...updatedSpouse,
+            [field]: value
+          }
+        };
+      }
+      return tenant;
+    }));
+  };
+
+  const handleMaritalStatusChange = (tenantId: string, isMarried: boolean) => {
+    setTenants(prev => prev.map(tenant => {
+      if (tenant.id === tenantId) {
+        return {
+          ...tenant,
+          isMarried,
+          spouse: isMarried ? (tenant.spouse || {
+            firstName: '',
+            lastName: '',
+            email: '',
+            phone: '',
+            employmentStatus: '',
+            employer: '',
+            notes: ''
+          }) : null
+        };
+      }
+      return tenant;
+    }));
   };
 
   const addTenant = () => {
@@ -116,6 +320,10 @@ const AddTenant = () => {
       email: '',
       phone: '',
       emergencyContact: '',
+      userUID: undefined,
+      userInfo: null,
+      isMarried: false,
+      spouse: null,
       leaseStartDate: '',
       leaseEndDate: '',
       monthlyRent: '',
@@ -123,7 +331,13 @@ const AddTenant = () => {
       previousAddress: '',
       employmentStatus: '',
       employer: '',
-      notes: ''
+      monthlyIncome: '',
+      paymentDueDate: '',
+      escalationPercentage: '',
+      escalationAmount: '',
+      notes: '',
+      searchError: undefined,
+      searchingUser: false
     };
     setTenants(prev => [...prev, newTenant]);
   };
@@ -155,6 +369,45 @@ const AddTenant = () => {
       return;
     }
 
+    // Check if any tenant has a search error (user not found)
+    const tenantsWithSearchError = tenants.filter(tenant => tenant.searchError);
+    if (tenantsWithSearchError.length > 0) {
+      toast({
+        title: "User Not Found",
+        description: "Some tenants are not registered on the platform. Please ask them to sign up before adding them as tenants.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if any tenant is still being searched
+    const tenantsStillSearching = tenants.filter(tenant => tenant.searchingUser);
+    if (tenantsStillSearching.length > 0) {
+      toast({
+        title: "Please Wait",
+        description: "Please wait for user search to complete before submitting",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate spouse details if married
+    const tenantsWithMissingSpouseInfo = tenants.filter(tenant => {
+      if (tenant.isMarried && tenant.spouse) {
+        return !tenant.spouse.firstName || !tenant.spouse.lastName || !tenant.spouse.phone;
+      }
+      return false;
+    });
+
+    if (tenantsWithMissingSpouseInfo.length > 0) {
+      toast({
+        title: "Error",
+        description: "Please fill in spouse details (First Name, Last Name, Phone) for married tenants",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const propertyResponse = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
       const propertyData = await propertyResponse.json();
@@ -166,9 +419,28 @@ const AddTenant = () => {
       const property = propertyData.property;
       
       // Prepare tenant data for property update
-      const newTenantInfos = tenants.map(({ id, ...tenant }) => ({
+      const newTenantInfos = tenants.map(({ id, userInfo, searchError, searchingUser, searchTimeoutId, ...tenant }) => ({
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // Generate unique ID
-        ...tenant,
+        firstName: tenant.firstName,
+        lastName: tenant.lastName,
+        email: tenant.email,
+        phone: tenant.phone,
+        emergencyContact: tenant.emergencyContact,
+        userUID: tenant.userUID, // Map to platform user if found
+        isMarried: tenant.isMarried,
+        spouse: tenant.isMarried && tenant.spouse ? tenant.spouse : null,
+        leaseStartDate: tenant.leaseStartDate,
+        leaseEndDate: tenant.leaseEndDate,
+        monthlyRent: tenant.monthlyRent,
+        securityDeposit: tenant.securityDeposit,
+        previousAddress: tenant.previousAddress,
+        employmentStatus: tenant.employmentStatus,
+        employer: tenant.employer,
+        monthlyIncome: tenant.monthlyIncome,
+        paymentDueDate: tenant.paymentDueDate,
+        escalationPercentage: tenant.escalationPercentage,
+        escalationAmount: tenant.escalationAmount,
+        notes: tenant.notes,
         isActive: true
         // Let backend handle createdAt and updatedAt timestamps
       }));
@@ -308,6 +580,37 @@ const AddTenant = () => {
                         <p className="text-sm">{tenant.emergencyContact}</p>
                       </div>
                     )}
+                    {tenant.isMarried && tenant.spouse && (
+                      <div className="md:col-span-3 border-t pt-4 mt-4">
+                        <label className="text-xs font-medium text-muted-foreground mb-2 block">Spouse Information</label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Spouse Name</label>
+                            <p>{tenant.spouse.firstName} {tenant.spouse.lastName}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Spouse Email</label>
+                            <p>{tenant.spouse.email || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Spouse Phone</label>
+                            <p>{tenant.spouse.phone}</p>
+                          </div>
+                          {tenant.spouse.employmentStatus && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Employment Status</label>
+                              <p className="capitalize">{tenant.spouse.employmentStatus}</p>
+                            </div>
+                          )}
+                          {tenant.spouse.employer && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Employer</label>
+                              <p className="text-sm">{tenant.spouse.employer}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {tenant.notes && (
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">Notes</label>
@@ -401,12 +704,49 @@ const AddTenant = () => {
                     </div>
                     <div>
                       <Label htmlFor={`phone-${tenant.id}`}>Phone *</Label>
-                      <Input
-                        id={`phone-${tenant.id}`}
-                        value={tenant.phone}
-                        onChange={(e) => handleInputChange(tenant.id, 'phone', e.target.value)}
-                        placeholder="+1 (555) 123-4567"
-                      />
+                      <div className="relative">
+                        <Input
+                          id={`phone-${tenant.id}`}
+                          value={tenant.phone}
+                          onChange={(e) => handleInputChange(tenant.id, 'phone', e.target.value)}
+                          placeholder="+1 (555) 123-4567"
+                          className={tenant.searchError ? "border-red-500" : tenant.userInfo ? "border-green-500" : ""}
+                        />
+                        {tenant.searchingUser && (
+                          <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                        {!tenant.searchingUser && tenant.userInfo && (
+                          <CheckCircle2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" />
+                        )}
+                        {!tenant.searchingUser && tenant.searchError && (
+                          <XCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+                        )}
+                      </div>
+                      {/* User Info Display */}
+                      {tenant.userInfo && !tenant.searchingUser && (
+                        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            {tenant.userInfo.photoURL && (
+                              <img 
+                                src={tenant.userInfo.photoURL} 
+                                alt={tenant.userInfo.name}
+                                className="w-10 h-10 rounded-full object-cover"
+                              />
+                            )}
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-green-900">{tenant.userInfo.name}</p>
+                              <p className="text-xs text-green-700">{tenant.userInfo.email}</p>
+                              <p className="text-xs text-green-600 mt-1">✓ Verified platform user</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      {/* Error Display */}
+                      {tenant.searchError && !tenant.searchingUser && (
+                        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-sm text-red-900">{tenant.searchError}</p>
+                        </div>
+                      )}
                     </div>
                     <div className="md:col-span-2">
                       <Label htmlFor={`emergencyContact-${tenant.id}`}>Emergency Contact</Label>
@@ -417,8 +757,110 @@ const AddTenant = () => {
                         placeholder="Emergency contact name and phone"
                       />
                     </div>
+
+                    {/* Marital Status Checkbox */}
+                    <div className="md:col-span-2 flex items-center space-x-2 pt-2">
+                      <Checkbox
+                        id={`isMarried-${tenant.id}`}
+                        checked={tenant.isMarried}
+                        onCheckedChange={(checked) => handleMaritalStatusChange(tenant.id, checked as boolean)}
+                      />
+                      <Label 
+                        htmlFor={`isMarried-${tenant.id}`}
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        Is the tenant married?
+                      </Label>
+                    </div>
                   </div>
                 </div>
+
+                {/* Spouse Information - Show only if married */}
+                {tenant.isMarried && (
+                  <div className="border rounded-lg p-4 bg-blue-50/50">
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Spouse Information
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor={`spouseFirstName-${tenant.id}`}>Spouse First Name *</Label>
+                        <Input
+                          id={`spouseFirstName-${tenant.id}`}
+                          value={tenant.spouse?.firstName || ''}
+                          onChange={(e) => handleSpouseChange(tenant.id, 'firstName', e.target.value)}
+                          placeholder="Enter spouse first name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`spouseLastName-${tenant.id}`}>Spouse Last Name *</Label>
+                        <Input
+                          id={`spouseLastName-${tenant.id}`}
+                          value={tenant.spouse?.lastName || ''}
+                          onChange={(e) => handleSpouseChange(tenant.id, 'lastName', e.target.value)}
+                          placeholder="Enter spouse last name"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`spouseEmail-${tenant.id}`}>Spouse Email</Label>
+                        <Input
+                          id={`spouseEmail-${tenant.id}`}
+                          type="email"
+                          value={tenant.spouse?.email || ''}
+                          onChange={(e) => handleSpouseChange(tenant.id, 'email', e.target.value)}
+                          placeholder="spouse@example.com"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`spousePhone-${tenant.id}`}>Spouse Phone *</Label>
+                        <Input
+                          id={`spousePhone-${tenant.id}`}
+                          value={tenant.spouse?.phone || ''}
+                          onChange={(e) => handleSpouseChange(tenant.id, 'phone', e.target.value)}
+                          placeholder="+1 (555) 123-4567"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`spouseEmploymentStatus-${tenant.id}`}>Spouse Employment Status</Label>
+                        <Select 
+                          value={tenant.spouse?.employmentStatus || ''} 
+                          onValueChange={(value) => handleSpouseChange(tenant.id, 'employmentStatus', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="employed">Employed</SelectItem>
+                            <SelectItem value="self-employed">Self-Employed</SelectItem>
+                            <SelectItem value="unemployed">Unemployed</SelectItem>
+                            <SelectItem value="student">Student</SelectItem>
+                            <SelectItem value="retired">Retired</SelectItem>
+                            <SelectItem value="homemaker">Homemaker</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor={`spouseEmployer-${tenant.id}`}>Spouse Employer/Company</Label>
+                        <Input
+                          id={`spouseEmployer-${tenant.id}`}
+                          value={tenant.spouse?.employer || ''}
+                          onChange={(e) => handleSpouseChange(tenant.id, 'employer', e.target.value)}
+                          placeholder="Company name"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor={`spouseNotes-${tenant.id}`}>Spouse Additional Notes</Label>
+                        <Textarea
+                          id={`spouseNotes-${tenant.id}`}
+                          value={tenant.spouse?.notes || ''}
+                          onChange={(e) => handleSpouseChange(tenant.id, 'notes', e.target.value)}
+                          placeholder="Any additional notes about the spouse"
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Lease Information */}
                 <div>
@@ -461,6 +903,36 @@ const AddTenant = () => {
                         value={tenant.securityDeposit}
                         onChange={(e) => handleInputChange(tenant.id, 'securityDeposit', e.target.value)}
                         placeholder="5000"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`paymentDueDate-${tenant.id}`}>Payment Due Date (Day of Month)</Label>
+                      <Input
+                        id={`paymentDueDate-${tenant.id}`}
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={tenant.paymentDueDate}
+                        onChange={(e) => handleInputChange(tenant.id, 'paymentDueDate', e.target.value)}
+                        placeholder="e.g., 5 (for 5th of each month)"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`escalationPercentage-${tenant.id}`}>Annual Escalation (%)</Label>
+                      <Input
+                        id={`escalationPercentage-${tenant.id}`}
+                        value={tenant.escalationPercentage}
+                        onChange={(e) => handleInputChange(tenant.id, 'escalationPercentage', e.target.value)}
+                        placeholder="e.g., 5% or ₹5000/year"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor={`escalationAmount-${tenant.id}`}>Escalation Amount (₹)</Label>
+                      <Input
+                        id={`escalationAmount-${tenant.id}`}
+                        value={tenant.escalationAmount}
+                        onChange={(e) => handleInputChange(tenant.id, 'escalationAmount', e.target.value)}
+                        placeholder="Enter escalation amount"
                       />
                     </div>
                   </div>

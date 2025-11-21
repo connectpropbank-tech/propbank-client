@@ -7,6 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { API_BASE_URL } from "../utils/config";
 
+interface SpouseInfo {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  employmentStatus: string;
+  employer: string;
+  notes: string;
+}
+
 interface TenantInfo {
   id: string;
   firstName: string;
@@ -14,10 +24,15 @@ interface TenantInfo {
   email: string;
   phone: string;
   emergencyContact: string;
+  isMarried: boolean;
+  spouse: SpouseInfo | null;
   leaseStartDate: string;
   leaseEndDate: string;
   monthlyRent: string;
   securityDeposit: string;
+  paymentDueDate: string;
+  escalationPercentage: string;
+  escalationAmount: string;
   previousAddress: string;
   employmentStatus: string;
   employer: string;
@@ -94,11 +109,6 @@ interface Property {
   rentFromDate2: string;
   rentToDate2: string;
   
-  // Payment Details
-  paymentDueDate: string;
-  escalationPercentage: string;
-  escalationAmount: string;
-  
   // Security & Agreement
   securityDeposit: string;
   agreementPeriod: string;
@@ -113,7 +123,13 @@ interface Property {
   unitCondition: string;
   maintenanceToBePaidBy: string;
   rentalStatus: string;
-  furnishedChecklist: string[];
+  furnishedChecklist: Array<{
+    id: string;
+    name: string;
+    checked: boolean;
+    quantity: number;
+    category: string;
+  }>;
   
   // Legacy fields
   description: string;
@@ -152,6 +168,40 @@ const PropertyDetails = () => {
     }
   }, [propertyId]);
 
+  const normalizeFurnishedChecklist = (checklist: any): Array<{
+    id: string;
+    name: string;
+    checked: boolean;
+    quantity: number;
+    category: string;
+  }> => {
+    if (!checklist || !Array.isArray(checklist)) return [];
+    
+    return checklist.map((item: any) => {
+      // If it's already in the new format (object with id, name, etc.)
+      if (typeof item === 'object' && item !== null && item.name) {
+        return {
+          id: item.id || `item-${Date.now()}-${Math.random()}`,
+          name: item.name,
+          checked: item.checked !== undefined ? item.checked : true,
+          quantity: item.quantity || 1,
+          category: item.category || 'other'
+        };
+      }
+      // If it's the old string format, convert it
+      if (typeof item === 'string') {
+        return {
+          id: `legacy-${Date.now()}-${Math.random()}`,
+          name: item,
+          checked: true,
+          quantity: 1,
+          category: 'other'
+        };
+      }
+      return item;
+    });
+  };
+
   const fetchPropertyDetails = async (id: string) => {
     try {
       const response = await fetch(`${API_BASE_URL}/properties/${id}`, {
@@ -164,7 +214,12 @@ const PropertyDetails = () => {
       const data = await response.json();
       
       if (data.success) {
-        setProperty(data.property);
+        // Normalize furnished checklist for backward compatibility
+        const normalizedProperty = {
+          ...data.property,
+          furnishedChecklist: normalizeFurnishedChecklist(data.property.furnishedChecklist)
+        };
+        setProperty(normalizedProperty);
       } else {
         console.error("Failed to fetch property:", data.message);
       }
@@ -464,32 +519,87 @@ const PropertyDetails = () => {
             )}
 
             {/* Furnished Checklist */}
-            {property.furnishedChecklist && property.furnishedChecklist.length > 0 && (
+            {property.furnishedChecklist && property.furnishedChecklist.filter((item: any) => item.checked).length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CheckCircle className="h-5 w-5 text-green-600" />
-                    Furnished Items ({property.furnishedChecklist.length})
+                    Furnished Items ({property.furnishedChecklist.filter((item: any) => item.checked).length})
                   </CardTitle>
                   <CardDescription>
-                    Items included with this furnished property
+                    Items included with this property
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {property.furnishedChecklist.map((item, index) => (
-                      <div key={index} className="flex items-center space-x-3 bg-green-50 border border-green-200 rounded-lg p-3 hover:bg-green-100 transition-colors">
-                        <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                        <span className="text-sm font-medium text-gray-800">{item}</span>
+                  {/* Group items by category */}
+                  {(() => {
+                    const checkedItems = property.furnishedChecklist.filter((item: any) => item.checked);
+                    const groupedByCategory = checkedItems.reduce((acc: any, item: any) => {
+                      const category = item.category || 'other';
+                      if (!acc[category]) {
+                        acc[category] = [];
+                      }
+                      acc[category].push(item);
+                      return acc;
+                    }, {});
+
+                    const categoryLabels: Record<string, string> = {
+                      basic: 'Basic Furnishing',
+                      kitchen: 'Kitchen Items',
+                      bedroom: 'Bedroom Items',
+                      living: 'Living Room Items',
+                      appliances: 'Appliances',
+                      semifurnished: 'Semi Furnished Items',
+                      other: 'Custom Items'
+                    };
+
+                    return (
+                      <div className="space-y-4">
+                        {Object.entries(groupedByCategory).map(([category, items]: [string, any]) => (
+                          <div key={category} className="space-y-2">
+                            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                              {categoryLabels[category] || category}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {items.map((item: any, index: number) => (
+                                <div 
+                                  key={item.id || index} 
+                                  className="flex items-center justify-between space-x-3 bg-green-50 border border-green-200 rounded-lg p-3 hover:bg-green-100 transition-colors"
+                                >
+                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                    <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-sm font-medium text-gray-800 block truncate">
+                                        {item.name}
+                                      </span>
+                                      {item.category === 'other' && (
+                                        <span className="text-xs text-muted-foreground italic">Custom Item</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <span className="text-xs font-semibold text-green-700 bg-green-200 px-2 py-1 rounded whitespace-nowrap">
+                                      Qty: {item.quantity || 1}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    );
+                  })()}
+                  
                   <div className="mt-4 pt-3 border-t bg-blue-50 rounded-lg p-3">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-blue-600" />
-                      <p className="text-sm font-medium text-blue-800">
-                        This property comes with {property.furnishedChecklist.length} furnished items included
-                      </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                        <p className="text-sm font-medium text-blue-800">
+                          Total: {property.furnishedChecklist.filter((item: any) => item.checked).length} item{property.furnishedChecklist.filter((item: any) => item.checked).length !== 1 ? 's' : ''} 
+                          ({property.furnishedChecklist.filter((item: any) => item.checked).reduce((sum: number, item: any) => sum + (item.quantity || 1), 0)} total quantity)
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -543,18 +653,6 @@ const PropertyDetails = () => {
                       <div>
                         <label className="text-xs font-medium text-muted-foreground">3rd Year Rent</label>
                         <p className="text-sm font-semibold">₹{Number(property.monthlyRent3rdYear).toLocaleString()}/month</p>
-                      </div>
-                    )}
-                    {property.paymentDueDate && (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Payment Due Date</label>
-                        <p className="text-sm">{property.paymentDueDate}</p>
-                      </div>
-                    )}
-                    {property.escalationPercentage && (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Escalation</label>
-                        <p className="text-sm">{property.escalationPercentage}%</p>
                       </div>
                     )}
                   </div>
@@ -650,6 +748,24 @@ const PropertyDetails = () => {
                             <div>
                               <label className="text-xs font-medium text-muted-foreground">Employer</label>
                               <p>{tenant.employer}</p>
+                            </div>
+                          )}
+                          {tenant.paymentDueDate && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Payment Due Date</label>
+                              <p className="text-sm">{tenant.paymentDueDate}th of each month</p>
+                            </div>
+                          )}
+                          {tenant.escalationPercentage && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Annual Escalation</label>
+                              <p className="text-sm">{tenant.escalationPercentage}</p>
+                            </div>
+                          )}
+                          {tenant.escalationAmount && (
+                            <div>
+                              <label className="text-xs font-medium text-muted-foreground">Escalation Amount</label>
+                              <p className="text-sm font-semibold">₹{Number(tenant.escalationAmount).toLocaleString()}</p>
                             </div>
                           )}
                         </div>

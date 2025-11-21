@@ -11,6 +11,7 @@ interface FurnishedItem {
   id: string;
   name: string;
   checked: boolean;
+  quantity: number;
   category: 'basic' | 'kitchen' | 'bedroom' | 'living' | 'appliances' | 'semifurnished' | 'other';
 }
 
@@ -23,58 +24,58 @@ interface FurnishedChecklistModalProps {
 
 const defaultFurnishedItems: Omit<FurnishedItem, 'id' | 'checked'>[] = [
   // Semi Furnished Items (Based on your table)
-  { name: 'Light', category: 'semifurnished' },
-  { name: 'Fan', category: 'semifurnished' },
-  { name: 'Kitchen cabinet', category: 'semifurnished' },
-  { name: 'Geyser', category: 'semifurnished' },
-  { name: 'Curtain Road', category: 'semifurnished' },
-  { name: 'Mosquito net', category: 'semifurnished' },
-  { name: 'Exhaust Fan', category: 'semifurnished' },
-  { name: 'Chimeny (Optional)', category: 'semifurnished' },
-  { name: 'Air Conditioners (Optional)', category: 'semifurnished' },
-  { name: 'Wooden Cabinets (Optional)', category: 'semifurnished' },
+  { name: 'Light', category: 'semifurnished', quantity: 1 },
+  { name: 'Fan', category: 'semifurnished', quantity: 1 },
+  { name: 'Kitchen cabinet', category: 'semifurnished', quantity: 1 },
+  { name: 'Geyser', category: 'semifurnished', quantity: 1 },
+  { name: 'Curtain Road', category: 'semifurnished', quantity: 1 },
+  { name: 'Mosquito net', category: 'semifurnished', quantity: 1 },
+  { name: 'Exhaust Fan', category: 'semifurnished', quantity: 1 },
+  { name: 'Chimeny (Optional)', category: 'semifurnished', quantity: 1 },
+  { name: 'Air Conditioners (Optional)', category: 'semifurnished', quantity: 1 },
+  { name: 'Wooden Cabinets (Optional)', category: 'semifurnished', quantity: 1 },
   
   // Basic Items
-  { name: 'Light fan', category: 'basic' },
-  { name: 'Kitchen cabinet', category: 'basic' },
-  { name: 'Geyser', category: 'basic' },
-  { name: 'Curtain Road', category: 'basic' },
-  { name: 'Mosquito net', category: 'basic' },
-  { name: 'Exhaust Fan', category: 'basic' },
-  { name: 'Chimeny (Optional)', category: 'basic' },
-  { name: 'Air Conditioners', category: 'basic' },
-  { name: 'Wooden Cabinets', category: 'basic' },
+  { name: 'Light fan', category: 'basic', quantity: 1 },
+  { name: 'Kitchen cabinet', category: 'basic', quantity: 1 },
+  { name: 'Geyser', category: 'basic', quantity: 1 },
+  { name: 'Curtain Road', category: 'basic', quantity: 1 },
+  { name: 'Mosquito net', category: 'basic', quantity: 1 },
+  { name: 'Exhaust Fan', category: 'basic', quantity: 1 },
+  { name: 'Chimeny (Optional)', category: 'basic', quantity: 1 },
+  { name: 'Air Conditioners', category: 'basic', quantity: 1 },
+  { name: 'Wooden Cabinets', category: 'basic', quantity: 1 },
   
   // Kitchen Items  
-  { name: 'Exhaust Fan', category: 'kitchen' },
-  { name: 'Air Conditioners', category: 'kitchen' },
-  { name: 'Sofa', category: 'kitchen' },
-  { name: 'Refrigerator', category: 'kitchen' },
-  { name: 'Microwave', category: 'kitchen' },
-  { name: 'Chairs', category: 'kitchen' },
-  { name: 'CCTV Camera', category: 'kitchen' },
-  { name: 'Side tables', category: 'kitchen' },
-  { name: 'Burner', category: 'kitchen' },
-  { name: 'Dish washer', category: 'kitchen' },
-  { name: 'cooking range', category: 'kitchen' },
+  { name: 'Exhaust Fan', category: 'kitchen', quantity: 1 },
+  { name: 'Air Conditioners', category: 'kitchen', quantity: 1 },
+  { name: 'Sofa', category: 'kitchen', quantity: 1 },
+  { name: 'Refrigerator', category: 'kitchen', quantity: 1 },
+  { name: 'Microwave', category: 'kitchen', quantity: 1 },
+  { name: 'Chairs', category: 'kitchen', quantity: 1 },
+  { name: 'CCTV Camera', category: 'kitchen', quantity: 1 },
+  { name: 'Side tables', category: 'kitchen', quantity: 1 },
+  { name: 'Burner', category: 'kitchen', quantity: 1 },
+  { name: 'Dish washer', category: 'kitchen', quantity: 1 },
+  { name: 'cooking range', category: 'kitchen', quantity: 1 },
   
   // Bedroom Items
-  { name: 'Double Bed', category: 'bedroom' },
-  { name: 'Single Bed', category: 'bedroom' },
-  { name: 'Mattress', category: 'bedroom' },
-  { name: 'Dressing unit', category: 'bedroom' },
+  { name: 'Double Bed', category: 'bedroom', quantity: 1 },
+  { name: 'Single Bed', category: 'bedroom', quantity: 1 },
+  { name: 'Mattress', category: 'bedroom', quantity: 1 },
+  { name: 'Dressing unit', category: 'bedroom', quantity: 1 },
   
   // Living Room Items
-  { name: 'Sofa', category: 'living' },
-  { name: 'Centre table', category: 'living' },
-  { name: 'Dining with chairs', category: 'living' },
-  { name: 'wall painting', category: 'living' },
-  { name: 'Balcony table with chairs', category: 'living' },
+  { name: 'Sofa', category: 'living', quantity: 1 },
+  { name: 'Centre table', category: 'living', quantity: 1 },
+  { name: 'Dining with chairs', category: 'living', quantity: 1 },
+  { name: 'wall painting', category: 'living', quantity: 1 },
+  { name: 'Balcony table with chairs', category: 'living', quantity: 1 },
   
   // Appliances
-  { name: 'Refrigerator', category: 'appliances' },
-  { name: 'Microwave', category: 'appliances' },
-  { name: 'Washing Machine', category: 'appliances' },
+  { name: 'Refrigerator', category: 'appliances', quantity: 1 },
+  { name: 'Microwave', category: 'appliances', quantity: 1 },
+  { name: 'Washing Machine', category: 'appliances', quantity: 1 },
 ];
 
 export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = ({
@@ -91,7 +92,8 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
     return defaultFurnishedItems.map((item, index) => ({
       ...item,
       id: `item-${index}`,
-      checked: false
+      checked: false,
+      quantity: 1
     }));
   });
 
@@ -103,12 +105,20 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
     ));
   };
 
+  const handleQuantityChange = (itemId: string, quantity: number) => {
+    const qty = Math.max(1, Math.floor(quantity || 1));
+    setChecklist(prev => prev.map(item => 
+      item.id === itemId ? { ...item, quantity: qty } : item
+    ));
+  };
+
   const addCustomItem = (itemName: string) => {
     if (itemName.trim()) {
       const newItem: FurnishedItem = {
         id: `custom-${Date.now()}`,
         name: itemName.trim(),
         checked: false,
+        quantity: 1,
         category: 'other'
       };
       setChecklist(prev => [...prev, newItem]);
@@ -134,15 +144,37 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
   };
 
   const handleSave = () => {
-    // Add any pending custom items
+    // Add any pending custom items before saving
+    const itemsToAdd: string[] = [];
     customItems.forEach(item => {
       if (item.trim()) {
-        addCustomItem(item);
+        itemsToAdd.push(item.trim());
       }
     });
     
-    onSave(checklist);
-    onClose();
+    // Add all pending custom items first
+    itemsToAdd.forEach(itemName => {
+      const newItem: FurnishedItem = {
+        id: `custom-${Date.now()}-${Math.random()}`,
+        name: itemName,
+        checked: false,
+        quantity: 1,
+        category: 'other'
+      };
+      setChecklist(prev => [...prev, newItem]);
+    });
+    
+    // Clear custom items input
+    setCustomItems(['']);
+    
+    // Save the checklist (including newly added custom items)
+    setTimeout(() => {
+      setChecklist(currentChecklist => {
+        onSave(currentChecklist);
+        return currentChecklist;
+      });
+      onClose();
+    }, 50);
   };
 
   const groupedItems = checklist.reduce((acc, item) => {
@@ -184,7 +216,7 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="flex items-center space-x-3">
+                    <div key={item.id} className="flex items-center space-x-3 gap-2">
                       <Checkbox
                         id={item.id}
                         checked={item.checked}
@@ -196,6 +228,22 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
                       >
                         {item.name}
                       </Label>
+                      {/* Quantity field - always visible for all items */}
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor={`qty-${item.id}`} className="text-xs text-muted-foreground whitespace-nowrap">
+                          Qty:
+                        </Label>
+                        <Input
+                          id={`qty-${item.id}`}
+                          type="number"
+                          min="1"
+                          value={item.quantity}
+                          onChange={(e) => handleQuantityChange(item.id, parseInt(e.target.value) || 1)}
+                          className="w-16 h-8 text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                          disabled={!item.checked}
+                        />
+                      </div>
                       {item.category === 'other' && (
                         <Button
                           variant="ghost"
@@ -214,15 +262,21 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
           </div>
 
           {/* Custom Items Section */}
-          <Card className="border">
+          <Card className="border border-blue-200 bg-blue-50/30">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Add Custom Items</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Plus className="h-5 w-5 text-blue-600" />
+                Add Custom Items
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Add your own custom furnished items that are not in the default list
+              </p>
             </CardHeader>
             <CardContent className="space-y-3">
               {customItems.map((item, index) => (
                 <div key={index} className="flex items-center space-x-2">
                   <Input
-                    placeholder="Enter custom item name..."
+                    placeholder="Enter custom item name (e.g., Smart TV, Coffee Table, etc.)..."
                     value={item}
                     onChange={(e) => handleCustomItemChange(index, e.target.value)}
                     onBlur={() => {
@@ -242,14 +296,16 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
                     }}
                     className="flex-1"
                   />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeCustomItemInput(index)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {customItems.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeCustomItemInput(index)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
               <Button
@@ -259,8 +315,15 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
                 size="sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Another Item
+                Add Another Custom Item
               </Button>
+              {checklist.filter(item => item.category === 'other').length > 0 && (
+                <div className="mt-3 pt-3 border-t">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Custom items added: {checklist.filter(item => item.category === 'other').length}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -269,6 +332,11 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
             <p className="text-sm font-medium">
               Selected Items: {checklist.filter(item => item.checked).length} of {checklist.length}
             </p>
+            {checklist.filter(item => item.checked).length > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Total Quantity: {checklist.filter(item => item.checked).reduce((sum, item) => sum + item.quantity, 0)}
+              </p>
+            )}
           </div>
         </div>
 
