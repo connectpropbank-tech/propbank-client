@@ -106,30 +106,26 @@ const AddPropertyForm = () => {
     const files = event.target.files;
     if (!files) return;
 
-    const totalImages = uploadedImages.length + files.length;
-    if (totalImages > 6) {
+    // Only allow 1 building image
+    if (uploadedImages.length >= 1) {
       toast({
-        title: "Too many images",
-        description: "You can upload maximum 6 images per property.",
+        title: "Image already uploaded",
+        description: "Only one building image is allowed. Remove the existing image first.",
         variant: "destructive",
       });
       return;
     }
 
-    Array.from(files).forEach((file) => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          setUploadedImages(prev => {
-            const newImages = [...prev, result];
-            form.setValue('images', newImages);
-            return newImages;
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    });
+    const file = files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setUploadedImages([result]);
+        form.setValue('images', [result]);
+      };
+      reader.readAsDataURL(file);
+    }
 
     // Reset file input
     if (fileInputRef.current) {
@@ -1074,7 +1070,10 @@ const AddPropertyForm = () => {
                     name="images"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Property Images (Max 6 images)</FormLabel>
+                        <FormLabel>Building Image (Exterior view only)</FormLabel>
+                        <FormDescription className="text-xs text-muted-foreground">
+                          Upload only the building exterior image. This image will be shown publicly.
+                        </FormDescription>
                         <FormControl>
                           <div className="space-y-4">
                             {/* Upload Button */}
@@ -1083,55 +1082,52 @@ const AddPropertyForm = () => {
                                 type="button"
                                 variant="outline"
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={uploadedImages.length >= 6}
+                                disabled={uploadedImages.length >= 1}
                                 className="flex items-center gap-2"
                               >
                                 <Upload className="h-4 w-4" />
-                                Upload Images ({uploadedImages.length}/6)
+                                {uploadedImages.length === 0 ? 'Upload Building Image' : 'Image Uploaded'}
                               </Button>
                               <input
                                 ref={fileInputRef}
                                 type="file"
                                 accept="image/*"
-                                multiple
                                 onChange={handleImageUpload}
                                 className="hidden"
                               />
                             </div>
 
-                            {/* Image Preview Grid */}
+                            {/* Image Preview */}
                             {uploadedImages.length > 0 && (
-                              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                                {uploadedImages.map((image, index) => (
-                                  <div key={index} className="relative group">
-                                    <div className="aspect-square rounded-lg border-2 border-dashed border-gray-300 overflow-hidden">
-                                      <img
-                                        src={image}
-                                        alt={`Property ${index + 1}`}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="destructive"
-                                      size="sm"
-                                      onClick={() => removeImage(index)}
-                                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
+                              <div className="max-w-xs">
+                                <div className="relative group">
+                                  <div className="aspect-video rounded-lg border-2 border-dashed border-gray-300 overflow-hidden">
+                                    <img
+                                      src={uploadedImages[0]}
+                                      alt="Building exterior"
+                                      className="w-full h-full object-cover"
+                                    />
                                   </div>
-                                ))}
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => removeImage(0)}
+                                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
                               </div>
                             )}
 
                             {/* Empty State */}
                             {uploadedImages.length === 0 && (
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center max-w-xs">
                                 <ImageIcon className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-                                <p className="text-gray-500 mb-2">No images uploaded yet</p>
+                                <p className="text-gray-500 mb-2">No image uploaded yet</p>
                                 <p className="text-sm text-gray-400">
-                                  Click "Upload Images" to add property images
+                                  Upload building exterior image only
                                 </p>
                               </div>
                             )}

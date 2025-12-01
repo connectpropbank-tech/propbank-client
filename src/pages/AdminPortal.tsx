@@ -33,6 +33,12 @@ interface AdminNotification {
   serviceType?: string;
   serviceComment?: string;
   serviceImage?: string;
+  // General inquiry specific fields
+  inquiryType?: string;
+  propertyType?: string;
+  requestVisit?: boolean;
+  visitDate?: string;
+  visitTime?: string;
   timestamp: string;
   isRead: boolean;
   priority: string;
@@ -61,6 +67,15 @@ interface Agent {
   isActive: boolean;
 }
 
+interface SiteSettings {
+  quote: string;
+  quoteAuthor?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  announcementText?: string;
+  isAnnouncementActive?: boolean;
+}
+
 const AdminPortal = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("service-requests");
@@ -68,6 +83,14 @@ const AdminPortal = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Site settings state
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+    quote: "Manage your properties and plan visits with ease",
+    heroTitle: "Your Smart Hub for Property Management",
+    heroSubtitle: "Manage, list your properties and find your dream house— all in one platform",
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
 
   useEffect(() => {
@@ -85,6 +108,8 @@ const AdminPortal = () => {
         await fetchAgents();
       } else if (activeTab === "archive") {
         await fetchArchivedNotifications();
+      } else if (activeTab === "settings") {
+        await fetchSiteSettings();
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -107,7 +132,7 @@ const AdminPortal = () => {
         // Double-check isRead is false as a safety measure
         const serviceRequests = Array.isArray(data) 
           ? data.filter((n: AdminNotification) => 
-              (n.type === "want_to_sell" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination") && n.isRead === false
+              (n.type === "want_to_sell" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry") && n.isRead === false
             )
           : [];
         console.log(`Found ${serviceRequests.length} unread service requests`);
@@ -192,7 +217,7 @@ const AdminPortal = () => {
         const data = await response.json();
         // Filter for read/completed notifications
         const archived = Array.isArray(data) 
-          ? data.filter((n: AdminNotification) => n.isRead && (n.type === "want_to_sell" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination"))
+          ? data.filter((n: AdminNotification) => n.isRead && (n.type === "want_to_sell" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry"))
           : [];
         // Sort by timestamp, newest first
         archived.sort((a: AdminNotification, b: AdminNotification) => 
@@ -202,6 +227,60 @@ const AdminPortal = () => {
       }
     } catch (error) {
       console.error("Error fetching archived notifications:", error);
+    }
+  };
+
+  // Fetch site settings from backend
+  const fetchSiteSettings = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/site-settings`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.settings) {
+          setSiteSettings({
+            quote: data.settings.quote || "Manage your properties and plan visits with ease",
+            quoteAuthor: data.settings.quoteAuthor || "",
+            heroTitle: data.settings.heroTitle || "Your Smart Hub for Property Management",
+            heroSubtitle: data.settings.heroSubtitle || "Manage, list your properties and find your dream house— all in one platform",
+            announcementText: data.settings.announcementText || "",
+            isAnnouncementActive: data.settings.isAnnouncementActive || false,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching site settings:", error);
+    }
+  };
+
+  // Update site settings
+  const handleUpdateSiteSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/site-settings`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(siteSettings),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Settings Updated",
+          description: "Site settings have been updated successfully.",
+        });
+      } else {
+        throw new Error("Failed to update settings");
+      }
+    } catch (error) {
+      console.error("Error updating site settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update site settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -263,7 +342,7 @@ const AdminPortal = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="service-requests" className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4" />
             <span className="hidden sm:inline">Active Service Requests</span>
@@ -281,6 +360,11 @@ const AdminPortal = () => {
           <TabsTrigger value="archive" className="flex items-center gap-2">
             <Archive className="h-4 w-4" />
             <span>Archive</span>
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Site Settings</span>
+            <span className="sm:hidden">Settings</span>
           </TabsTrigger>
         </TabsList>
 
@@ -315,7 +399,7 @@ const AdminPortal = () => {
                             <div>
                               <h3 className="font-semibold text-lg">{notification.title}</h3>
                               {/* Only show message for notifications that don't have custom display */}
-                              {notification.type !== "property_enquiry" && notification.type !== "service_request" && notification.type !== "review" && notification.type !== "legal_service_request" && notification.type !== "other_service_request" && notification.type !== "inspection_report" && (
+                              {notification.type !== "property_enquiry" && notification.type !== "service_request" && notification.type !== "review" && notification.type !== "legal_service_request" && notification.type !== "other_service_request" && notification.type !== "inspection_report" && notification.type !== "general_inquiry" && (
                                 <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
                               )}
                               {notification.type === "property_enquiry" && (
@@ -346,6 +430,11 @@ const AdminPortal = () => {
                               {notification.type === "inspection_report" && (
                                 <p className="text-sm text-muted-foreground mt-1">
                                   An inspection report has been submitted. See details below.
+                                </p>
+                              )}
+                              {notification.type === "general_inquiry" && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  A general inquiry has been submitted. See details below.
                                 </p>
                               )}
                             </div>
@@ -723,6 +812,78 @@ const AdminPortal = () => {
                                   )}
                                 </div>
                               </div>
+                            ) : notification.type === "general_inquiry" ? (
+                              /* For General Inquiry: Show inquiry details and user info */
+                              <div className="mt-4 space-y-4">
+                                {/* Inquiry Message */}
+                                {notification.message && (
+                                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+                                    <p className="text-sm font-medium text-yellow-800">📝 {notification.message}</p>
+                                  </div>
+                                )}
+                                
+                                {/* Inquiry Details */}
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-3">Inquiry Details:</h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-blue-50 rounded">
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Looking to:</span>
+                                      <p className="text-sm font-medium capitalize">{notification.inquiryType || 'Not specified'}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Property Type:</span>
+                                      <p className="text-sm font-medium capitalize">{notification.propertyType || 'Not specified'}</p>
+                                    </div>
+                                    {notification.requestVisit && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground">Visit Requested:</span>
+                                        <p className="text-sm font-medium">{notification.visitDate} at {notification.visitTime}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* User Details */}
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-3">Contact Details:</h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {notification.userName ? (
+                                      <div className="flex items-center gap-2">
+                                        <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm font-medium">{notification.userName}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">Name: Not available</div>
+                                    )}
+                                    {notification.userEmail ? (
+                                      <div className="flex items-center gap-2">
+                                        <Mail className="h-4 w-4 text-muted-foreground" />
+                                        <a 
+                                          href={`mailto:${notification.userEmail}`}
+                                          className="text-sm text-blue-600 hover:underline"
+                                        >
+                                          {notification.userEmail}
+                                        </a>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">Email: Not available</div>
+                                    )}
+                                    {notification.userPhone ? (
+                                      <div className="flex items-center gap-2">
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        <a 
+                                          href={`tel:${notification.userPhone}`}
+                                          className="text-sm text-blue-600 hover:underline"
+                                        >
+                                          {notification.userPhone}
+                                        </a>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">Phone: Not available</div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             ) : (
                               /* For Want to Sell: Show only Owner details */
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
@@ -952,6 +1113,137 @@ const AdminPortal = () => {
                       </CardContent>
                     </Card>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Site Settings Tab */}
+        <TabsContent value="settings" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Site Settings</CardTitle>
+              <CardDescription>
+                Manage dynamic content displayed on the homepage - Quote, Hero Text, and Announcements
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Quote Field */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Homepage Quote
+                      <span className="text-muted-foreground ml-2 font-normal">
+                        (Shown above Manage Property and Visit Planner cards)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={siteSettings.quote}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, quote: e.target.value })}
+                      placeholder="Enter quote text..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Current: "{siteSettings.quote}"
+                    </p>
+                  </div>
+
+                  {/* Hero Title */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Hero Title
+                      <span className="text-muted-foreground ml-2 font-normal">
+                        (Main heading on homepage)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={siteSettings.heroTitle || ""}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, heroTitle: e.target.value })}
+                      placeholder="Enter hero title..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Hero Subtitle */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Hero Subtitle
+                      <span className="text-muted-foreground ml-2 font-normal">
+                        (Sub-heading below the main title)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={siteSettings.heroSubtitle || ""}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, heroSubtitle: e.target.value })}
+                      placeholder="Enter hero subtitle..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Announcement Text */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Announcement Text
+                      <span className="text-muted-foreground ml-2 font-normal">
+                        (Optional banner announcement)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={siteSettings.announcementText || ""}
+                      onChange={(e) => setSiteSettings({ ...siteSettings, announcementText: e.target.value })}
+                      placeholder="Enter announcement text (leave empty to hide)..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Announcement Active Toggle */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="announcement-active"
+                      checked={siteSettings.isAnnouncementActive || false}
+                      onCheckedChange={(checked) => 
+                        setSiteSettings({ ...siteSettings, isAnnouncementActive: checked === true })
+                      }
+                    />
+                    <label htmlFor="announcement-active" className="text-sm font-medium">
+                      Show Announcement Banner
+                    </label>
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="pt-4 border-t">
+                    <Button 
+                      onClick={handleUpdateSiteSettings} 
+                      disabled={savingSettings}
+                      className="w-full sm:w-auto"
+                    >
+                      {savingSettings ? "Saving..." : "Save Settings"}
+                    </Button>
+                  </div>
+
+                  {/* Preview Section */}
+                  <div className="pt-4 border-t">
+                    <h4 className="text-sm font-medium mb-3">Preview</h4>
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                      <p className="font-bold text-lg">{siteSettings.heroTitle}</p>
+                      <p className="text-muted-foreground">{siteSettings.heroSubtitle}</p>
+                      <div className="pt-2 border-t mt-2">
+                        <p className="text-muted-foreground italic">"{siteSettings.quote}"</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>

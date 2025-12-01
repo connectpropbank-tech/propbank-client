@@ -27,12 +27,34 @@ interface Property {
   unitNumber?: string; // Optional unit number
 }
 
+// Site settings from admin
+interface SiteSettings {
+  quote?: string;
+  quoteAuthor?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  announcementText?: string;
+  isAnnouncementActive?: boolean;
+}
 
 interface PropertiesResponse {
   success: boolean;
   properties: Property[];
   count: number;
   listingType?: string;
+  // Site settings fields
+  quote?: string;
+  quoteAuthor?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  announcementText?: string;
+  isAnnouncementActive?: boolean;
+}
+
+// Combined response with properties and site settings
+interface PropertiesWithSettingsResponse {
+  properties: Property[];
+  siteSettings: SiteSettings;
 }
 
 class PropertyService {
@@ -59,6 +81,36 @@ class PropertyService {
     }
 
     return data.properties || [];
+  }
+
+  // Get properties with site settings (quote, hero text, etc.)
+  async getAllPropertiesWithSettings(): Promise<PropertiesWithSettingsResponse> {
+    const headers = await this.getHeaders();
+
+    const response = await fetch(`${API_BASE_URL}/properties`, {
+      method: 'GET',
+      headers,
+    });
+
+    console.log("getAllPropertiesWithSettings - Response status:", response.status);
+
+    const data: PropertiesResponse = await response.json();
+    
+    if (!data.success) {
+      throw new Error('Failed to fetch properties');
+    }
+
+    return {
+      properties: data.properties || [],
+      siteSettings: {
+        quote: data.quote,
+        quoteAuthor: data.quoteAuthor,
+        heroTitle: data.heroTitle,
+        heroSubtitle: data.heroSubtitle,
+        announcementText: data.announcementText,
+        isAnnouncementActive: data.isAnnouncementActive,
+      }
+    };
   }
 
   async getPropertiesByListingType(listingType: 'rent' | 'sell'): Promise<Property[]> {
@@ -151,4 +203,4 @@ class PropertyService {
 }
 
 export const propertyService = new PropertyService();
-export type { Property };
+export type { Property, SiteSettings, PropertiesWithSettingsResponse };

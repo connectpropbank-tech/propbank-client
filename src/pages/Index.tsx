@@ -5,11 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import GradientSpotlight from "@/components/GradientSpotlight";
+import GeneralInquiryForm from "@/components/GeneralInquiryForm";
 import heroImage from "@/assets/hero-realestate.jpg";
 import { Link, useNavigate } from "react-router-dom";
-import { Building2, MapPin, Home, Bed, Bath, Square, Loader2, Search, Filter, Calendar, Settings, ArrowRight } from "lucide-react";
+import { Building2, MapPin, Home, Loader2, Search, Filter, Calendar, Settings, ArrowRight } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { propertyService, Property } from "@/services/propertyService";
+import { propertyService, Property, SiteSettings } from "@/services/propertyService";
 import { useToast } from "@/hooks/use-toast";
 import { auth } from "@/firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
@@ -58,12 +59,20 @@ const HomePage = () => {
   const [hasMore, setHasMore] = useState(true);
   const [selectedProjectCondition, setSelectedProjectCondition] = useState<string>("");
   const [budgetRange, setBudgetRange] = useState<{min: number; max: number}>({min: 0, max: 0});
-  const [showCustomBudget, setShowCustomBudget] = useState<boolean>(false);
   const observerTarget = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [userPhone, setUserPhone] = useState<string>("");
   const [sendingEnquiry, setSendingEnquiry] = useState<string | null>(null); // Track which property enquiry is being sent
+  
+  // Site settings from admin (dynamic content)
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>({
+    quote: "Manage your properties and plan visits with ease",
+    heroTitle: "Your Smart Hub for Property Management",
+    heroSubtitle: "Manage, list your properties and find your dream house— all in one platform",
+    announcementText: "",
+    isAnnouncementActive: false,
+  });
 
   const {
     searchQuery,
@@ -139,8 +148,17 @@ const HomePage = () => {
   const loadAllProperties = async () => {
     try {
       setLoading(true);
-      const fetchedProperties = await propertyService.getAllProperties();
+      const response = await propertyService.getAllPropertiesWithSettings();
+      const fetchedProperties = response.properties;
       setAllProperties(fetchedProperties);
+      
+      // Update site settings from backend
+      if (response.siteSettings) {
+        setSiteSettings(prev => ({
+          ...prev,
+          ...response.siteSettings,
+        }));
+      }
       
       // Initially show first page of properties
       const initialProperties = fetchedProperties.slice(0, ITEMS_PER_PAGE);
@@ -284,7 +302,6 @@ const HomePage = () => {
     setSelectedCategories([]);
     setSelectedProjectCondition("");
     setBudgetRange({min: 0, max: 0});
-    setShowCustomBudget(false);
     setIsSearching(false);
     setPage(1);
 
@@ -365,7 +382,7 @@ const HomePage = () => {
         propertyId: property.id || '',
         ownerId: property.ownerUID || '',
         ownerName: property.ownerName || 'Unknown Owner',
-        ownerPhone: ownerPhoneNumber || property.primaryNo || '',
+        ownerPhone: ownerPhoneNumber || '',
         ownerEmail: ownerEmail || '',
         // User details (person who raised the request)
         userId: requestUser.uid || '',
@@ -374,7 +391,7 @@ const HomePage = () => {
         userPhone: requestUserPhone || '',
         // Property details
         propertyTitle: property.title || '',
-        propertyAddress: property.address || property.city || property.location || 'Not specified',
+        propertyAddress: property.address || property.city || 'Not specified',
         propertyListingType: property.listingType || 'rent',
         timestamp: new Date().toISOString(),
         isRead: false,
@@ -480,7 +497,7 @@ const HomePage = () => {
         propertyId: property.id || '',
         ownerId: property.ownerUID || '',
         ownerName: property.ownerName || 'Unknown Owner',
-        ownerPhone: ownerPhoneNumber || property.primaryNo || '',
+        ownerPhone: ownerPhoneNumber || '',
         ownerEmail: ownerEmail || '',
         // User details (person who enquired) - currently logged in user
         userId: enquiryUser.uid || '',
@@ -489,7 +506,7 @@ const HomePage = () => {
         userPhone: enquiryUserPhone || '',
         // Property details
         propertyTitle: property.title || '',
-        propertyAddress: property.address || property.city || property.location || 'Not specified',
+        propertyAddress: property.address || property.city || 'Not specified',
         propertyListingType: property.listingType || 'rent',
         timestamp: new Date().toISOString(),
         isRead: false,
@@ -590,6 +607,17 @@ const HomePage = () => {
         }
       `}</style>
 
+      {/* Announcement Banner - Shows if admin has set announcement text and it's active */}
+      {siteSettings.isAnnouncementActive && siteSettings.announcementText && (
+        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 px-4">
+          <div className="container mx-auto">
+            <p className="text-center text-sm md:text-base font-medium">
+              📢 {siteSettings.announcementText}
+            </p>
+          </div>
+        </div>
+      )}
+
       <section aria-label="Hero" className="relative">
         <GradientSpotlight className="">
           <div className="container mx-auto py-16">
@@ -597,10 +625,10 @@ const HomePage = () => {
               <div className="space-y-8 flex flex-col items-center text-center lg:items-start lg:text-left">
                 <div className="space-y-6">
                   <h1 className="text-3xl font-bold leading-tight md:text-2xl lg:text-3xl">
-                    Your Smart Hub for Property Management
+                    {siteSettings.heroTitle || "Your Smart Hub for Property Management"}
                   </h1>
                   <p className="text-lg text-muted-foreground">
-                    Manage, list your properties and find your dream house— all in one platform
+                    {siteSettings.heroSubtitle || "Manage, list your properties and find your dream house— all in one platform"}
                   </p>
                 </div>
                 
@@ -616,7 +644,7 @@ const HomePage = () => {
 
               <div className="space-y-6 w-full max-w-2xl mx-auto lg:mx-0">
                 <div className="text-center space-y-4">
-                  <h2 className="text-muted-foreground">Manage your properties and plan visits with ease</h2>
+                  <h2 className="text-muted-foreground">{siteSettings.quote || "Manage your properties and plan visits with ease"}</h2>
                 </div>
               
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-white/20 space-y-4 w-full">
@@ -706,6 +734,17 @@ const HomePage = () => {
             </div>
           </div>
         </GradientSpotlight>
+      </section>
+
+      {/* Quick Inquiry Section */}
+      <section className="py-8 sm:py-12 px-4 bg-gradient-to-b from-gray-50 to-white">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-6 sm:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Quick Inquiry</h2>
+            <p className="text-gray-600 text-base sm:text-lg">Let us know what you're looking for</p>
+          </div>
+          <GeneralInquiryForm />
+        </div>
       </section>
 
       <section className="py-8 sm:py-12 px-4">
@@ -844,153 +883,104 @@ const HomePage = () => {
                   <h3 className="text-sm font-medium text-foreground">
                     Budget Range (₹{searchType === 'rent' ? '/month' : ''})
                   </h3>
-                  {!showCustomBudget ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant={budgetRange.min === 0 && budgetRange.max === 0 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setBudgetRange({min: 0, max: 0});
-                          setShowCustomBudget(false);
-                        }}
-                        className="text-xs col-span-2"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Min Budget</label>
+                      <Select 
+                        value={budgetRange.min.toString()} 
+                        onValueChange={(value) => setBudgetRange({...budgetRange, min: parseInt(value) || 0})}
                       >
-                        Any Budget
-                      </Button>
-                      
-                      {searchType === 'buy' ? (
-                        <>
-                          <Button
-                            variant={budgetRange.min === 0 && budgetRange.max === 5000000 && !showCustomBudget ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setBudgetRange({min: 0, max: 5000000});
-                              setShowCustomBudget(false);
-                            }}
-                            className="text-xs"
-                          >
-                            Under 50L
-                          </Button>
-                          <Button
-                            variant={budgetRange.min === 5000000 && budgetRange.max === 10000000 && !showCustomBudget ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setBudgetRange({min: 5000000, max: 10000000});
-                              setShowCustomBudget(false);
-                            }}
-                            className="text-xs"
-                          >
-                            50L - 1Cr
-                          </Button>
-                          <Button
-                            variant={budgetRange.min === 10000000 && budgetRange.max === 20000000 && !showCustomBudget ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setBudgetRange({min: 10000000, max: 20000000});
-                              setShowCustomBudget(false);
-                            }}
-                            className="text-xs"
-                          >
-                            1Cr - 2Cr
-                          </Button>
-                          <Button
-                            variant={budgetRange.min === 20000000 && budgetRange.max === 0 && !showCustomBudget ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setBudgetRange({min: 20000000, max: 0});
-                              setShowCustomBudget(false);
-                            }}
-                            className="text-xs"
-                          >
-                            Above 2Cr
-                          </Button>
-                        </>
-                      ) : (
-                        <>
-                          <Button
-                            variant={budgetRange.min === 0 && budgetRange.max === 25000 && !showCustomBudget ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setBudgetRange({min: 0, max: 25000});
-                              setShowCustomBudget(false);
-                            }}
-                            className="text-xs"
-                          >
-                            Under 25K
-                          </Button>
-                          <Button
-                            variant={budgetRange.min === 25000 && budgetRange.max === 50000 && !showCustomBudget ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setBudgetRange({min: 25000, max: 50000});
-                              setShowCustomBudget(false);
-                            }}
-                            className="text-xs"
-                          >
-                            25K - 50K
-                          </Button>
-                          <Button
-                            variant={budgetRange.min === 50000 && budgetRange.max === 100000 && !showCustomBudget ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setBudgetRange({min: 50000, max: 100000});
-                              setShowCustomBudget(false);
-                            }}
-                            className="text-xs"
-                          >
-                            50K - 1L
-                          </Button>
-                          <Button
-                            variant={budgetRange.min === 100000 && budgetRange.max === 0 && !showCustomBudget ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => {
-                              setBudgetRange({min: 100000, max: 0});
-                              setShowCustomBudget(false);
-                            }}
-                            className="text-xs"
-                          >
-                            Above 1L
-                          </Button>
-                        </>
-                      )}
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowCustomBudget(true)}
-                        className="text-xs col-span-2"
-                      >
-                        Custom Range
-                      </Button>
+                        <SelectTrigger className="w-full text-xs">
+                          <SelectValue placeholder="Select Min" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">No Min</SelectItem>
+                          {searchType === 'buy' ? (
+                            <>
+                              <SelectItem value="1000000">₹10 Lakh</SelectItem>
+                              <SelectItem value="2000000">₹20 Lakh</SelectItem>
+                              <SelectItem value="3000000">₹30 Lakh</SelectItem>
+                              <SelectItem value="4000000">₹40 Lakh</SelectItem>
+                              <SelectItem value="5000000">₹50 Lakh</SelectItem>
+                              <SelectItem value="6000000">₹60 Lakh</SelectItem>
+                              <SelectItem value="7000000">₹70 Lakh</SelectItem>
+                              <SelectItem value="8000000">₹80 Lakh</SelectItem>
+                              <SelectItem value="9000000">₹90 Lakh</SelectItem>
+                              <SelectItem value="10000000">₹1 Crore</SelectItem>
+                              <SelectItem value="15000000">₹1.5 Crore</SelectItem>
+                              <SelectItem value="20000000">₹2 Crore</SelectItem>
+                              <SelectItem value="30000000">₹3 Crore</SelectItem>
+                              <SelectItem value="50000000">₹5 Crore</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="5000">₹5,000</SelectItem>
+                              <SelectItem value="10000">₹10,000</SelectItem>
+                              <SelectItem value="15000">₹15,000</SelectItem>
+                              <SelectItem value="20000">₹20,000</SelectItem>
+                              <SelectItem value="25000">₹25,000</SelectItem>
+                              <SelectItem value="30000">₹30,000</SelectItem>
+                              <SelectItem value="40000">₹40,000</SelectItem>
+                              <SelectItem value="50000">₹50,000</SelectItem>
+                              <SelectItem value="75000">₹75,000</SelectItem>
+                              <SelectItem value="100000">₹1 Lakh</SelectItem>
+                              <SelectItem value="150000">₹1.5 Lakh</SelectItem>
+                              <SelectItem value="200000">₹2 Lakh</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <Input
-                          type="number"
-                          placeholder="Min Budget"
-                          value={budgetRange.min || ''}
-                          onChange={(e) => setBudgetRange({...budgetRange, min: parseInt(e.target.value) || 0})}
-                          className="text-sm"
-                        />
-                        <Input
-                          type="number"
-                          placeholder="Max Budget"
-                          value={budgetRange.max || ''}
-                          onChange={(e) => setBudgetRange({...budgetRange, max: parseInt(e.target.value) || 0})}
-                          className="text-sm"
-                        />
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowCustomBudget(false)}
-                        className="w-full text-xs"
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Max Budget</label>
+                      <Select 
+                        value={budgetRange.max.toString()} 
+                        onValueChange={(value) => setBudgetRange({...budgetRange, max: parseInt(value) || 0})}
                       >
-                        Back to Presets
-                      </Button>
+                        <SelectTrigger className="w-full text-xs">
+                          <SelectValue placeholder="Select Max" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="0">No Max</SelectItem>
+                          {searchType === 'buy' ? (
+                            <>
+                              <SelectItem value="1000000">₹10 Lakh</SelectItem>
+                              <SelectItem value="2000000">₹20 Lakh</SelectItem>
+                              <SelectItem value="3000000">₹30 Lakh</SelectItem>
+                              <SelectItem value="4000000">₹40 Lakh</SelectItem>
+                              <SelectItem value="5000000">₹50 Lakh</SelectItem>
+                              <SelectItem value="6000000">₹60 Lakh</SelectItem>
+                              <SelectItem value="7000000">₹70 Lakh</SelectItem>
+                              <SelectItem value="8000000">₹80 Lakh</SelectItem>
+                              <SelectItem value="9000000">₹90 Lakh</SelectItem>
+                              <SelectItem value="10000000">₹1 Crore</SelectItem>
+                              <SelectItem value="15000000">₹1.5 Crore</SelectItem>
+                              <SelectItem value="20000000">₹2 Crore</SelectItem>
+                              <SelectItem value="30000000">₹3 Crore</SelectItem>
+                              <SelectItem value="50000000">₹5 Crore</SelectItem>
+                              <SelectItem value="100000000">₹10 Crore</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="5000">₹5,000</SelectItem>
+                              <SelectItem value="10000">₹10,000</SelectItem>
+                              <SelectItem value="15000">₹15,000</SelectItem>
+                              <SelectItem value="20000">₹20,000</SelectItem>
+                              <SelectItem value="25000">₹25,000</SelectItem>
+                              <SelectItem value="30000">₹30,000</SelectItem>
+                              <SelectItem value="40000">₹40,000</SelectItem>
+                              <SelectItem value="50000">₹50,000</SelectItem>
+                              <SelectItem value="75000">₹75,000</SelectItem>
+                              <SelectItem value="100000">₹1 Lakh</SelectItem>
+                              <SelectItem value="150000">₹1.5 Lakh</SelectItem>
+                              <SelectItem value="200000">₹2 Lakh</SelectItem>
+                              <SelectItem value="300000">₹3 Lakh</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1149,86 +1139,40 @@ const HomePage = () => {
                             {getListingTypeBadge(property.listingType)}
                           </div>
                         )}
-
-                        {/* Price Badge */}
-                        <div className="absolute top-3 right-3">
-                          <Badge className="bg-primary text-primary-foreground">
-                              {(property.propertyType || 'Property')
-                              .charAt(0).toUpperCase() + (property.propertyType || 'Property').slice(1)}
-                          </Badge>
-                        </div>
                       </div>
 
-                      <CardHeader>
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="line-clamp-2">
-                            {property.title}
-                            {(property.unitNumber || property.address) && (
-                              <span className="text-muted-foreground font-normal">
-                                {' ('}
-                                {property.unitNumber ? property.unitNumber : ''}
-                                {property.unitNumber && property.address ? ', ' : ''}
-                                {property.address ? property.address : ''}
-                                {')'}
-                              </span>
-                            )}
-                          </CardTitle>
-                        </div>
-                      </CardHeader>
+                      <CardContent className="pt-4 space-y-3">
+                        {/* Property Title */}
+                        <h3 className="font-semibold text-lg line-clamp-2">
+                          {property.title || (property.propertyType ? property.propertyType.charAt(0).toUpperCase() + property.propertyType.slice(1) : 'Property')}
+                        </h3>
 
-                      <CardContent className="flex-1 flex flex-col space-y-4">
-                        {/* Location */}
-                        <div className="flex items-start gap-2">
-                          <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                          <p className="text-sm text-muted-foreground line-clamp-2">
-                            {property.address || property.city || 'Location not specified'}
-                          </p>
+                        {/* Property Type */}
+                        <div className="text-sm text-muted-foreground">
+                          {property.propertyType ? property.propertyType.charAt(0).toUpperCase() + property.propertyType.slice(1) : 'Property'}
                         </div>
 
-                        {/* Property Details */}
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          {property.bedrooms > 0 && (
-                            <div className="flex items-center gap-1">
-                              <Bed className="h-4 w-4" />
-                              <span>{property.bedrooms}</span>
-                            </div>
-                          )}
-                          {property.bathrooms > 0 && (
-                            <div className="flex items-center gap-1">
-                              <Bath className="h-4 w-4" />
-                              <span>{property.bathrooms}</span>
-                            </div>
-                          )}
-                          {property.squareFeet > 0 && (
-                            <div className="flex items-center gap-1">
-                              <Square className="h-4 w-4" />
-                              <span>{property.squareFeet} sq ft</span>
-                            </div>
-                          )}
+                        {/* Property ID */}
+                        <div className="text-xs text-muted-foreground">
+                          ID: {property.id}
                         </div>
 
-                        {/* Spacer to push content to bottom */}
-                        <div className="flex-1"></div>
+                        {/* Pricing */}
+                        {property.price > 0 && (
+                          <div className="text-lg font-bold text-primary">
+                            ₹{property.price.toLocaleString('en-IN')}{property.listingType === 'rent' ? '/month' : ''}
+                          </div>
+                        )}
 
-                        {/* Property Actions */}
-                        <div className="pt-4 border-t space-y-3 mt-auto">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="w-full"
-                            onClick={() => handleEnquireProperty(property)}
-                            disabled={sendingEnquiry?.includes(property.id) || !auth.currentUser}
-                          >
-                            {sendingEnquiry?.includes(property.id) ? "Sending..." : "Enquire"}
-                          </Button>
-
-                          {/* View Details Button */}
-                          <Button asChild className="w-full" variant="default">
-                            <Link to={`/property/${property.id}`}>
-                              View Full Details
-                            </Link>
-                          </Button>
-                        </div>
+                        {/* Enquire Button */}
+                        <Button 
+                          size="sm" 
+                          className="w-full mt-2"
+                          onClick={() => handleEnquireProperty(property)}
+                          disabled={sendingEnquiry === property.id || !auth.currentUser}
+                        >
+                          {sendingEnquiry === property.id ? "Sending..." : "Enquire Now"}
+                        </Button>
                       </CardContent>
                     </Card>
                   ))}
