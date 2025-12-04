@@ -836,20 +836,21 @@ const ManageProperty = () => {
                     filteredOwnedProperties.map((property, index) => (
                       <Card key={property.id} className="hover:shadow-lg transition-shadow overflow-hidden">
                         <div className="flex flex-col sm:flex-row">
-                          {/* Property Image Thumbnail */}
-                          {property.images && property.images.length > 0 && (
-                            <div className="w-full sm:w-40 h-32 sm:h-auto flex-shrink-0">
+                          {/* Property Image Thumbnail - Always show with fallback */}
+                          <div className="w-full sm:w-40 h-32 sm:h-auto flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden flex items-center justify-center">
+                            {property.images && property.images.length > 0 && property.images[0] ? (
                               <img
                                 src={property.images[0]}
                                 alt={property.title}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover absolute inset-0"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
                                   target.style.display = 'none';
                                 }}
                               />
-                            </div>
-                          )}
+                            ) : null}
+                            <Building2 className="h-12 w-12 text-gray-400" />
+                          </div>
                           <CardContent className="p-3 sm:p-6 flex-1">
                           <div className="flex flex-col space-y-3 sm:space-y-4">
                             {/* Header with number and action menu */}
@@ -1092,20 +1093,21 @@ const ManageProperty = () => {
                     filteredTenantProperties.map((property, index) => (
                       <Card key={property.id} className="hover:shadow-lg transition-shadow overflow-hidden">
                         <div className="flex flex-col sm:flex-row">
-                          {/* Property Image Thumbnail */}
-                          {property.images && property.images.length > 0 && (
-                            <div className="w-full sm:w-40 h-32 sm:h-auto flex-shrink-0">
+                          {/* Property Image Thumbnail - Always show with fallback */}
+                          <div className="w-full sm:w-40 h-32 sm:h-auto flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden flex items-center justify-center">
+                            {property.images && property.images.length > 0 && property.images[0] ? (
                               <img
                                 src={property.images[0]}
                                 alt={property.title}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover absolute inset-0"
                                 onError={(e) => {
                                   const target = e.target as HTMLImageElement;
                                   target.style.display = 'none';
                                 }}
                               />
-                            </div>
-                          )}
+                            ) : null}
+                            <Building2 className="h-12 w-12 text-gray-400" />
+                          </div>
                           <CardContent className="p-3 sm:p-6 flex-1">
                           <div className="flex flex-col space-y-3 sm:space-y-4">
                             {/* Header with number and action menu */}

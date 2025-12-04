@@ -216,16 +216,25 @@ const ArchivedProperties = () => {
               <Card key={property.id} className="border-2 border-orange-200 bg-orange-50/30">
                 <CardContent className="p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row gap-4">
-                    {/* Property Image */}
-                    {property.images && property.images.length > 0 && (
-                      <div className="w-full sm:w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden">
+                    {/* Property Image - Always show with fallback */}
+                    <div className="w-full sm:w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                      {property.images && property.images.length > 0 ? (
                         <img
                           src={property.images[0]}
                           alt={property.title}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const fallback = target.nextElementSibling as HTMLElement;
+                            if (fallback) fallback.style.display = 'flex';
+                          }}
                         />
+                      ) : null}
+                      <div className={`w-full h-full ${property.images && property.images.length > 0 ? 'hidden' : 'flex'} items-center justify-center text-gray-400`}>
+                        <Building2 className="h-10 w-10" />
                       </div>
-                    )}
+                    </div>
 
                     {/* Property Details */}
                     <div className="flex-1 space-y-2">

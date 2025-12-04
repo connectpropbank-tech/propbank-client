@@ -126,63 +126,18 @@ const Review = () => {
 
     setSubmitting(true);
     try {
-      // Build review details message based on reviewer type
-      let reviewDetails = '';
-      if (reviewerType === 'tenant') {
-        // Tenant reviewing owner
-        reviewDetails = `
-Owner Review by Tenant:
-- Owner Understandable: ${tenantPart.ownerUnderstandable || 'Not rated'}
-- Soft Nature: ${tenantPart.softNature || 'Not rated'}
-- Owner Transparent: ${tenantPart.ownerTransparent || 'Not rated'}
-- Problem Solver: ${tenantPart.problemSolver || 'Not rated'}
-- Easy on Refund Money: ${tenantPart.easyOnRefundMoney || 'Not rated'}
-- Overall Experience: ${tenantPart.overallExperience || 'Not rated'}`;
-      } else {
-        // Owner reviewing tenant
-        reviewDetails = `
-Tenant Review by Owner:
-- Tenant Understandable: ${ownerPart.tenantUnderstandable || 'Not rated'}
-- Soft Nature: ${ownerPart.softNature || 'Not rated'}
-- Tenant Transparent: ${ownerPart.tenantTransparent || 'Not rated'}
-- Problem Solver: ${ownerPart.problemSolver || 'Not rated'}
-- Punctual on Payment: ${ownerPart.punctualOnPayment || 'Not rated'}
-- Overall Experience: ${ownerPart.overallExperience || 'Not rated'}`;
-      }
-
-      // Prepare notification payload for admin
-      const notificationPayload = {
-        type: 'review',
-        title: `New Review: ${reviewerType === 'tenant' ? 'Tenant reviewing Owner' : 'Owner reviewing Tenant'}`,
-        message: `${user.displayName || user.email || 'A user'} has submitted a review${property ? ` for property: ${property.title || propertyId}` : ''}.${reviewDetails}`,
-        propertyId: propertyId || '',
-        propertyTitle: property?.title || '',
-        propertyAddress: property?.address || property?.city || '',
-        // Reviewer details
-        userId: user.uid,
-        userName: user.displayName || user.email || 'Unknown User',
-        userEmail: user.email || '',
-        // Review data
-        reviewerType: reviewerType,
-        tenantPart: reviewerType === 'tenant' ? tenantPart : null,
-        ownerPart: reviewerType === 'owner' ? ownerPart : null,
-        // Owner details (if available)
-        ownerId: property?.ownerUID || '',
-        ownerName: property?.ownerName || '',
-        ownerEmail: property?.ownerEmail || '',
-        timestamp: new Date().toISOString(),
-        isRead: false,
-        priority: 'medium'
-      };
-
-      console.log('📤 Sending Review Notification:', notificationPayload);
-
-      const response = await fetch(`${API_BASE_URL}/admin/notifications`, {
+      const response = await fetch(`${API_BASE_URL}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-User-ID': user.uid,
         },
-        body: JSON.stringify(notificationPayload),
+        body: JSON.stringify({
+          propertyId: propertyId || '',
+          reviewerType: reviewerType,
+          tenantPart: tenantPart,
+          ownerPart: ownerPart,
+        }),
       });
 
       const data = await response.json();

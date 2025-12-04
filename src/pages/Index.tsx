@@ -149,14 +149,14 @@ const HomePage = () => {
     };
   }, [hasMore, loading, loadingMore]);
 
-  // Banner carousel rotation - every 30 seconds
+  // Banner carousel rotation - every 10 seconds
   useEffect(() => {
     const bannerImages = siteSettings.bannerImages || [];
     if (bannerImages.length <= 1) return;
 
     const interval = setInterval(() => {
       setCurrentBannerIndex(prev => (prev + 1) % bannerImages.length);
-    }, 30000); // 30 seconds
+    }, 10000); // 10 seconds
 
     return () => clearInterval(interval);
   }, [siteSettings.bannerImages]);
@@ -169,6 +169,7 @@ const HomePage = () => {
       setAllProperties(fetchedProperties);
       
       // Update site settings from backend
+      console.log('🖼️ Banner Images:', response.siteSettings?.bannerImages);
       if (response.siteSettings) {
         setSiteSettings(prev => ({
           ...prev,
@@ -648,7 +649,7 @@ const HomePage = () => {
                   </p>
                 </div>
                 
-                <div className="glass-panel shadow-elegant rounded-xl overflow-hidden relative">
+                <div className="glass-panel shadow-elegant rounded-xl overflow-hidden relative w-full">
                   {/* Banner Carousel or Fallback Hero Image */}
                   {siteSettings.bannerImages && siteSettings.bannerImages.length > 0 ? (
                     <div className="relative w-full h-[300px] md:h-[350px]">
@@ -661,6 +662,11 @@ const HomePage = () => {
                           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
                             index === currentBannerIndex ? 'opacity-100' : 'opacity-0'
                           }`}
+                          onError={(e) => {
+                            console.error('Banner image failed to load:', bannerUrl);
+                            const target = e.target as HTMLImageElement;
+                            target.src = heroImage;
+                          }}
                         />
                       ))}
                       {/* Carousel Indicators */}

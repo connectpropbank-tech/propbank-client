@@ -23,6 +23,7 @@ interface RaisedRequest {
   serviceImage?: string;
   timestamp: string;
   isRead: boolean;
+  resolvedAt?: string; // Timestamp when marked as resolved
   priority?: string;
   createdAt: string;
   updatedAt: string;
@@ -352,6 +353,7 @@ const PropertyDetails = () => {
     );
   }
 
+
   return (
     <main className="container mx-auto py-8 px-4">
       <Helmet>
@@ -418,23 +420,31 @@ const PropertyDetails = () => {
               </CardContent>
             </Card>
 
-            {/* Property Image */}
-            {property.images && property.images.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Property Image</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="rounded-lg overflow-hidden border">
+            {/* Property Image - Always show with placeholder */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Property Image</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-lg overflow-hidden border bg-gradient-to-br from-gray-100 to-gray-200 relative h-64 flex items-center justify-center">
+                  {property.images && property.images.length > 0 && property.images[0] ? (                   
                     <img 
                       src={property.images[0]} 
                       alt={property.title}
-                      className="w-full h-64 object-cover"
+                      className="w-full h-full object-cover absolute inset-0"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
                     />
+                  ) : null}
+                  <div className="flex items-center justify-center text-gray-400 flex-col gap-2">
+                    <Home className="h-16 w-16" />
+                    <span className="text-sm">No image available</span>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Unit Details */}
             <Card>
@@ -950,7 +960,19 @@ const PropertyDetails = () => {
 
                       const getStatusBadge = (request: RaisedRequest) => {
                         if (request.isRead) {
-                          return <Badge variant="secondary" className="text-xs">Reviewed</Badge>;
+                          return (
+                            <div className="flex flex-col items-end gap-1">
+                              <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-300">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Resolved
+                              </Badge>
+                              {request.resolvedAt && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {new Date(request.resolvedAt).toLocaleDateString()} at {new Date(request.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                          );
                         }
                         return <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">Pending</Badge>;
                       };
@@ -1197,26 +1219,6 @@ const PropertyDetails = () => {
           </div>
         </div>
 
-        {/* Images */}
-        {property.images && property.images.length > 0 && (
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Property Images</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {property.images.map((image, index) => (
-                  <img
-                    key={index}
-                    src={image}
-                    alt={`Property ${index + 1}`}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </main>
   );

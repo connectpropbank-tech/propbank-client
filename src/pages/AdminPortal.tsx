@@ -42,6 +42,7 @@ interface AdminNotification {
   visitTime?: string;
   timestamp: string;
   isRead: boolean;
+  resolvedAt?: string; // Timestamp when marked as resolved
   priority: string;
   createdAt: string;
   updatedAt: string;
