@@ -233,9 +233,6 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
     }
   };
 
-  
-  
-
   return (
     <div className="flex flex-col items-center gap-4">
       {!userLoggedIn ? (
@@ -257,9 +254,9 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
             <Card className="w-full max-w-md mx-auto relative z-10 shadow-2xl border-2">
               <CardHeader className="text-center">
                 <CardTitle className="text-2xl font-semibold text-gray-800 mb-2">
-                  Welcome, {user.displayName}!
+                  Welcome, {user?.displayName}!
                 </CardTitle>
-                <p className="text-gray-600 mt-2">{user.email}</p>
+                <p className="text-gray-600 mt-2">{user?.email}</p>
                 <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mt-3">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="h-5 w-5 text-amber-600" />
@@ -282,7 +279,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                   <SelectTrigger className={`w-full mt-1 ${!userRole ? 'border-red-300 focus:border-red-500' : 'border-green-300'}`}>
                     <SelectValue placeholder="Choose your role" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="z-[10000]">
                     <SelectItem value="individual">
                       <div className="flex flex-col text-left">
                         <span className="text-sm font-medium">Individual</span>
