@@ -57,6 +57,7 @@ interface TenantData {
   notes: string;
   searchError?: string; // Error message if user not found
   searchingUser?: boolean; // Loading state for user search
+  searchTimeoutId?: NodeJS.Timeout; // Timeout ID for debounced search
 }
 
 const AddTenant = () => {
@@ -249,16 +250,17 @@ const AddTenant = () => {
           updated.userUID = undefined;
           updated.searchError = undefined;
           
+          // Clear previous timeout
+          if (tenant.searchTimeoutId) {
+            clearTimeout(tenant.searchTimeoutId);
+          }
+          
           // Debounce the search
           const timeoutId = setTimeout(() => {
             searchUserByPhone(tenantId, value);
           }, 1000); // Wait 1 second after user stops typing
           
-          // Store timeout ID to clear if phone changes again
-          if ((tenant as any).searchTimeoutId) {
-            clearTimeout((tenant as any).searchTimeoutId);
-          }
-          (updated as any).searchTimeoutId = timeoutId;
+          updated.searchTimeoutId = timeoutId;
         }
         
         return updated;
@@ -494,8 +496,8 @@ const AddTenant = () => {
   return (
     <main className="container mx-auto py-8 px-4 pb-20">
       <Helmet>
-        <title>Add Tenant — Property Management</title>
-        <meta name="description" content="Add tenant details for rental property" />
+        <title>{existingTenants.length > 0 ? 'Tenant Details' : 'Add Tenant'} — Property Management</title>
+        <meta name="description" content={existingTenants.length > 0 ? "View tenant details for rental property" : "Add tenant details for rental property"} />
       </Helmet>
 
       <div className="max-w-4xl mx-auto">
@@ -511,7 +513,7 @@ const AddTenant = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold">
-                {existingTenants.length > 0 ? 'Tenant Management' : 'Add Tenants'}
+                {existingTenants.length > 0 ? 'Tenant Details' : 'Add Tenants'}
               </h1>
               <p className="text-lg text-muted-foreground">
                 {propertyTitle ? `${propertyTitle} - ` : ''}Property ID: {propertyId}
@@ -526,6 +528,21 @@ const AddTenant = () => {
               <User className="h-5 w-5" />
               <h2 className="text-2xl font-bold">Current Tenants ({existingTenants.length})</h2>
             </div>
+            
+            {/* Property Occupied Notice */}
+            <div className="mb-4 p-4 border border-orange-200 bg-orange-50 rounded-lg">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <span className="text-orange-600">🏠</span>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-orange-800">
+                    This property is currently occupied. You cannot add or edit tenants while the property has active tenants.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
             <div className="grid gap-4">
               {existingTenants.map((tenant, index) => (
                 <Card key={tenant.id} className="border-2 border-blue-200 bg-blue-50/50">
@@ -624,6 +641,8 @@ const AddTenant = () => {
           </div>
         )}
 
+        {/* Only show Add Tenant form if there are no existing tenants */}
+        {existingTenants.length === 0 && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
@@ -917,24 +936,6 @@ const AddTenant = () => {
                         placeholder="e.g., 5 (for 5th of each month)"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor={`escalationPercentage-${tenant.id}`}>Annual Escalation (%)</Label>
-                      <Input
-                        id={`escalationPercentage-${tenant.id}`}
-                        value={tenant.escalationPercentage}
-                        onChange={(e) => handleInputChange(tenant.id, 'escalationPercentage', e.target.value)}
-                        placeholder="e.g., 5% or ₹5000/year"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`escalationAmount-${tenant.id}`}>Escalation Amount (₹)</Label>
-                      <Input
-                        id={`escalationAmount-${tenant.id}`}
-                        value={tenant.escalationAmount}
-                        onChange={(e) => handleInputChange(tenant.id, 'escalationAmount', e.target.value)}
-                        placeholder="Enter escalation amount"
-                      />
-                    </div>
                   </div>
                 </div>
 
@@ -999,6 +1000,7 @@ const AddTenant = () => {
             </Button>
           </div>
         </div>
+        )}
       </div>
     </main>
   );

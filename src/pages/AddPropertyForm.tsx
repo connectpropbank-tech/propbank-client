@@ -8,14 +8,16 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Building2, Upload, X, Image as ImageIcon, CheckSquare } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Building2, Upload, X, Image as ImageIcon, CheckSquare, User } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { auth } from "../firebase";
-import { User } from "firebase/auth";
+import { User as FirebaseUser } from "firebase/auth";
 import { useState, useRef } from "react";
 import { API_BASE_URL } from "../utils/config";
 import { FurnishedChecklistModal } from "@/components/FurnishedChecklistModal";
+import { uploadBase64Image } from "../services/uploadService";
 
 const formSchema = z.object({
   // Property Basic Details
@@ -40,6 +42,21 @@ const formSchema = z.object({
   mobileNumber: z.string().optional(),
   primaryNo: z.string().optional(),
   ultNo: z.string().optional(),
+  emergencyContact: z.string().optional(),
+  
+  // Tenant Employment Details
+  employmentStatus: z.string().optional(),
+  employer: z.string().optional(),
+  
+  // Tenant Spouse Information
+  isMarried: z.boolean().optional(),
+  spouseFirstName: z.string().optional(),
+  spouseLastName: z.string().optional(),
+  spouseEmail: z.string().optional(),
+  spousePhone: z.string().optional(),
+  spouseEmploymentStatus: z.string().optional(),
+  spouseEmployer: z.string().optional(),
+  spouseNotes: z.string().optional(),
   
   // Pricing Details (conditional based on listing type)
   monthlyRent: z.string().optional(), // For rent
@@ -75,6 +92,7 @@ const formSchema = z.object({
   maintenanceToBePaidBy: z.string().optional(),
   projectCondition: z.string().optional(),
   rentalStatus: z.string().optional(), // New field to track if property is rented
+  possessionDate: z.string().optional(), // Possession date for available for rent
   
   // Furnished Checklist
   furnishedChecklist: z.array(z.object({
@@ -82,7 +100,7 @@ const formSchema = z.object({
     name: z.string(),
     checked: z.boolean(),
     quantity: z.number().min(1).default(1),
-    category: z.enum(['basic', 'kitchen', 'bedroom', 'living', 'appliances', 'semifurnished', 'other'])
+    category: z.enum(['basic', 'kitchen', 'bedroom', 'living', 'appliances', 'semifurnished', 'office', 'infrastructure', 'safety', 'machinery', 'storage', 'utilities', 'other'])
   })).optional(),
   
   // Images & Comments
@@ -100,9 +118,10 @@ const AddPropertyForm = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFurnishedModal, setShowFurnishedModal] = useState(false);
   const [furnishedChecklist, setFurnishedChecklist] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Image handling functions
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
@@ -118,13 +137,53 @@ const AddPropertyForm = () => {
 
     const file = files[0];
     if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const result = e.target?.result as string;
-        setUploadedImages([result]);
-        form.setValue('images', [result]);
-      };
-      reader.readAsDataURL(file);
+      setIsUploading(true);
+      
+      try {
+        // Convert file to base64
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const base64Image = e.target?.result as string;
+          
+          try {
+            // Upload to Cloudflare R2
+            const uploadedUrl = await uploadBase64Image(base64Image, 'properties', 'building');
+            
+            console.log('✅ R2 Upload successful, URL:', uploadedUrl);
+            
+            setUploadedImages([uploadedUrl]);
+            form.setValue('images', [uploadedUrl]);
+            
+            toast({
+              title: "Image uploaded",
+              description: "Building image uploaded successfully to cloud storage.",
+            });
+          } catch (uploadError) {
+            console.error('R2 upload failed:', uploadError);
+            // Fallback to base64 if R2 upload fails
+            console.log('⚠️ Falling back to base64 storage');
+            setUploadedImages([base64Image]);
+            form.setValue('images', [base64Image]);
+            
+            toast({
+              title: "Image saved locally",
+              description: "Cloud upload failed, image will be uploaded when saving property.",
+              variant: "destructive",
+            });
+          } finally {
+            setIsUploading(false);
+          }
+        };
+        reader.readAsDataURL(file);
+      } catch (error) {
+        console.error('Error reading file:', error);
+        setIsUploading(false);
+        toast({
+          title: "Upload failed",
+          description: "Failed to read the image file.",
+          variant: "destructive",
+        });
+      }
     }
 
     // Reset file input
@@ -154,6 +213,24 @@ const AddPropertyForm = () => {
       carpetArea: "",
       plotArea: "",
       constructedArea: "",
+      // Tenant Information
+      tenantName: "",
+      personName: "",
+      mobileNumber: "",
+      primaryNo: "",
+      ultNo: "",
+      emergencyContact: "",
+      employmentStatus: "",
+      employer: "",
+      isMarried: false,
+      spouseFirstName: "",
+      spouseLastName: "",
+      spouseEmail: "",
+      spousePhone: "",
+      spouseEmploymentStatus: "",
+      spouseEmployer: "",
+      spouseNotes: "",
+      // Pricing
       monthlyRent: "",
       sellingPrice: "",
       monthlyRent1stYear: "",
@@ -177,6 +254,7 @@ const AddPropertyForm = () => {
       maintenanceToBePaidBy: "",
       projectCondition: "",
       rentalStatus: "",
+      possessionDate: "",
       furnishedChecklist: [],
       images: [],
       specificComments: "",
@@ -264,11 +342,23 @@ const AddPropertyForm = () => {
         return;
       }
 
+      // Filter furnished checklist to only include checked items (saves DB space)
+      const checkedFurnishedItems = furnishedChecklist.filter(item => item.checked);
+
+      // Debug: Log images state
+      console.log('uploadedImages state:', uploadedImages);
+      console.log('form.getValues("images"):', form.getValues('images'));
+
       // Prepare property data for backend API
       const propertyData = {
         ...data,
+        images: uploadedImages, // Ensure images from state are included
+        furnishedChecklist: checkedFurnishedItems, // Only include checked items
         ownerUID: currentUser.uid,
       };
+
+      console.log('Sending property data:', propertyData); // Debug log
+      console.log('Images being sent:', propertyData.images); // Debug log
 
       // Send to backend API
       const response = await fetch(`${API_BASE_URL}/properties`, {
@@ -322,7 +412,7 @@ const AddPropertyForm = () => {
         ];
       case "industrial":
         return [
-          { value: "unit-ncc-shed", label: "Unit / NCC / Shed / Land" },
+          { value: "unit-rcc-shed", label: "Unit / RCC / Shed / Land" },
           { value: "ground-floor", label: "Ground / Ground+1 / etc ( if RCC )" },
         ];
       default:
@@ -415,7 +505,7 @@ const AddPropertyForm = () => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Configuration / (Structure)</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ""}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select configuration" />
@@ -562,6 +652,22 @@ const AddPropertyForm = () => {
                       </FormItem>
                     )}
                   />
+                  {/* Plot Area - Only for Industrial properties */}
+                  {selectedPropertyType === "industrial" && (
+                    <FormField
+                      control={form.control}
+                      name="plotArea"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Plot Area (Sqft)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter plot area" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 {/* Tenant Information - Only show when property is already rented */}
@@ -625,6 +731,197 @@ const AddPropertyForm = () => {
                         </FormItem>
                       )}
                     />
+
+                    <FormField control={form.control} name="emergencyContact"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Emergency Contact</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Emergency contact name and phone" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Employment Details Section */}
+                    <div className="lg:col-span-3 mt-6 pt-4 border-t">
+                      <h4 className="text-md font-medium mb-4 text-gray-700 flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Employment Details
+                      </h4>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="employmentStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Employment Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="employed">Employed</SelectItem>
+                              <SelectItem value="self-employed">Self-Employed</SelectItem>
+                              <SelectItem value="unemployed">Unemployed</SelectItem>
+                              <SelectItem value="student">Student</SelectItem>
+                              <SelectItem value="retired">Retired</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField control={form.control} name="employer"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Employer/Company</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Company name" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Spouse Information Section */}
+                    <div className="lg:col-span-3 mt-6 pt-4 border-t">
+                      <FormField
+                        control={form.control}
+                        name="isMarried"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value ?? false}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>Is the tenant married?</FormLabel>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Spouse Details - Only show when isMarried is true */}
+                    {form.watch("isMarried") && (
+                      <>
+                        <div className="lg:col-span-3 p-4 bg-slate-50 rounded-lg border">
+                          <h4 className="text-md font-medium mb-4 text-gray-700 flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            Spouse Information
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField control={form.control} name="spouseFirstName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Spouse First Name <span className="text-red-500">*</span></FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Enter spouse first name" {...field} value={field.value || ""} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField control={form.control} name="spouseLastName"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Spouse Last Name <span className="text-red-500">*</span></FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Enter spouse last name" {...field} value={field.value || ""} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField control={form.control} name="spouseEmail"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Spouse Email</FormLabel>
+                                  <FormControl>
+                                    <Input type="email" placeholder="spouse@example.com" {...field} value={field.value || ""} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField control={form.control} name="spousePhone"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Spouse Phone <span className="text-red-500">*</span></FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="+1 (555) 123-4567" {...field} value={field.value || ""} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField
+                              control={form.control}
+                              name="spouseEmploymentStatus"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Spouse Employment Status</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      <SelectItem value="employed">Employed</SelectItem>
+                                      <SelectItem value="self-employed">Self-Employed</SelectItem>
+                                      <SelectItem value="unemployed">Unemployed</SelectItem>
+                                      <SelectItem value="student">Student</SelectItem>
+                                      <SelectItem value="retired">Retired</SelectItem>
+                                      <SelectItem value="homemaker">Homemaker</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <FormField control={form.control} name="spouseEmployer"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Spouse Employer/Company</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="Company name" {...field} value={field.value || ""} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+
+                            <div className="md:col-span-2">
+                              <FormField control={form.control} name="spouseNotes"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Spouse Additional Notes</FormLabel>
+                                    <FormControl>
+                                      <Textarea placeholder="Any additional notes about the spouse" rows={3} {...field} value={field.value || ""} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     {/* Agreement Details Section */}
                     <div className="lg:col-span-3 mt-6 pt-4 border-t">
@@ -868,19 +1165,39 @@ const AddPropertyForm = () => {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="agreementPeriod"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Agreement Duration (in Months)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter agreement duration in months" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Possession Date - Only for Available for Rent */}
+                  {form.watch("rentalStatus") === "available" && (
+                    <FormField
+                      control={form.control}
+                      name="possessionDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Possession Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" placeholder="Select possession date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Agreement Duration - Only for Already Rented Out */}
+                  {form.watch("rentalStatus") === "rented" && (
+                    <FormField
+                      control={form.control}
+                      name="agreementPeriod"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Agreement Duration (in Months)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter agreement duration in months" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   {/* <div className="grid grid-cols-2 gap-2">
                     <FormField
@@ -915,8 +1232,8 @@ const AddPropertyForm = () => {
                 )}
 
 
-                {/* Notice & Lock-in Period - Only for Rent */}
-                {form.watch("listingType") === "rent" && (
+                {/* Notice & Lock-in Period - Only for Rented properties */}
+                {form.watch("listingType") === "rent" && form.watch("rentalStatus") === "rented" && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 border rounded-lg">
                     <div className="lg:col-span-2">
                       <h3 className="text-lg font-semibold mb-4">Notice and Lock-in Period</h3>
@@ -1082,11 +1399,11 @@ const AddPropertyForm = () => {
                                 type="button"
                                 variant="outline"
                                 onClick={() => fileInputRef.current?.click()}
-                                disabled={uploadedImages.length >= 1}
+                                disabled={uploadedImages.length >= 1 || isUploading}
                                 className="flex items-center gap-2"
                               >
                                 <Upload className="h-4 w-4" />
-                                {uploadedImages.length === 0 ? 'Upload Building Image' : 'Image Uploaded'}
+                                {isUploading ? 'Uploading...' : uploadedImages.length === 0 ? 'Upload Building Image' : 'Image Uploaded'}
                               </Button>
                               <input
                                 ref={fileInputRef}
@@ -1186,6 +1503,7 @@ const AddPropertyForm = () => {
           form.setValue('furnishedChecklist', checklist);
         }}
         initialChecklist={furnishedChecklist}
+        propertyType={selectedPropertyType as 'residential' | 'commercial' | 'industrial'}
       />
     </main>
   );

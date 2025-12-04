@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Building2, CheckSquare } from "lucide-react";
+import { ArrowLeft, Building2, CheckSquare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -16,6 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { X } from "lucide-react";
 import { API_BASE_URL } from "../utils/config";
 import { FurnishedChecklistModal } from "@/components/FurnishedChecklistModal";
+import { uploadBase64Image } from "@/services/uploadService";
 
 const formSchema = z.object({
   propertyTitle: z.string().min(1, "Property title is required"),
@@ -63,7 +64,7 @@ const formSchema = z.object({
     name: z.string(),
     checked: z.boolean(),
     quantity: z.number().min(1).default(1),
-    category: z.enum(['basic', 'kitchen', 'bedroom', 'living', 'appliances', 'other', 'semifurnished'])
+    category: z.enum(['basic', 'kitchen', 'bedroom', 'living', 'appliances', 'other', 'semifurnished', 'storage', 'office', 'infrastructure', 'safety', 'machinery', 'utilities'])
   })).optional(),
 });
 
@@ -115,9 +116,12 @@ interface Property {
     id: string;
     name: string;
     checked: boolean;
-    category: 'basic' | 'kitchen' | 'bedroom' | 'living' | 'appliances' | 'other' | 'semifurnished';
+    category: 'basic' | 'kitchen' | 'bedroom' | 'living' | 'appliances' | 'other' | 'semifurnished' | 'storage' | 'office' | 'infrastructure' | 'safety' | 'machinery' | 'utilities';
   }[];
   ownerUID: string;
+  
+  // Tenants array
+  tenants?: any[];
   
   // Status and timestamps
   isActive: boolean;
@@ -136,6 +140,7 @@ const EditProperty = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showFurnishedModal, setShowFurnishedModal] = useState(false);
   const [furnishedChecklist, setFurnishedChecklist] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -303,7 +308,7 @@ const EditProperty = () => {
   };
 
   // Image handling functions
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files) return;
 
@@ -317,20 +322,61 @@ const EditProperty = () => {
       return;
     }
 
-    Array.from(files).forEach((file) => {
+    setIsUploading(true);
+
+    for (const file of Array.from(files)) {
       if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const result = e.target?.result as string;
-          setUploadedImages(prev => {
-            const newImages = [...prev, result];
-            form.setValue('images', newImages);
-            return newImages;
+        try {
+          // Convert file to base64
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = reject;
           });
-        };
-        reader.readAsDataURL(file);
+          reader.readAsDataURL(file);
+          const base64Image = await base64Promise;
+
+          try {
+            // Upload to Cloudflare R2
+            const uploadedUrl = await uploadBase64Image(base64Image, 'properties', `edit-${propertyId}`);
+            
+            setUploadedImages(prev => {
+              const newImages = [...prev, uploadedUrl];
+              form.setValue('images', newImages);
+              return newImages;
+            });
+            
+            toast({
+              title: "Image uploaded",
+              description: "Image uploaded successfully to cloud storage.",
+            });
+          } catch (uploadError) {
+            console.error('R2 upload failed:', uploadError);
+            // Fallback to base64 if R2 upload fails
+            setUploadedImages(prev => {
+              const newImages = [...prev, base64Image];
+              form.setValue('images', newImages);
+              return newImages;
+            });
+            
+            toast({
+              title: "Image saved locally",
+              description: "Cloud upload failed, image will be uploaded when saving.",
+              variant: "destructive",
+            });
+          }
+        } catch (error) {
+          console.error('Error reading file:', error);
+          toast({
+            title: "Upload failed",
+            description: "Failed to read the image file.",
+            variant: "destructive",
+          });
+        }
       }
-    });
+    }
+
+    setIsUploading(false);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -415,12 +461,20 @@ const EditProperty = () => {
         return;
       }
 
-      // Prepare update data
+      // Filter furnished checklist to only include checked items (saves DB space)
+      const checkedFurnishedItems = furnishedChecklist.filter(item => item.checked);
+
+      // Prepare update data - map propertyTitle to title for backend consistency
+      const { propertyTitle, ...restData } = data;
       const updateData = {
-        ...data,
+        ...restData,
+        title: propertyTitle, // Backend expects 'title' field
+        images: uploadedImages, // Ensure images from state are included
+        furnishedChecklist: checkedFurnishedItems, // Only include checked items
         ownerUID: currentUser.uid,
-        furnishedChecklist: furnishedChecklist,
       };
+
+      console.log('Sending update data:', updateData); // Debug log
 
       // Send update request to backend
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
@@ -468,8 +522,9 @@ const EditProperty = () => {
     
     // Check if property is already rented or sold
     const hasActiveTenant = property.tenantName && property.tenantName.trim() !== "";
+    const hasTenantsInArray = property.tenants && property.tenants.length > 0;
     const hasActiveAgreement = property.agreementStartDate && property.agreementEndDate;
-    const isCurrentlyRented = property.isRented || hasActiveTenant || hasActiveAgreement;
+    const isCurrentlyRented = property.isRented || hasActiveTenant || hasTenantsInArray || hasActiveAgreement;
     const isCurrentlySold = property.isSold;
     
     return !isCurrentlyRented && !isCurrentlySold;
@@ -479,7 +534,8 @@ const EditProperty = () => {
     if (!property) return "";
     
     const hasActiveTenant = property.tenantName && property.tenantName.trim() !== "";
-    const isCurrentlyRented = property.isRented || hasActiveTenant;
+    const hasTenantsInArray = property.tenants && property.tenants.length > 0;
+    const isCurrentlyRented = property.isRented || hasActiveTenant || hasTenantsInArray;
     const isCurrentlySold = property.isSold;
     
     if (isCurrentlySold) {
@@ -802,9 +858,14 @@ const EditProperty = () => {
                         type="button"
                         variant="outline"
                         onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadedImages.length >= 6 || !isPropertyEditable()}
+                        disabled={uploadedImages.length >= 6 || !isPropertyEditable() || isUploading}
                       >
-                        {!isPropertyEditable() 
+                        {isUploading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : !isPropertyEditable() 
                           ? 'Property cannot be edited' 
                           : uploadedImages.length >= 6 
                             ? 'Maximum 6 images uploaded' 

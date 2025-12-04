@@ -1,14 +1,13 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, FileText, Loader2, Upload, X, Download } from "lucide-react";
+import { ArrowLeft, FileText, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { auth } from "@/firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { API_BASE_URL } from "@/utils/config";
@@ -25,20 +24,9 @@ const InspectionReport = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   
-  // Document fields
-  const [possessionLetterFile, setPossessionLetterFile] = useState<string>("");
-  const [handoverLetterFile, setHandoverLetterFile] = useState<string>("");
+  // Text fields only
   const [keysDetails, setKeysDetails] = useState<string>("");
-  const [electricityBillMeterImage, setElectricityBillMeterImage] = useState<string>("");
-  const [electricityBillReceipt, setElectricityBillReceipt] = useState<string>("");
-  const [apartmentConditionImage, setApartmentConditionImage] = useState<string>("");
-  const [mglBillMeterImage, setMglBillMeterImage] = useState<string>("");
-  const [mglBillReceipt, setMglBillReceipt] = useState<string>("");
-  const [internetImage, setInternetImage] = useState<string>("");
-  const [internetReceipt, setInternetReceipt] = useState<string>("");
   const [otherDetails, setOtherDetails] = useState<string>("");
-
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -85,90 +73,6 @@ const InspectionReport = () => {
     }
   }, [propertyId]);
 
-  const handleFileUpload = (field: string, event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/') && !file.type.includes('pdf')) {
-      toast({
-        title: "Invalid File",
-        description: "Please upload an image or PDF file",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const result = e.target?.result as string;
-      switch (field) {
-        case 'possessionLetterFile':
-          setPossessionLetterFile(result);
-          break;
-        case 'handoverLetterFile':
-          setHandoverLetterFile(result);
-          break;
-        case 'electricityBillMeterImage':
-          setElectricityBillMeterImage(result);
-          break;
-        case 'electricityBillReceipt':
-          setElectricityBillReceipt(result);
-          break;
-        case 'apartmentConditionImage':
-          setApartmentConditionImage(result);
-          break;
-        case 'mglBillMeterImage':
-          setMglBillMeterImage(result);
-          break;
-        case 'mglBillReceipt':
-          setMglBillReceipt(result);
-          break;
-        case 'internetImage':
-          setInternetImage(result);
-          break;
-        case 'internetReceipt':
-          setInternetReceipt(result);
-          break;
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const removeFile = (field: string) => {
-    switch (field) {
-      case 'possessionLetterFile':
-        setPossessionLetterFile("");
-        break;
-      case 'handoverLetterFile':
-        setHandoverLetterFile("");
-        break;
-      case 'electricityBillMeterImage':
-        setElectricityBillMeterImage("");
-        break;
-      case 'electricityBillReceipt':
-        setElectricityBillReceipt("");
-        break;
-      case 'apartmentConditionImage':
-        setApartmentConditionImage("");
-        break;
-      case 'mglBillMeterImage':
-        setMglBillMeterImage("");
-        break;
-      case 'mglBillReceipt':
-        setMglBillReceipt("");
-        break;
-      case 'internetImage':
-        setInternetImage("");
-        break;
-      case 'internetReceipt':
-        setInternetReceipt("");
-        break;
-    }
-    if (fileInputRefs.current[field]) {
-      fileInputRefs.current[field]!.value = '';
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -212,16 +116,7 @@ const InspectionReport = () => {
           propertyId: propertyId || '',
           reportType: reportType,
           report: report.trim(),
-          possessionLetterFile: possessionLetterFile,
-          handoverLetterFile: handoverLetterFile,
           keysDetails: keysDetails,
-          electricityBillMeterImage: electricityBillMeterImage,
-          electricityBillReceipt: electricityBillReceipt,
-          apartmentConditionImage: apartmentConditionImage,
-          mglBillMeterImage: mglBillMeterImage,
-          mglBillReceipt: mglBillReceipt,
-          internetImage: internetImage,
-          internetReceipt: internetReceipt,
           otherDetails: otherDetails,
         }),
       });
@@ -236,16 +131,7 @@ const InspectionReport = () => {
         // Reset form
         setReportType("");
         setReport("");
-        setPossessionLetterFile("");
-        setHandoverLetterFile("");
         setKeysDetails("");
-        setElectricityBillMeterImage("");
-        setElectricityBillReceipt("");
-        setApartmentConditionImage("");
-        setMglBillMeterImage("");
-        setMglBillReceipt("");
-        setInternetImage("");
-        setInternetReceipt("");
         setOtherDetails("");
         // Navigate back
         navigate(`/property/${propertyId}`);
@@ -273,44 +159,6 @@ const InspectionReport = () => {
       </div>
     );
   }
-
-  const renderFileUpload = (field: string, label: string, placeholder: string, value: string) => (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      {value ? (
-        <div className="flex items-center gap-2 p-2 border rounded">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm flex-1">File uploaded</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => removeFile(field)}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <Input
-            type="file"
-            accept="image/*,application/pdf"
-            onChange={(e) => handleFileUpload(field, e)}
-            ref={(el) => (fileInputRefs.current[field] = el)}
-            className="hidden"
-            id={field}
-          />
-          <Label
-            htmlFor={field}
-            className="flex items-center gap-2 cursor-pointer border rounded p-2 hover:bg-gray-50"
-          >
-            <Upload className="h-4 w-4" />
-            <span className="text-sm">{placeholder}</span>
-          </Label>
-        </div>
-      )}
-    </div>
-  );
 
   return (
     <>
@@ -357,15 +205,7 @@ const InspectionReport = () => {
                 <div className="space-y-6 border rounded-lg p-4">
                   <h3 className="font-semibold text-lg">1. On Possession</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Download File (Possession Letter with fixture list)</Label>
-                      <Button type="button" variant="outline" className="w-full mt-2">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Template
-                      </Button>
-                    </div>
-                    {renderFileUpload('possessionLetterFile', 'Upload File / Attach Possession Letter', 'Upload Possession Letter', possessionLetterFile)}
+                  <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="keysDetails">Keys Details</Label>
                       <Textarea
@@ -375,25 +215,6 @@ const InspectionReport = () => {
                         onChange={(e) => setKeysDetails(e.target.value)}
                         rows={3}
                       />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {renderFileUpload('electricityBillMeterImage', 'Electricity Bill - Upload Image of Meter', 'Upload Meter Image', electricityBillMeterImage)}
-                      {renderFileUpload('electricityBillReceipt', 'Electricity Bill - Attach Payment Receipt', 'Attach Receipt', electricityBillReceipt)}
-                    </div>
-
-                    {renderFileUpload('apartmentConditionImage', 'Apartment Condition - Upload Image of Premise', 'Upload Premise Image', apartmentConditionImage)}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {renderFileUpload('mglBillMeterImage', 'MGL Bill - Upload Image of Meter', 'Upload Meter Image', mglBillMeterImage)}
-                      {renderFileUpload('mglBillReceipt', 'MGL Bill - Attach Payment Receipt', 'Attach Receipt', mglBillReceipt)}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {renderFileUpload('internetImage', 'Internet, any landline (if have) - Upload Image', 'Upload Image', internetImage)}
-                      {renderFileUpload('internetReceipt', 'Internet, any landline (if have) - Attach Payment Receipt', 'Attach Receipt', internetReceipt)}
                     </div>
 
                     <div className="space-y-2">
@@ -415,15 +236,7 @@ const InspectionReport = () => {
                 <div className="space-y-6 border rounded-lg p-4">
                   <h3 className="font-semibold text-lg">2. On Handover</h3>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Download File (Handover Letter with fixture list)</Label>
-                      <Button type="button" variant="outline" className="w-full mt-2">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Template
-                      </Button>
-                    </div>
-                    {renderFileUpload('handoverLetterFile', 'Upload File / Attach Handover Letter', 'Upload Handover Letter', handoverLetterFile)}
+                  <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="keysDetails">Keys Details</Label>
                       <Textarea
@@ -433,25 +246,6 @@ const InspectionReport = () => {
                         onChange={(e) => setKeysDetails(e.target.value)}
                         rows={3}
                       />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {renderFileUpload('electricityBillMeterImage', 'Electricity Bill - Upload Image of Meter', 'Upload Meter Image', electricityBillMeterImage)}
-                      {renderFileUpload('electricityBillReceipt', 'Electricity Bill - Attach Payment Receipt', 'Attach Receipt', electricityBillReceipt)}
-                    </div>
-
-                    {renderFileUpload('apartmentConditionImage', 'Apartment Condition - Upload Image of Premise', 'Upload Premise Image', apartmentConditionImage)}
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {renderFileUpload('mglBillMeterImage', 'MGL Bill - Upload Image of Meter', 'Upload Meter Image', mglBillMeterImage)}
-                      {renderFileUpload('mglBillReceipt', 'MGL Bill - Attach Payment Receipt', 'Attach Receipt', mglBillReceipt)}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {renderFileUpload('internetImage', 'Internet, any landline (if have) - Upload Image', 'Upload Image', internetImage)}
-                      {renderFileUpload('internetReceipt', 'Internet, any landline (if have) - Attach Payment Receipt', 'Attach Receipt', internetReceipt)}
                     </div>
 
                     <div className="space-y-2">

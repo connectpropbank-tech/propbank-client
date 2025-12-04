@@ -19,6 +19,7 @@ export interface ServiceRequest {
   serviceName: string;
   propertyId?: string;
   message: string;
+  image?: string; // Image URL for service request
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   adminNotes?: string;
   createdAt: string;
@@ -60,6 +61,7 @@ export const serviceApi = {
     serviceId: string;
     propertyId?: string;
     message: string;
+    image?: string; // Base64 image string
   }): Promise<ServiceRequest> {
     const response = await fetch(`${API_BASE_URL}/service-requests`, {
       method: 'POST',

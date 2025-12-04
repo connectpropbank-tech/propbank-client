@@ -72,7 +72,11 @@ const HomePage = () => {
     heroSubtitle: "Manage, list your properties and find your dream house— all in one platform",
     announcementText: "",
     isAnnouncementActive: false,
+    bannerImages: [],
   });
+
+  // Banner carousel state
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
 
   const {
     searchQuery,
@@ -144,6 +148,18 @@ const HomePage = () => {
       }
     };
   }, [hasMore, loading, loadingMore]);
+
+  // Banner carousel rotation - every 30 seconds
+  useEffect(() => {
+    const bannerImages = siteSettings.bannerImages || [];
+    if (bannerImages.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentBannerIndex(prev => (prev + 1) % bannerImages.length);
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [siteSettings.bannerImages]);
 
   const loadAllProperties = async () => {
     try {
@@ -632,13 +648,47 @@ const HomePage = () => {
                   </p>
                 </div>
                 
-                <div className="glass-panel shadow-elegant rounded-xl overflow-hidden">
-                  <img
-                    src={heroImage}
-                    alt="Modern homes and city skyline for a real estate app hero"
-                    loading="eager"
-                    className="w-full h-[300px] md:h-[350px] object-cover"
-                  />
+                <div className="glass-panel shadow-elegant rounded-xl overflow-hidden relative">
+                  {/* Banner Carousel or Fallback Hero Image */}
+                  {siteSettings.bannerImages && siteSettings.bannerImages.length > 0 ? (
+                    <div className="relative w-full h-[300px] md:h-[350px]">
+                      {siteSettings.bannerImages.map((bannerUrl, index) => (
+                        <img
+                          key={index}
+                          src={bannerUrl}
+                          alt={`Banner ${index + 1}`}
+                          loading={index === 0 ? "eager" : "lazy"}
+                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                            index === currentBannerIndex ? 'opacity-100' : 'opacity-0'
+                          }`}
+                        />
+                      ))}
+                      {/* Carousel Indicators */}
+                      {siteSettings.bannerImages.length > 1 && (
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
+                          {siteSettings.bannerImages.map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setCurrentBannerIndex(index)}
+                              className={`w-2 h-2 rounded-full transition-all ${
+                                index === currentBannerIndex 
+                                  ? 'bg-white w-4' 
+                                  : 'bg-white/50 hover:bg-white/75'
+                              }`}
+                              aria-label={`Go to slide ${index + 1}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <img
+                      src={heroImage}
+                      alt="Modern homes and city skyline for a real estate app hero"
+                      loading="eager"
+                      className="w-full h-[300px] md:h-[350px] object-cover"
+                    />
+                  )}
                 </div>
               </div>
 

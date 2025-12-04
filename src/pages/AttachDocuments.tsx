@@ -354,7 +354,7 @@ const AttachDocuments = () => {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  2. Attach Documents
+                    Attach Documents
                 </CardTitle>
                 <CardDescription className="mt-2">
                   {property && `Property: ${property.title || property.id}`}
@@ -559,32 +559,74 @@ const AttachDocuments = () => {
             </DialogHeader>
             {viewingDocument && (
               <div className="mt-4">
-                {viewingDocument.fileUrl.startsWith('data:image/') ? (
-                  <img
-                    src={viewingDocument.fileUrl}
-                    alt={viewingDocument.documentName}
-                    className="max-w-full h-auto rounded-md border"
-                  />
-                ) : viewingDocument.fileUrl.includes('pdf') || viewingDocument.fileUrl.startsWith('data:application/pdf') ? (
-                  <iframe
-                    src={viewingDocument.fileUrl}
-                    className="w-full h-[600px] border rounded"
-                    title={viewingDocument.documentName}
-                  />
-                ) : (
-                  <div className="p-8 text-center text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Preview not available for this file type</p>
-                    <a
-                      href={viewingDocument.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline mt-2 inline-block"
-                    >
-                      Download File
-                    </a>
-                  </div>
-                )}
+                {(() => {
+                  const fileUrl = viewingDocument.fileUrl;
+                  const isBase64Image = fileUrl.startsWith('data:image/');
+                  const isR2OrStorageImage = (fileUrl.includes('r2.dev') || fileUrl.includes('storage.googleapis.com') || fileUrl.includes('pub-')) && 
+                    (fileUrl.includes('.jpg') || fileUrl.includes('.jpeg') || fileUrl.includes('.png') || fileUrl.includes('.gif') || fileUrl.includes('.webp'));
+                  const isBase64Pdf = fileUrl.startsWith('data:application/pdf');
+                  const isR2OrStoragePdf = (fileUrl.includes('r2.dev') || fileUrl.includes('storage.googleapis.com') || fileUrl.includes('pub-')) && fileUrl.includes('.pdf');
+                  
+                  if (isBase64Image || isR2OrStorageImage) {
+                    return (
+                      <img
+                        src={fileUrl}
+                        alt={viewingDocument.documentName}
+                        className="max-w-full h-auto rounded-md border"
+                      />
+                    );
+                  } else if (isBase64Pdf || isR2OrStoragePdf) {
+                    return (
+                      <iframe
+                        src={fileUrl}
+                        className="w-full h-[600px] border rounded"
+                        title={viewingDocument.documentName}
+                      />
+                    );
+                  } else {
+                    // For any URL that looks like an image or PDF, try to display it
+                    const lowerUrl = fileUrl.toLowerCase();
+                    if (lowerUrl.endsWith('.jpg') || lowerUrl.endsWith('.jpeg') || lowerUrl.endsWith('.png') || lowerUrl.endsWith('.gif') || lowerUrl.endsWith('.webp')) {
+                      return (
+                        <img
+                          src={fileUrl}
+                          alt={viewingDocument.documentName}
+                          className="max-w-full h-auto rounded-md border"
+                        />
+                      );
+                    } else if (lowerUrl.endsWith('.pdf')) {
+                      return (
+                        <iframe
+                          src={fileUrl}
+                          className="w-full h-[600px] border rounded"
+                          title={viewingDocument.documentName}
+                        />
+                      );
+                    } else {
+                      // Try to display as image for any https URL (R2 URLs)
+                      return (
+                        <img
+                          src={fileUrl}
+                          alt={viewingDocument.documentName}
+                          className="max-w-full h-auto rounded-md border"
+                          onError={(e) => {
+                            // If image fails to load, show download link
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement!.innerHTML = `
+                              <div class="p-8 text-center text-muted-foreground">
+                                <p>Preview not available</p>
+                                <a href="${fileUrl}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline mt-2 inline-block">
+                                  Open File
+                                </a>
+                              </div>
+                            `;
+                          }}
+                        />
+                      );
+                    }
+                  }
+                })()}
                 {viewingDocument.description && (
                   <p className="mt-4 text-sm">{viewingDocument.description}</p>
                 )}

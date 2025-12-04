@@ -35,6 +35,7 @@ interface SiteSettings {
   heroSubtitle?: string;
   announcementText?: string;
   isAnnouncementActive?: boolean;
+  bannerImages?: string[];
 }
 
 interface PropertiesResponse {
@@ -49,6 +50,7 @@ interface PropertiesResponse {
   heroSubtitle?: string;
   announcementText?: string;
   isAnnouncementActive?: boolean;
+  bannerImages?: string[];
 }
 
 // Combined response with properties and site settings
@@ -109,6 +111,7 @@ class PropertyService {
         heroSubtitle: data.heroSubtitle,
         announcementText: data.announcementText,
         isAnnouncementActive: data.isAnnouncementActive,
+        bannerImages: data.bannerImages,
       }
     };
   }

@@ -76,7 +76,7 @@ const TerminateAgreement = () => {
       return;
     }
 
-    if (!confirm("Are you sure you want to terminate this agreement? The property will be moved to archive and admin will be notified. This action cannot be undone.")) {
+    if (!confirm("Are you sure you want to terminate this agreement? This will:\n\n• Remove all tenant information from this property\n• Mark the property as 'Available for Rent'\n• Notify the admin about this termination\n\nThis action cannot be undone.")) {
       return;
     }
 
@@ -132,9 +132,9 @@ const TerminateAgreement = () => {
       if (data.success) {
         toast({
           title: "Agreement Terminated",
-          description: "Agreement has been terminated. Property moved to archive. Admin has been notified.",
+          description: "Tenant information has been removed and property is now available for rent. Admin has been notified.",
         });
-        navigate(`/archived-properties`);
+        navigate(`/manage-property`);
       } else {
         throw new Error(data.message || 'Failed to terminate agreement');
       }
@@ -193,32 +193,83 @@ const TerminateAgreement = () => {
                 <AlertDescription className="flex-1">
                   <strong>Warning:</strong> Terminating this agreement will:
                   <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>Set agreement status to "terminated"</li>
-                    <li>Move the property to archive (status: inactive)</li>
-                    <li>Notify the admin</li>
+                    <li>Remove all tenant information from this property</li>
+                    <li>Clear agreement dates and lease details</li>
+                    <li>Mark the property as "Available for Rent"</li>
+                    <li>Notify the admin with full owner, tenant and property details</li>
                     <li>This action cannot be undone</li>
                   </ul>
                 </AlertDescription>
               </Alert>
 
               {property && (
-                <div className="space-y-2">
-                  <h3 className="font-semibold">Agreement Details:</h3>
-                  {property.agreementStartDate && (
-                    <p className="text-sm">
-                      <span className="font-medium">Start Date:</span> {property.agreementStartDate}
-                    </p>
+                <div className="space-y-4">
+                  {/* Tenant Details Section */}
+                  {(property.tenantName || property.mobileNumber || (property.tenants && property.tenants.length > 0)) && (
+                    <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                      <h3 className="font-semibold text-orange-800 mb-2">Tenant Information (Will be removed):</h3>
+                      {property.tenantName && (
+                        <p className="text-sm text-orange-700">
+                          <span className="font-medium">Tenant Name:</span> {property.tenantName}
+                        </p>
+                      )}
+                      {property.personName && (
+                        <p className="text-sm text-orange-700">
+                          <span className="font-medium">Contact Person:</span> {property.personName}
+                        </p>
+                      )}
+                      {property.mobileNumber && (
+                        <p className="text-sm text-orange-700">
+                          <span className="font-medium">Mobile:</span> {property.mobileNumber}
+                        </p>
+                      )}
+                      {property.ultNo && (
+                        <p className="text-sm text-orange-700">
+                          <span className="font-medium">Alt. Contact:</span> {property.ultNo}
+                        </p>
+                      )}
+                      {property.tenants && property.tenants.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium text-orange-700">Additional Tenants:</p>
+                          {property.tenants.filter((t: any) => t.isActive).map((tenant: any, index: number) => (
+                            <p key={index} className="text-sm text-orange-700 ml-2">
+                              • {tenant.firstName} {tenant.lastName} ({tenant.email}, {tenant.phone})
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
-                  {property.agreementEndDate && (
-                    <p className="text-sm">
-                      <span className="font-medium">End Date:</span> {property.agreementEndDate}
-                    </p>
-                  )}
-                  {property.agreementPeriod && (
-                    <p className="text-sm">
-                      <span className="font-medium">Period:</span> {property.agreementPeriod} months
-                    </p>
-                  )}
+
+                  {/* Agreement Details Section */}
+                  <div className="p-4 bg-gray-50 border rounded-lg">
+                    <h3 className="font-semibold mb-2">Agreement Details:</h3>
+                    {property.agreementStartDate && (
+                      <p className="text-sm">
+                        <span className="font-medium">Start Date:</span> {property.agreementStartDate}
+                      </p>
+                    )}
+                    {property.agreementEndDate && (
+                      <p className="text-sm">
+                        <span className="font-medium">End Date:</span> {property.agreementEndDate}
+                      </p>
+                    )}
+                    {property.agreementPeriod && (
+                      <p className="text-sm">
+                        <span className="font-medium">Period:</span> {property.agreementPeriod} months
+                      </p>
+                    )}
+                    {property.monthlyRent && (
+                      <p className="text-sm">
+                        <span className="font-medium">Monthly Rent:</span> ₹{property.monthlyRent}
+                      </p>
+                    )}
+                    {property.securityDeposit && (
+                      <p className="text-sm">
+                        <span className="font-medium">Security Deposit:</span> ₹{property.securityDeposit}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 

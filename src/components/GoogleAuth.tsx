@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { API_BASE_URL } from "../utils/config";
+import { AlertTriangle } from "lucide-react";
 
 interface GoogleAuthProps {}
 
@@ -37,6 +38,54 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   useEffect(() => {
     setUserLoggedIn(!!user && !showPhoneInput);
   }, [user, showPhoneInput]);
+
+  // Block navigation when registration is incomplete
+  useEffect(() => {
+    if (showPhoneInput && user) {
+      // Block browser back/forward navigation
+      const handlePopState = (e: PopStateEvent) => {
+        e.preventDefault();
+        window.history.pushState(null, '', window.location.href);
+        alert("Please complete your registration before navigating away.");
+      };
+
+      // Block page unload/refresh
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = "You have not completed your registration. Are you sure you want to leave?";
+        return e.returnValue;
+      };
+
+      // Block keyboard shortcuts for navigation
+      const handleKeyDown = (e: KeyboardEvent) => {
+        // Block Alt+Left/Right (browser back/forward)
+        if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+          e.preventDefault();
+        }
+        // Block Ctrl/Cmd+W (close tab)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+          e.preventDefault();
+        }
+      };
+
+      // Push a state to prevent back navigation
+      window.history.pushState(null, '', window.location.href);
+
+      window.addEventListener('popstate', handlePopState);
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      document.addEventListener('keydown', handleKeyDown);
+
+      // Disable body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        document.removeEventListener('keydown', handleKeyDown);
+        document.body.style.overflow = '';
+      };
+    }
+  }, [showPhoneInput, user]);
 
   // Function to check if user has completed registration (phone number AND role)
   const checkUserPhoneNumber = async (uid: string) => {
@@ -191,29 +240,46 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
     <div className="flex flex-col items-center gap-4">
       {!userLoggedIn ? (
         showPhoneInput && user ? (
-          <Card className="w-full max-w-md mx-auto">
-            <CardHeader className="text-center">
-              <CardTitle className="text-2xl font-semibold text-gray-800 mb-2">
-                Welcome, {user.displayName}!
-              </CardTitle>
-              <p className="text-gray-600 mt-2">{user.email}</p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-3">
-                <p className="text-sm text-blue-800 font-medium mb-2">
-                  📋 Registration Required
-                </p>
-                <p className="text-xs text-blue-700">
-                  Both your role and phone number are required to access PropBank features. This information helps us provide you with the best experience and connect you with relevant opportunities.
-                </p>
-              </div>
-            </CardHeader>
+          /* Full-screen blocking overlay for mandatory registration */
+          <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            {/* Prevent any clicks from passing through */}
+            <div 
+              className="absolute inset-0" 
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                // Block Escape key
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }}
+            />
+            <Card className="w-full max-w-md mx-auto relative z-10 shadow-2xl border-2">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl font-semibold text-gray-800 mb-2">
+                  Welcome, {user.displayName}!
+                </CardTitle>
+                <p className="text-gray-600 mt-2">{user.email}</p>
+                <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-600" />
+                    <p className="text-sm text-amber-800 font-semibold">
+                      Complete Registration Required
+                    </p>
+                  </div>
+                  <p className="text-xs text-amber-700">
+                    You must complete your registration to access PropBank. Both your role and phone number are mandatory fields that cannot be skipped.
+                  </p>
+                </div>
+              </CardHeader>
             
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="role" className="text-sm font-medium text-gray-700">
-                  Select Your Role *
+                  Select Your Role <span className="text-red-500">*</span>
                 </Label>
                 <Select onValueChange={setUserRole} value={userRole}>
-                  <SelectTrigger className="w-full mt-1">
+                  <SelectTrigger className={`w-full mt-1 ${!userRole ? 'border-red-300 focus:border-red-500' : 'border-green-300'}`}>
                     <SelectValue placeholder="Choose your role" />
                   </SelectTrigger>
                   <SelectContent>
@@ -231,11 +297,14 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                {!userRole && (
+                  <p className="text-xs text-red-500 mt-1">Please select your role</p>
+                )}
               </div>
 
               <div>
                 <Label htmlFor="phone" className="text-sm font-medium text-gray-700">
-                  Phone Number *
+                  Phone Number <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="phone"
@@ -243,9 +312,24 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                   placeholder="Enter your 10-digit phone number"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                  className="mt-1"
+                  className={`mt-1 ${phoneNumber.length === 10 ? 'border-green-300' : phoneNumber.length > 0 ? 'border-red-300' : ''}`}
                   maxLength={10}
                 />
+                {phoneNumber.length > 0 && phoneNumber.length !== 10 && (
+                  <p className="text-xs text-red-500 mt-1">Please enter a valid 10-digit phone number</p>
+                )}
+                {!phoneNumber && (
+                  <p className="text-xs text-red-500 mt-1">Phone number is required</p>
+                )}
+              </div>
+
+              {/* Validation summary */}
+              <div className={`p-3 rounded-lg ${(!phoneNumber || !userRole || phoneNumber.length !== 10) ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                <p className={`text-xs font-medium ${(!phoneNumber || !userRole || phoneNumber.length !== 10) ? 'text-red-700' : 'text-green-700'}`}>
+                  {(!phoneNumber || !userRole || phoneNumber.length !== 10) 
+                    ? '⚠️ Please complete all required fields to continue' 
+                    : '✅ All fields completed. You can now register!'}
+                </p>
               </div>
               
               <Button
@@ -262,8 +346,13 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                   "Complete Registration"
                 )}
               </Button>
+
+              <p className="text-xs text-center text-gray-500 mt-2">
+                You cannot proceed without completing registration
+              </p>
             </CardContent>
           </Card>
+        </div>
         ) : (
           <Card className="w-full max-w-md mx-auto">
             <CardContent className="pt-6">

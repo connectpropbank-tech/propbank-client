@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Users, AlertCircle, Archive, CheckCircle2, Phone, Mail, User as UserIcon } from "lucide-react";
+import { Building2, Users, AlertCircle, Archive, CheckCircle2, Phone, Mail, User as UserIcon, X, Upload, ImageIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { uploadBase64Image } from "@/services/uploadService";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8002";
 
@@ -74,6 +75,7 @@ interface SiteSettings {
   heroSubtitle?: string;
   announcementText?: string;
   isAnnouncementActive?: boolean;
+  bannerImages?: string[];
 }
 
 const AdminPortal = () => {
@@ -89,9 +91,13 @@ const AdminPortal = () => {
     quote: "Manage your properties and plan visits with ease",
     heroTitle: "Your Smart Hub for Property Management",
     heroSubtitle: "Manage, list your properties and find your dream house— all in one platform",
+    bannerImages: [],
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  // Store pending banner images as base64 strings (not yet uploaded)
+  const [pendingBannerImages, setPendingBannerImages] = useState<string[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -132,7 +138,7 @@ const AdminPortal = () => {
         // Double-check isRead is false as a safety measure
         const serviceRequests = Array.isArray(data) 
           ? data.filter((n: AdminNotification) => 
-              (n.type === "want_to_sell" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry") && n.isRead === false
+              (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry") && n.isRead === false
             )
           : [];
         console.log(`Found ${serviceRequests.length} unread service requests`);
@@ -148,6 +154,7 @@ const AdminPortal = () => {
             userPhone: n.userPhone,
             serviceType: n.serviceType,
             serviceComment: n.serviceComment,
+            serviceImage: n.serviceImage,
             fullNotification: n
           });
         });
@@ -217,7 +224,7 @@ const AdminPortal = () => {
         const data = await response.json();
         // Filter for read/completed notifications
         const archived = Array.isArray(data) 
-          ? data.filter((n: AdminNotification) => n.isRead && (n.type === "want_to_sell" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry"))
+          ? data.filter((n: AdminNotification) => n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry"))
           : [];
         // Sort by timestamp, newest first
         archived.sort((a: AdminNotification, b: AdminNotification) => 
@@ -244,6 +251,7 @@ const AdminPortal = () => {
             heroSubtitle: data.settings.heroSubtitle || "Manage, list your properties and find your dream house— all in one platform",
             announcementText: data.settings.announcementText || "",
             isAnnouncementActive: data.settings.isAnnouncementActive || false,
+            bannerImages: data.settings.bannerImages || [],
           });
         }
       }
@@ -256,24 +264,55 @@ const AdminPortal = () => {
   const handleUpdateSiteSettings = async () => {
     setSavingSettings(true);
     try {
+      let finalBannerImages = [...(siteSettings.bannerImages || [])];
+      
+      // Upload all pending banner images in one batch
+      if (pendingBannerImages.length > 0) {
+        setUploadingBanner(true);
+        const uploadedUrls: string[] = [];
+        
+        // Upload all images
+        for (let i = 0; i < pendingBannerImages.length; i++) {
+          const url = await uploadBase64Image(pendingBannerImages[i], 'banners', `banner-${Date.now()}-${i}`);
+          uploadedUrls.push(url);
+        }
+        
+        finalBannerImages = [...finalBannerImages, ...uploadedUrls];
+        setUploadingBanner(false);
+      }
+      
+      // Prepare settings with uploaded banner images
+      const settingsToSave = {
+        ...siteSettings,
+        bannerImages: finalBannerImages,
+      };
+      
       const response = await fetch(`${API_BASE_URL}/admin/site-settings`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(siteSettings),
+        body: JSON.stringify(settingsToSave),
       });
 
       if (response.ok) {
+        // Update local state with final banner images
+        setSiteSettings(settingsToSave);
+        // Clear pending images after successful save
+        setPendingBannerImages([]);
+        
         toast({
           title: "Settings Updated",
-          description: "Site settings have been updated successfully.",
+          description: pendingBannerImages.length > 0 
+            ? `Site settings updated. ${pendingBannerImages.length} banner image(s) uploaded.`
+            : "Site settings have been updated successfully.",
         });
       } else {
         throw new Error("Failed to update settings");
       }
     } catch (error) {
       console.error("Error updating site settings:", error);
+      setUploadingBanner(false);
       toast({
         title: "Error",
         description: "Failed to update site settings. Please try again.",
@@ -282,6 +321,63 @@ const AdminPortal = () => {
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  // Handle banner image selection (store locally, upload on save)
+  const handleBannerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const newBase64Images: string[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const reader = new FileReader();
+        
+        const base64 = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        
+        newBase64Images.push(base64);
+      }
+      
+      // Store as pending images (will be uploaded on save)
+      setPendingBannerImages(prev => [...prev, ...newBase64Images]);
+      
+      toast({
+        title: "Images Added",
+        description: `${newBase64Images.length} image(s) added. Click Save Settings to upload and apply.`,
+      });
+    } catch (error) {
+      console.error("Error reading banner images:", error);
+      toast({
+        title: "Error",
+        description: "Failed to read image files. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      // Reset input
+      e.target.value = '';
+    }
+  };
+
+  // Remove a banner image (either pending or already uploaded)
+  const handleRemoveBannerImage = (indexToRemove: number, isPending: boolean) => {
+    if (isPending) {
+      setPendingBannerImages(prev => prev.filter((_, index) => index !== indexToRemove));
+    } else {
+      setSiteSettings(prev => ({
+        ...prev,
+        bannerImages: (prev.bannerImages || []).filter((_, index) => index !== indexToRemove)
+      }));
+    }
+    toast({
+      title: "Image Removed",
+      description: isPending ? "Pending image removed." : "Banner image removed. Click Save Settings to apply changes.",
+    });
   };
 
   const handleMarkComplete = async (notificationId: string, checked: boolean) => {
@@ -309,7 +405,7 @@ const AdminPortal = () => {
             // In Active Service Requests tab, only show unread service requests
             // In Archive tab, show all
             if (activeTab === "service-requests") {
-              return !n.isRead && (n.type === "want_to_sell" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination");
+              return !n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination");
             }
             return true;
           })
@@ -392,15 +488,22 @@ const AdminPortal = () => {
               ) : (
                 <div className="space-y-4">
                   {notifications.map((notification) => (
-                    <Card key={notification.id} className="border-l-4 border-l-blue-500">
+                    <Card key={notification.id} className={`border-l-4 ${notification.type === "want_to_sell_cancelled" ? "border-l-red-500" : "border-l-blue-500"}`}>
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 space-y-3">
                             <div>
                               <h3 className="font-semibold text-lg">{notification.title}</h3>
                               {/* Only show message for notifications that don't have custom display */}
-                              {notification.type !== "property_enquiry" && notification.type !== "service_request" && notification.type !== "review" && notification.type !== "legal_service_request" && notification.type !== "other_service_request" && notification.type !== "inspection_report" && notification.type !== "general_inquiry" && (
+                              {notification.type !== "property_enquiry" && notification.type !== "service_request" && notification.type !== "review" && notification.type !== "legal_service_request" && notification.type !== "other_service_request" && notification.type !== "inspection_report" && notification.type !== "general_inquiry" && notification.type !== "agreement_termination" && notification.type !== "agreement_renewal" && (
                                 <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
+                              )}
+                              {(notification.type === "agreement_termination" || notification.type === "agreement_renewal") && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {notification.type === "agreement_termination" 
+                                    ? "An agreement has been terminated. See details below."
+                                    : "An agreement renewal request has been submitted. See details below."}
+                                </p>
                               )}
                               {notification.type === "property_enquiry" && (
                                 <p className="text-sm text-muted-foreground mt-1">
@@ -772,44 +875,102 @@ const AdminPortal = () => {
                                 </div>
                               </div>
                             ) : notification.type === "service_request" ? (
-                              /* For Service Request: Show only who raised the request */
-                              <div className="mt-4">
-                                <h4 className="text-sm font-semibold mb-3">User Details (Who Raised the Request):</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                  {notification.userName ? (
-                                    <div className="flex items-center gap-2">
-                                      <UserIcon className="h-4 w-4 text-muted-foreground" />
-                                      <span className="text-sm font-medium">{notification.userName}</span>
+                              /* For Service Request: Show property details and who raised the request */
+                              <div className="mt-4 space-y-4">
+                                {/* Property Details */}
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-3">Property Details:</h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Property Name:</span>
+                                      <p className="text-sm font-medium">{notification.propertyTitle || 'N/A'}</p>
                                     </div>
-                                  ) : (
-                                    <div className="text-sm text-muted-foreground">Name: Not available</div>
-                                  )}
-                                  {notification.userEmail ? (
-                                    <div className="flex items-center gap-2">
-                                      <Mail className="h-4 w-4 text-muted-foreground" />
-                                      <a 
-                                        href={`mailto:${notification.userEmail}`}
-                                        className="text-sm text-blue-600 hover:underline"
-                                      >
-                                        {notification.userEmail}
-                                      </a>
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Address:</span>
+                                      <p className="text-sm font-medium">{notification.propertyAddress || 'N/A'}</p>
                                     </div>
-                                  ) : (
-                                    <div className="text-sm text-muted-foreground">Email: Not available</div>
-                                  )}
-                                  {notification.userPhone ? (
-                                    <div className="flex items-center gap-2">
-                                      <Phone className="h-4 w-4 text-muted-foreground" />
-                                      <a 
-                                        href={`tel:${notification.userPhone}`}
-                                        className="text-sm text-blue-600 hover:underline"
-                                      >
-                                        {notification.userPhone}
-                                      </a>
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Listing Type:</span>
+                                      <p className="text-sm font-medium capitalize">{notification.propertyListingType || 'N/A'}</p>
                                     </div>
-                                  ) : (
-                                    <div className="text-sm text-muted-foreground">Phone: Not available</div>
-                                  )}
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Property ID:</span>
+                                      <p className="text-sm font-medium text-gray-500">{notification.propertyId || 'N/A'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* User Details */}
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-3">User Details (Who Raised the Request):</h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {notification.userName ? (
+                                      <div className="flex items-center gap-2">
+                                        <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm font-medium">{notification.userName}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">Name: Not available</div>
+                                    )}
+                                    {notification.userEmail ? (
+                                      <div className="flex items-center gap-2">
+                                        <Mail className="h-4 w-4 text-muted-foreground" />
+                                        <a 
+                                          href={`mailto:${notification.userEmail}`}
+                                          className="text-sm text-blue-600 hover:underline"
+                                        >
+                                          {notification.userEmail}
+                                        </a>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">Email: Not available</div>
+                                    )}
+                                    {notification.userPhone ? (
+                                      <div className="flex items-center gap-2">
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        <a 
+                                          href={`tel:${notification.userPhone}`}
+                                          className="text-sm text-blue-600 hover:underline"
+                                        >
+                                          {notification.userPhone}
+                                        </a>
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">Phone: Not available</div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Service Request Details */}
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-3">Service Request Details:</h4>
+                                  <div className="space-y-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                                    {notification.serviceType && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground">Service Type:</span>
+                                        <p className="text-sm font-medium">{notification.serviceType}</p>
+                                      </div>
+                                    )}
+                                    {notification.serviceComment && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground">Comment:</span>
+                                        <p className="text-sm mt-1 whitespace-pre-line">{notification.serviceComment}</p>
+                                      </div>
+                                    )}
+                                    {notification.serviceImage && (
+                                      <div>
+                                        <span className="text-xs text-muted-foreground">Attached Image:</span>
+                                        <div className="mt-2">
+                                          <img 
+                                            src={notification.serviceImage} 
+                                            alt="Service request image" 
+                                            className="max-w-full h-auto max-h-64 rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                            onClick={() => window.open(notification.serviceImage, '_blank')}
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             ) : notification.type === "general_inquiry" ? (
@@ -883,6 +1044,105 @@ const AdminPortal = () => {
                                     )}
                                   </div>
                                 </div>
+                              </div>
+                            ) : (notification.type === "agreement_termination" || notification.type === "agreement_renewal") ? (
+                              /* For Agreement Termination/Renewal: Show structured owner, tenant, and property details */
+                              <div className="mt-4 space-y-4">
+                                {/* Status Banner */}
+                                <div className={`p-3 rounded-lg border ${notification.type === "agreement_termination" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
+                                  <p className={`text-sm font-semibold ${notification.type === "agreement_termination" ? "text-red-700" : "text-green-700"}`}>
+                                    {notification.type === "agreement_termination" 
+                                      ? "🔴 Agreement Terminated - Property is now available for rent"
+                                      : "🟢 Agreement Renewal Request Submitted"}
+                                  </p>
+                                </div>
+
+                                {/* Property Details */}
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                    <span>📋</span> Property Details
+                                  </h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Property Name:</span>
+                                      <p className="text-sm font-medium">{notification.propertyTitle || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Property ID:</span>
+                                      <p className="text-sm font-medium text-gray-500">{notification.propertyId || 'N/A'}</p>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                      <span className="text-xs text-muted-foreground">Address:</span>
+                                      <p className="text-sm font-medium">{notification.propertyAddress || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-muted-foreground">Listing Type:</span>
+                                      <p className="text-sm font-medium capitalize">{notification.propertyListingType || 'Rent'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Owner Details */}
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                    <span>👤</span> Owner Details
+                                  </h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                                    <div className="flex items-center gap-2">
+                                      <UserIcon className="h-4 w-4 text-purple-600" />
+                                      <span className="text-sm font-medium">{notification.ownerName || 'N/A'}</span>
+                                    </div>
+                                    {notification.ownerEmail && (
+                                      <div className="flex items-center gap-2">
+                                        <Mail className="h-4 w-4 text-purple-600" />
+                                        <a href={`mailto:${notification.ownerEmail}`} className="text-sm text-blue-600 hover:underline">
+                                          {notification.ownerEmail}
+                                        </a>
+                                      </div>
+                                    )}
+                                    {notification.ownerPhone && (
+                                      <div className="flex items-center gap-2">
+                                        <Phone className="h-4 w-4 text-purple-600" />
+                                        <a href={`tel:${notification.ownerPhone}`} className="text-sm text-blue-600 hover:underline">
+                                          {notification.ownerPhone}
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Tenant Details (for termination) */}
+                                {notification.type === "agreement_termination" && (notification.userName || notification.userEmail || notification.userPhone) && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                      <span>🏠</span> Tenant Details (Removed)
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                                      {notification.userName && (
+                                        <div className="flex items-center gap-2">
+                                          <UserIcon className="h-4 w-4 text-orange-600" />
+                                          <span className="text-sm font-medium">{notification.userName}</span>
+                                        </div>
+                                      )}
+                                      {notification.userEmail && (
+                                        <div className="flex items-center gap-2">
+                                          <Mail className="h-4 w-4 text-orange-600" />
+                                          <a href={`mailto:${notification.userEmail}`} className="text-sm text-blue-600 hover:underline">
+                                            {notification.userEmail}
+                                          </a>
+                                        </div>
+                                      )}
+                                      {notification.userPhone && (
+                                        <div className="flex items-center gap-2">
+                                          <Phone className="h-4 w-4 text-orange-600" />
+                                          <a href={`tel:${notification.userPhone}`} className="text-sm text-blue-600 hover:underline">
+                                            {notification.userPhone}
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               /* For Want to Sell: Show only Owner details */
@@ -1222,14 +1482,126 @@ const AdminPortal = () => {
                     </label>
                   </div>
 
+                  {/* Banner Images Section */}
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Banner Images
+                        <span className="text-muted-foreground ml-2 font-normal">
+                          (Carousel images for homepage hero section - rotates every 30 seconds)
+                        </span>
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Upload multiple images to display as a rotating carousel. If no banner images are uploaded, the default hero image will be shown.
+                      </p>
+                    </div>
+                    
+                    {/* Upload Button */}
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleBannerImageUpload}
+                          className="hidden"
+                          disabled={savingSettings}
+                        />
+                        <div className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                          <Upload className="w-4 h-4" />
+                          <span>Add Banner Images</span>
+                        </div>
+                      </label>
+                      <div className="flex gap-2 text-sm text-muted-foreground">
+                        {siteSettings.bannerImages && siteSettings.bannerImages.length > 0 && (
+                          <span>{siteSettings.bannerImages.length} saved</span>
+                        )}
+                        {pendingBannerImages.length > 0 && (
+                          <span className="text-orange-600">+ {pendingBannerImages.length} pending upload</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Uploaded Banner Images */}
+                    {siteSettings.bannerImages && siteSettings.bannerImages.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-green-700">Saved Images:</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {siteSettings.bannerImages.map((imageUrl, index) => (
+                            <div key={`saved-${index}`} className="relative group">
+                              <img
+                                src={imageUrl}
+                                alt={`Banner ${index + 1}`}
+                                className="w-full h-24 object-cover rounded-lg border-2 border-green-200"
+                              />
+                              <button
+                                onClick={() => handleRemoveBannerImage(index, false)}
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                title="Remove image"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              <span className="absolute bottom-1 left-1 bg-green-600 text-white text-xs px-1.5 py-0.5 rounded">
+                                {index + 1}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pending Banner Images (not yet uploaded) */}
+                    {pendingBannerImages.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs font-medium text-orange-600">Pending Upload (will be uploaded on save):</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {pendingBannerImages.map((base64Image, index) => (
+                            <div key={`pending-${index}`} className="relative group">
+                              <img
+                                src={base64Image}
+                                alt={`Pending ${index + 1}`}
+                                className="w-full h-24 object-cover rounded-lg border-2 border-orange-300 border-dashed"
+                              />
+                              <button
+                                onClick={() => handleRemoveBannerImage(index, true)}
+                                className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                title="Remove image"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                              <span className="absolute bottom-1 left-1 bg-orange-500 text-white text-xs px-1.5 py-0.5 rounded">
+                                New
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Empty State */}
+                    {(!siteSettings.bannerImages || siteSettings.bannerImages.length === 0) && pendingBannerImages.length === 0 && (
+                      <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                        <ImageIcon className="w-12 h-12 text-gray-400 mb-2" />
+                        <p className="text-sm text-gray-500">No banner images uploaded</p>
+                        <p className="text-xs text-gray-400">Default hero image will be displayed</p>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Save Button */}
                   <div className="pt-4 border-t">
                     <Button 
                       onClick={handleUpdateSiteSettings} 
-                      disabled={savingSettings}
+                      disabled={savingSettings || uploadingBanner}
                       className="w-full sm:w-auto"
                     >
-                      {savingSettings ? "Saving..." : "Save Settings"}
+                      {savingSettings ? (
+                        uploadingBanner ? "Uploading images..." : "Saving..."
+                      ) : (
+                        pendingBannerImages.length > 0 
+                          ? `Save Settings & Upload ${pendingBannerImages.length} Image(s)` 
+                          : "Save Settings"
+                      )}
                     </Button>
                   </div>
 

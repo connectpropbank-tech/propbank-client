@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { auth } from "@/firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { API_BASE_URL } from "@/utils/config";
+import { uploadBase64Image } from "@/services/uploadService";
 
 interface ServiceRequestForm {
   serviceType: string;
@@ -192,6 +192,27 @@ const RequestServices = () => {
         }
       }
 
+      // Upload image to Cloudflare R2 if provided
+      let serviceImageUrl = '';
+      if (form.image) {
+        try {
+          console.log('📤 Uploading service request image to Cloudflare R2...');
+          serviceImageUrl = await uploadBase64Image(
+            form.image,
+            'service-requests',
+            `${user.uid}-${Date.now()}`
+          );
+          console.log('✅ Image uploaded successfully:', serviceImageUrl);
+        } catch (uploadError) {
+          console.error('❌ Failed to upload image:', uploadError);
+          toast({
+            title: "Image Upload Failed",
+            description: "Failed to upload image. Submitting request without image.",
+            variant: "destructive"
+          });
+        }
+      }
+
       // Prepare notification payload
       const notificationPayload = {
         type: 'service_request',
@@ -214,7 +235,7 @@ const RequestServices = () => {
         // Service request specific fields
         serviceType: serviceType,
         serviceComment: form.comment,
-        serviceImage: form.image || '',
+        serviceImage: serviceImageUrl, // Use uploaded URL instead of base64
         timestamp: new Date().toISOString(),
         isRead: false,
         priority: 'high'
@@ -285,7 +306,7 @@ const RequestServices = () => {
               <Wrench className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">5. RAISE A REQUEST</h1>
+              <h1 className="text-3xl font-bold">RAISE A REQUEST</h1>
               <p className="text-lg text-muted-foreground">
                 {propertyId ? `Property ID: ${propertyId}` : "Submit maintenance and service requests"}
               </p>

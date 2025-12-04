@@ -12,7 +12,7 @@ interface FurnishedItem {
   name: string;
   checked: boolean;
   quantity: number;
-  category: 'basic' | 'kitchen' | 'bedroom' | 'living' | 'appliances' | 'semifurnished' | 'other';
+  category: 'basic' | 'kitchen' | 'bedroom' | 'living' | 'appliances' | 'semifurnished' | 'office' | 'infrastructure' | 'safety' | 'machinery' | 'storage' | 'utilities' | 'other';
 }
 
 interface FurnishedChecklistModalProps {
@@ -20,9 +20,11 @@ interface FurnishedChecklistModalProps {
   onClose: () => void;
   onSave: (checklist: FurnishedItem[]) => void;
   initialChecklist?: FurnishedItem[];
+  propertyType?: 'residential' | 'commercial' | 'industrial';
 }
 
-const defaultFurnishedItems: Omit<FurnishedItem, 'id' | 'checked'>[] = [
+// Residential property items (default)
+const residentialFurnishedItems: Omit<FurnishedItem, 'id' | 'checked'>[] = [
   // Semi Furnished Items (Based on your table)
   { name: 'Light', category: 'semifurnished', quantity: 1 },
   { name: 'Fan', category: 'semifurnished', quantity: 1 },
@@ -78,12 +80,158 @@ const defaultFurnishedItems: Omit<FurnishedItem, 'id' | 'checked'>[] = [
   { name: 'Washing Machine', category: 'appliances', quantity: 1 },
 ];
 
+// Commercial property items
+const commercialFurnishedItems: Omit<FurnishedItem, 'id' | 'checked'>[] = [
+  // Office Furniture
+  { name: 'Executive Desk', category: 'office', quantity: 1 },
+  { name: 'Office Chairs', category: 'office', quantity: 1 },
+  { name: 'Workstations / Cubicles', category: 'office', quantity: 1 },
+  { name: 'Conference Table', category: 'office', quantity: 1 },
+  { name: 'Conference Chairs', category: 'office', quantity: 1 },
+  { name: 'Reception Desk', category: 'office', quantity: 1 },
+  { name: 'Visitor Chairs', category: 'office', quantity: 1 },
+  { name: 'Filing Cabinets', category: 'office', quantity: 1 },
+  { name: 'Storage Cabinets', category: 'office', quantity: 1 },
+  { name: 'Bookshelves', category: 'office', quantity: 1 },
+  { name: 'Modular Partitions', category: 'office', quantity: 1 },
+  { name: 'Whiteboard', category: 'office', quantity: 1 },
+  { name: 'Notice Board', category: 'office', quantity: 1 },
+  
+  // Infrastructure & IT
+  { name: 'Air Conditioners / HVAC', category: 'infrastructure', quantity: 1 },
+  { name: 'False Ceiling', category: 'infrastructure', quantity: 1 },
+  { name: 'Raised Flooring', category: 'infrastructure', quantity: 1 },
+  { name: 'Network Cabling', category: 'infrastructure', quantity: 1 },
+  { name: 'Server Room Setup', category: 'infrastructure', quantity: 1 },
+  { name: 'UPS / Power Backup', category: 'infrastructure', quantity: 1 },
+  { name: 'Generator Backup', category: 'infrastructure', quantity: 1 },
+  { name: 'Telephone Lines', category: 'infrastructure', quantity: 1 },
+  { name: 'Internet Connection', category: 'infrastructure', quantity: 1 },
+  { name: 'Projector', category: 'infrastructure', quantity: 1 },
+  { name: 'Video Conferencing System', category: 'infrastructure', quantity: 1 },
+  { name: 'LED Display / TV', category: 'infrastructure', quantity: 1 },
+  
+  // Safety & Security
+  { name: 'Fire Extinguisher', category: 'safety', quantity: 1 },
+  { name: 'Fire Alarm System', category: 'safety', quantity: 1 },
+  { name: 'Smoke Detectors', category: 'safety', quantity: 1 },
+  { name: 'Sprinkler System', category: 'safety', quantity: 1 },
+  { name: 'CCTV Cameras', category: 'safety', quantity: 1 },
+  { name: 'Access Control System', category: 'safety', quantity: 1 },
+  { name: 'Biometric Attendance', category: 'safety', quantity: 1 },
+  { name: 'Security Guard Room', category: 'safety', quantity: 1 },
+  { name: 'Emergency Exit Signage', category: 'safety', quantity: 1 },
+  
+  // Utilities & Pantry
+  { name: 'Pantry / Kitchenette', category: 'utilities', quantity: 1 },
+  { name: 'Refrigerator', category: 'utilities', quantity: 1 },
+  { name: 'Microwave', category: 'utilities', quantity: 1 },
+  { name: 'Water Purifier / Dispenser', category: 'utilities', quantity: 1 },
+  { name: 'Coffee / Tea Machine', category: 'utilities', quantity: 1 },
+  { name: 'Vending Machine', category: 'utilities', quantity: 1 },
+  { name: 'Washroom Fixtures', category: 'utilities', quantity: 1 },
+  { name: 'Housekeeping Room', category: 'utilities', quantity: 1 },
+  
+  // Basic Fixtures
+  { name: 'Lights / LED Panels', category: 'basic', quantity: 1 },
+  { name: 'Fans', category: 'basic', quantity: 1 },
+  { name: 'Blinds / Curtains', category: 'basic', quantity: 1 },
+  { name: 'Glass Partitions', category: 'basic', quantity: 1 },
+  { name: 'Carpet / Flooring', category: 'basic', quantity: 1 },
+  { name: 'Wall Paneling', category: 'basic', quantity: 1 },
+  { name: 'Signage / Name Board', category: 'basic', quantity: 1 },
+];
+
+// Industrial property items
+const industrialFurnishedItems: Omit<FurnishedItem, 'id' | 'checked'>[] = [
+  // Machinery & Equipment
+  { name: 'Overhead Crane / Hoist', category: 'machinery', quantity: 1 },
+  { name: 'Forklift', category: 'machinery', quantity: 1 },
+  { name: 'Pallet Jack', category: 'machinery', quantity: 1 },
+  { name: 'Conveyor System', category: 'machinery', quantity: 1 },
+  { name: 'Loading Dock Equipment', category: 'machinery', quantity: 1 },
+  { name: 'Industrial Weighing Scale', category: 'machinery', quantity: 1 },
+  { name: 'Compressor', category: 'machinery', quantity: 1 },
+  { name: 'Industrial Generator', category: 'machinery', quantity: 1 },
+  { name: 'Transformer', category: 'machinery', quantity: 1 },
+  { name: 'Pump System', category: 'machinery', quantity: 1 },
+  
+  // Storage & Warehouse
+  { name: 'Pallet Racks', category: 'storage', quantity: 1 },
+  { name: 'Heavy Duty Shelving', category: 'storage', quantity: 1 },
+  { name: 'Mezzanine Floor', category: 'storage', quantity: 1 },
+  { name: 'Storage Bins / Containers', category: 'storage', quantity: 1 },
+  { name: 'Cold Storage / Refrigeration Unit', category: 'storage', quantity: 1 },
+  { name: 'Material Handling Trolleys', category: 'storage', quantity: 1 },
+  { name: 'Dock Levelers', category: 'storage', quantity: 1 },
+  { name: 'Roller Shutters', category: 'storage', quantity: 1 },
+  
+  // Safety & Compliance
+  { name: 'Fire Extinguishers', category: 'safety', quantity: 1 },
+  { name: 'Fire Hydrant System', category: 'safety', quantity: 1 },
+  { name: 'Sprinkler System', category: 'safety', quantity: 1 },
+  { name: 'Fire Alarm System', category: 'safety', quantity: 1 },
+  { name: 'Emergency Exit Doors', category: 'safety', quantity: 1 },
+  { name: 'Safety Signage', category: 'safety', quantity: 1 },
+  { name: 'First Aid Station', category: 'safety', quantity: 1 },
+  { name: 'Eye Wash Station', category: 'safety', quantity: 1 },
+  { name: 'PPE Storage Cabinet', category: 'safety', quantity: 1 },
+  { name: 'CCTV Surveillance', category: 'safety', quantity: 1 },
+  { name: 'Security Cabin', category: 'safety', quantity: 1 },
+  { name: 'Boom Barrier', category: 'safety', quantity: 1 },
+  
+  // Infrastructure
+  { name: 'Industrial Ventilation / Exhaust', category: 'infrastructure', quantity: 1 },
+  { name: 'Air Handling Unit (AHU)', category: 'infrastructure', quantity: 1 },
+  { name: 'Industrial Lighting', category: 'infrastructure', quantity: 1 },
+  { name: 'Power Distribution Panel', category: 'infrastructure', quantity: 1 },
+  { name: 'HT / LT Connection', category: 'infrastructure', quantity: 1 },
+  { name: 'Earthing System', category: 'infrastructure', quantity: 1 },
+  { name: 'Water Tank / Overhead Tank', category: 'infrastructure', quantity: 1 },
+  { name: 'Sewage Treatment Plant (STP)', category: 'infrastructure', quantity: 1 },
+  { name: 'Effluent Treatment Plant (ETP)', category: 'infrastructure', quantity: 1 },
+  { name: 'Borewell', category: 'infrastructure', quantity: 1 },
+  { name: 'Weighbridge', category: 'infrastructure', quantity: 1 },
+  
+  // Office Section (within industrial)
+  { name: 'Office Cabin', category: 'office', quantity: 1 },
+  { name: 'Office Desk & Chairs', category: 'office', quantity: 1 },
+  { name: 'Air Conditioner (Office)', category: 'office', quantity: 1 },
+  { name: 'Meeting Room Setup', category: 'office', quantity: 1 },
+  { name: 'Reception Area', category: 'office', quantity: 1 },
+  { name: 'Filing Cabinet', category: 'office', quantity: 1 },
+  
+  // Utilities
+  { name: 'Canteen / Cafeteria Setup', category: 'utilities', quantity: 1 },
+  { name: 'Washroom Fixtures', category: 'utilities', quantity: 1 },
+  { name: 'Locker Room', category: 'utilities', quantity: 1 },
+  { name: 'Worker Rest Area', category: 'utilities', quantity: 1 },
+  { name: 'Water Cooler / Dispenser', category: 'utilities', quantity: 1 },
+  { name: 'Changing Room', category: 'utilities', quantity: 1 },
+];
+
+// Function to get items based on property type
+const getDefaultFurnishedItems = (propertyType?: 'residential' | 'commercial' | 'industrial') => {
+  switch (propertyType) {
+    case 'commercial':
+      return commercialFurnishedItems;
+    case 'industrial':
+      return industrialFurnishedItems;
+    case 'residential':
+    default:
+      return residentialFurnishedItems;
+  }
+};
+
 export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  initialChecklist = []
+  initialChecklist = [],
+  propertyType = 'residential'
 }) => {
+  const defaultFurnishedItems = getDefaultFurnishedItems(propertyType);
+  
   const [checklist, setChecklist] = useState<FurnishedItem[]>(() => {
     if (initialChecklist.length > 0) {
       return initialChecklist;
@@ -96,6 +244,19 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
       quantity: 1
     }));
   });
+
+  // Reset checklist when property type changes
+  React.useEffect(() => {
+    if (initialChecklist.length === 0) {
+      const items = getDefaultFurnishedItems(propertyType);
+      setChecklist(items.map((item, index) => ({
+        ...item,
+        id: `item-${index}`,
+        checked: false,
+        quantity: 1
+      })));
+    }
+  }, [propertyType, initialChecklist.length]);
 
   const [customItems, setCustomItems] = useState<string[]>(['']);
 
@@ -192,6 +353,12 @@ export const FurnishedChecklistModal: React.FC<FurnishedChecklistModalProps> = (
     bedroom: 'Bedroom Items', 
     living: 'Living Room Items',
     appliances: 'Appliances',
+    office: 'Office Furniture & Setup',
+    infrastructure: 'Infrastructure & IT',
+    safety: 'Safety & Security',
+    machinery: 'Machinery & Equipment',
+    storage: 'Storage & Warehouse',
+    utilities: 'Utilities & Amenities',
     other: 'Other Items'
   };
 
