@@ -122,7 +122,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
     }
   };
 
-  // Function to save user data to backend
+  // Function to save user data to backend (creates new user or updates existing)
   const saveUserToBackend = async (firebaseUser: User, phone: string, role: string) => {
     try {
       const userData = {
@@ -134,29 +134,39 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
         role: role,
       };
 
-      
-
-      const response = await fetch(`${API_BASE_URL}/users`, {
-        method: 'POST',
+      // First try to update existing user
+      let response = await fetch(`${API_BASE_URL}/users/${firebaseUser.uid}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(userData)
       });
 
+      // If user doesn't exist (404), create new user
+      if (response.status === 404) {
+        response = await fetch(`${API_BASE_URL}/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(userData)
+        });
+      }
+
       const data = await response.json();
       
-      if (data.success) {
-        
+      if (data.success || response.ok) {
         return true;
       } else {
-        
+        console.error("Failed to save user:", data);
         alert("Failed to save user data. Please try again.");
         return false;
       }
     } catch (error) {
-      
+      console.error("Error saving user:", error);
       alert("Error connecting to server. Please check your connection.");
+      return false;
     }
   };
 
