@@ -243,7 +243,7 @@ const PropertyDetails = () => {
         setRaisedRequests(filteredRequests);
       }
     } catch (error) {
-      console.error("Error fetching raised requests:", error);
+      
     } finally {
       setLoadingRequests(false);
     }
@@ -302,10 +302,10 @@ const PropertyDetails = () => {
         };
         setProperty(normalizedProperty);
       } else {
-        console.error("Failed to fetch property:", data.message);
+        
       }
     } catch (error) {
-      console.error("Error fetching property:", error);
+      
     } finally {
       setLoading(false);
     }

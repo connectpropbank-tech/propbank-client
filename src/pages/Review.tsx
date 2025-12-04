@@ -81,7 +81,7 @@ const Review = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching property:", error);
+        
       } finally {
         setLoading(false);
       }
@@ -153,7 +153,7 @@ const Review = () => {
         throw new Error(data.message || 'Failed to submit review');
       }
     } catch (error) {
-      console.error("Error submitting review:", error);
+      
       toast({
         title: "Error",
         description: "Failed to submit review. Please try again later.",

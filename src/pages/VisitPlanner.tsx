@@ -61,7 +61,7 @@ const VisitPlanner = () => {
       
       setVisits(allVisits);
     } catch (error) {
-      console.error('Error loading visits:', error);
+      
       toast({
         title: "Error",
         description: "Failed to load visits. Please refresh the page.",
@@ -130,7 +130,7 @@ const VisitPlanner = () => {
         description: "Property visit added to your planner with reminder set",
       });
     } catch (error) {
-      console.error('Error creating visit:', error);
+      
       toast({
         title: "Error",
         description: "Failed to schedule visit. Please try again.",
@@ -150,7 +150,7 @@ const VisitPlanner = () => {
         description: "Visit removed from your planner",
       });
     } catch (error) {
-      console.error('Error deleting visit:', error);
+      
       toast({
         title: "Error",
         description: "Failed to delete visit",

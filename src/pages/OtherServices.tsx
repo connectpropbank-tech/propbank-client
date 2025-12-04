@@ -57,7 +57,7 @@ const OtherServices = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching user phone:", error);
+        
       }
     });
     return () => unsubscribe();
@@ -79,7 +79,7 @@ const OtherServices = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching property:", error);
+        
       } finally {
         setLoading(false);
       }
@@ -143,7 +143,7 @@ const OtherServices = () => {
             }
           }
         } catch (error) {
-          console.error("Error fetching owner details:", error);
+          
         }
       }
 
@@ -200,7 +200,7 @@ const OtherServices = () => {
         throw new Error(notificationData.message || 'Failed to submit request');
       }
     } catch (error) {
-      console.error("Error submitting service request:", error);
+      
       toast({
         title: "Error",
         description: "Failed to submit request. Please try again later.",

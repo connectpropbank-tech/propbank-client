@@ -106,18 +106,18 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                                data.user.role && 
                                data.user.role.trim() !== "";
         
-        console.log("User registration check:", {
-          hasUser: !!data.user,
-          hasPhone: !!(data.user?.phoneNumber),
-          hasRole: !!(data.user?.role),
-          isComplete: hasCompleteData
-        });
+        // console.log("User registration check:", {
+        //   hasUser: !!data.user,
+        //   hasPhone: !!(data.user?.phoneNumber),
+        //   hasRole: !!(data.user?.role),
+        //   isComplete: hasCompleteData
+        // });
         
         return hasCompleteData;
       }
       return false;
     } catch (error) {
-      console.error("Error checking user registration completion:", error);
+      
       return false;
     }
   };
@@ -134,7 +134,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
         role: role,
       };
 
-      console.log("Sending user data to backend:", userData);
+      
 
       const response = await fetch(`${API_BASE_URL}/users`, {
         method: 'POST',
@@ -147,15 +147,15 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
       const data = await response.json();
       
       if (data.success) {
-        console.log("✅ User saved to backend successfully:", data);
+        
         return true;
       } else {
-        console.error("❌ Failed to save user to backend:", data.message);
+        
         alert("Failed to save user data. Please try again.");
         return false;
       }
     } catch (error) {
-      console.error("❌ Error saving user to backend:", error);
+      
       alert("Error connecting to server. Please check your connection.");
     }
   };
@@ -183,28 +183,28 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
       setIsSubmitting(true);
       
       try {
-        console.log("🔄 Submitting registration data...");
+        
         const saveSuccess = await saveUserToBackend(user, phoneNumber, userRole);
         
         if (saveSuccess) {
           // Double-check that the data was actually saved by re-checking registration
-          console.log("🔍 Verifying registration completion...");
+          
           const isRegistrationComplete = await checkUserPhoneNumber(user.uid);
           
           if (isRegistrationComplete) {
             setShowPhoneInput(false);
             setUserLoggedIn(true);
-            console.log("✅ Registration completed and verified successfully");
+            
           } else {
             alert("Registration verification failed. Your data may not have been saved properly. Please try again.");
           }
         } else {
           // Keep the form open if save failed
-          console.log("❌ Registration not completed, keeping form open");
+          
           alert("Failed to save your registration data. Please check your connection and try again.");
         }
       } catch (error) {
-        console.error("❌ Error during registration:", error);
+        
         alert("An unexpected error occurred during registration. Please try again.");
       } finally {
         setIsSubmitting(false);
@@ -226,15 +226,15 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
       await signOutUser();
       setUser(null);
       setUserLoggedIn(false);
-      console.log("✅ User signed out successfully");
+      
     } catch (error: any) {
-      console.error("❌ Error signing out:", error);
+      
       alert(error.message);
     }
   };
 
-  console.log("Current user in GoogleAuth:", user);
-  console.log("User logged in status:", userLoggedIn);
+  
+  
 
   return (
     <div className="flex flex-col items-center gap-4">

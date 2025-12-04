@@ -40,7 +40,7 @@ function ProtectedRoute() {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      console.log("ProtectedRoute - Auth state changed:", currentUser);
+      //
       setUser(currentUser);
       setLoading(false);
     });
@@ -48,7 +48,7 @@ function ProtectedRoute() {
     return () => unsubscribe();
   }, []);
 
-  //console.log("ProtectedRoute - Loading:", loading, "User:", user);
+  //
 
   if (loading) {
     return (

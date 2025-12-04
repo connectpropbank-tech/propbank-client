@@ -129,18 +129,18 @@ const ManageProperty = () => {
   const [wantToSellToggles, setWantToSellToggles] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
-    console.log("ManageProperty component mounted");
+    
     
     // Listen for authentication state changes
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      console.log("Auth state changed:", currentUser);
+      
       setUser(currentUser);
       
       if (currentUser) {
-        console.log("User found, fetching properties for:", currentUser.uid);
+        
         fetchProperties(currentUser.uid);
       } else {
-        console.log("No user found");
+        
         setLoading(false);
       }
     });
@@ -150,7 +150,7 @@ const ManageProperty = () => {
 
   const fetchProperties = async (ownerUID: string) => {
     try {
-      console.log("Fetching properties for user:", ownerUID);
+      
       
       // Fetch owned properties
       const ownedResponse = await fetch(`${API_BASE_URL}/properties?ownerUID=${ownerUID}`, {
@@ -164,7 +164,7 @@ const ManageProperty = () => {
       
       let owned: Property[] = [];
       if (ownedData.success) {
-        console.log("Owned properties fetched successfully:", ownedData.properties);
+        
         // Filter to only show active properties (status === 'active') owned by current user
         owned = (ownedData.properties || []).filter((p: Property) => {
           const isActive = (p.status === 'active' || (!p.status && p.isActive !== false));
@@ -172,12 +172,12 @@ const ManageProperty = () => {
           const isOwnedByUser = p.ownerUID === ownerUID;
           return isActive && isOwnedByUser;
         }).map((p: Property) => ({ ...p, userRole: 'owner' }));
-        console.log("Active owned properties count:", owned.length);
+        
       }
 
       // Fetch properties where user is a tenant
       const tenantEmail = user?.email || 'rains.dwivedi98@gmail.com';
-      console.log("Fetching tenant properties for email:", tenantEmail);
+      
       const tenantResponse = await fetch(`${API_BASE_URL}/properties/tenant/?userEmail=${tenantEmail}`, {
         method: 'GET',
         headers: {
@@ -189,7 +189,7 @@ const ManageProperty = () => {
       if (tenantResponse.ok) {
         const tenantData = await tenantResponse.json();
         if (tenantData.success) {
-          console.log("Tenant properties fetched successfully:", tenantData.properties);
+          
           // Filter to only show active properties where user is tenant but NOT the owner
           tenant = (tenantData.properties || [])
             .filter((p: Property) => {
@@ -199,7 +199,7 @@ const ManageProperty = () => {
               return isActive && notOwnedByUser;
             })
             .map((p: Property) => ({ ...p, userRole: 'tenant' }));
-          console.log("Tenant properties count:", tenant.length);
+          
         }
       }
 
@@ -215,7 +215,7 @@ const ManageProperty = () => {
       });
       setWantToSellToggles(initialToggles);
     } catch (error) {
-      console.error("Error fetching properties:", error);
+      
       setOwnedProperties([]);
       setTenantProperties([]);
       setFilteredOwnedProperties([]);
@@ -281,20 +281,9 @@ const ManageProperty = () => {
   const totalFilteredProperties = filteredOwnedProperties.length + filteredTenantProperties.length;
 
   const formatPrice = (property: any) => {
-    console.log("Property price data:", {
-      id: property.id,
-      title: property.title,
-      listingType: property.listingType,
-      price: property.price,
-      monthlyRent: property.monthlyRent,
-      sellingPrice: property.sellingPrice,
-      sellingPriceType: typeof property.sellingPrice,
-      sellingPriceValue: property.sellingPrice,
-    });
-
     // Helper function to get a valid price value
     const getValidPrice = (value: any): number => {
-      console.log("Converting price:", value, "type:", typeof value);
+      
       
       if (!value) return 0;
       if (value === "") return 0;
@@ -309,7 +298,7 @@ const ManageProperty = () => {
       }
       
       const result = isNaN(numValue) ? 0 : numValue;
-      console.log("Converted to:", result);
+      
       return result;
     };
 
@@ -328,7 +317,7 @@ const ManageProperty = () => {
                           getValidPrice(property.selling_price) || 
                           getValidPrice(property.price);
       
-      console.log("Final selling price calculated:", sellingPrice);
+      
       
       if (sellingPrice > 0) {
         return `₹${sellingPrice.toLocaleString()}`;
@@ -367,14 +356,14 @@ const ManageProperty = () => {
     if (!user) return;
     
     try {
-      console.log(`Toggling property ${propertyId} to ${isInactive ? 'inactive' : 'active'}`);
+      
       const updateData = {
         ownerUID: user.uid,
         status: isInactive ? 'inactive' : 'active', // Set status to 'inactive' or 'active'
         // isActive remains unchanged - keep independent from status
         rentalStatus: isInactive ? 'inactive' : 'available'
       };
-      console.log('Update data:', updateData);
+      
       
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PUT',
@@ -385,7 +374,7 @@ const ManageProperty = () => {
       });
 
       const data = await response.json();
-      console.log('Update response:', data);
+      
       
       if (data.success) {
         toast({
@@ -404,7 +393,7 @@ const ManageProperty = () => {
         });
       }
     } catch (error) {
-      console.error("Error updating property status:", error);
+      
       toast({
         title: "Error",
         description: "Failed to update property status. Please try again.",
@@ -447,7 +436,7 @@ const ManageProperty = () => {
         });
       }
     } catch (error) {
-      console.error("Error archiving property:", error);
+      
       toast({
         title: "Error",
         description: "Failed to archive property. Please try again.",
@@ -517,7 +506,7 @@ const ManageProperty = () => {
         }));
       }
     } catch (error) {
-      console.error("Error updating want to sell status:", error);
+      
       toast({
         title: "Error",
         description: "Failed to update property. Please try again.",
@@ -569,9 +558,9 @@ const ManageProperty = () => {
         const notificationData = await notificationResponse.json();
         
         if (notificationData.success) {
-          console.log('Admin notification created successfully');
+          
         } else {
-          console.error('Failed to create admin notification:', notificationData.message);
+          
         }
 
         // Update local state to reflect the change
@@ -598,7 +587,7 @@ const ManageProperty = () => {
         });
         
       } else {
-        console.error('Failed to update property:', updateData.message);
+        
         toast({
           title: "Error",
           description: "Failed to update property listing type. Please try again.",
@@ -606,7 +595,7 @@ const ManageProperty = () => {
         });
       }
     } catch (error) {
-      console.error('Error updating property listing type:', error);
+      
       toast({
         title: "Error",
         description: "An error occurred while updating the property. Please try again.",
@@ -615,7 +604,7 @@ const ManageProperty = () => {
     }
   };
 
-  console.log("ManageProperty render - User:", user, "Loading:", loading, "Owned Properties:", ownedProperties.length, "Tenant Properties:", tenantProperties.length);
+  
  
   return (
     <main className="container mx-auto py-4 sm:py-8 px-4">

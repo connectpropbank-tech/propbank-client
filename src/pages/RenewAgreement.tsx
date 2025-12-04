@@ -51,7 +51,7 @@ const RenewAgreement = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching property:", error);
+        
       } finally {
         setLoading(false);
       }
@@ -104,7 +104,7 @@ const RenewAgreement = () => {
         throw new Error(data.message || 'Failed to submit renewal request');
       }
     } catch (error) {
-      console.error("Error submitting renewal request:", error);
+      
       toast({
         title: "Error",
         description: "Failed to submit renewal request. Please try again later.",

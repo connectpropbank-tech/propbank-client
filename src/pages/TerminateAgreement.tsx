@@ -52,7 +52,7 @@ const TerminateAgreement = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching property:", error);
+        
       } finally {
         setLoading(false);
       }
@@ -85,10 +85,10 @@ const TerminateAgreement = () => {
       // Ensure API_BASE_URL doesn't have trailing slash
       const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
       const url = `${baseUrl}/agreements/terminate`;
-      console.log("🔴 API_BASE_URL:", API_BASE_URL);
-      console.log("🔴 Calling terminate endpoint:", url);
-      console.log("🔴 Request body:", { propertyId: propertyId || '' });
-      console.log("🔴 User ID:", user.uid);
+      
+      
+      
+      
       
       const response = await fetch(url, {
         method: 'POST',
@@ -101,31 +101,25 @@ const TerminateAgreement = () => {
         }),
       });
 
-      console.log("🔴 Response status:", response.status);
-      console.log("🔴 Response URL:", response.url);
-      console.log("🔴 Response headers:", Object.fromEntries(response.headers.entries()));
-
       // Read response text once
       const responseText = await response.text();
-      console.log("🔴 Response text:", responseText);
       
       if (!response.ok) {
-        console.error("Server error response:", responseText);
         throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
 
       let data;
       try {
         data = JSON.parse(responseText);
-        console.log("🔴 Parsed data:", data);
+        
       } catch (parseError) {
-        console.error("🔴 Failed to parse JSON:", parseError);
+        
         throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
       }
 
       // Check if we got the root endpoint response by mistake
       if (data.message === "ShoPROP Backend API is running!") {
-        console.error("🔴 Got root endpoint response instead of terminate endpoint!");
+        
         throw new Error("Request was redirected to root endpoint. Please check the API URL and server configuration.");
       }
 
@@ -139,7 +133,7 @@ const TerminateAgreement = () => {
         throw new Error(data.message || 'Failed to terminate agreement');
       }
     } catch (error) {
-      console.error("Error terminating agreement:", error);
+      
       const errorMessage = error instanceof Error ? error.message : 'Failed to terminate agreement. Please try again later.';
       toast({
         title: "Error",

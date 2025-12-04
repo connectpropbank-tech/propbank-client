@@ -119,7 +119,7 @@ const AdminPortal = () => {
         await fetchSiteSettings();
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      
       toast({
         title: "Error",
         description: "Failed to load data. Please try again.",
@@ -142,50 +142,14 @@ const AdminPortal = () => {
               (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry") && n.isRead === false
             )
           : [];
-        console.log(`Found ${serviceRequests.length} unread service requests`);
-        // Debug: Log service_request notifications to check user details
-        const serviceRequestNotifications = serviceRequests.filter((n: AdminNotification) => n.type === "service_request");
-        serviceRequestNotifications.forEach((n: AdminNotification) => {
-          console.log("🔧 Service Request Notification - Full Data:", {
-            id: n.id,
-            type: n.type,
-            userId: n.userId,
-            userName: n.userName,
-            userEmail: n.userEmail,
-            userPhone: n.userPhone,
-            serviceType: n.serviceType,
-            serviceComment: n.serviceComment,
-            serviceImage: n.serviceImage,
-            fullNotification: n
-          });
-        });
-        // Debug: Log property_enquiry notifications to check user details
-        const enquiryNotifications = serviceRequests.filter((n: AdminNotification) => n.type === "property_enquiry");
-        enquiryNotifications.forEach((n: AdminNotification) => {
-          console.log("🔍 Property Enquiry Notification - Full Data:", {
-            id: n.id,
-            type: n.type,
-            userId: n.userId,
-            userName: n.userName,
-            userEmail: n.userEmail,
-            userPhone: n.userPhone,
-            propertyId: n.propertyId,
-            propertyTitle: n.propertyTitle,
-            propertyAddress: n.propertyAddress,
-            propertyListingType: n.propertyListingType,
-            ownerName: n.ownerName,
-            ownerEmail: n.ownerEmail,
-            ownerPhone: n.ownerPhone,
-            fullNotification: n
-          });
-        });
+        
         setNotifications(serviceRequests);
       } else {
-        console.error("Failed to fetch notifications:", response.status, response.statusText);
+        
         setNotifications([]);
       }
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      
       setNotifications([]);
     }
   };
@@ -200,7 +164,7 @@ const AdminPortal = () => {
         setProperties(props);
       }
     } catch (error) {
-      console.error("Error fetching properties:", error);
+      
     }
   };
 
@@ -214,7 +178,7 @@ const AdminPortal = () => {
         setAgents(agentUsers);
       }
     } catch (error) {
-      console.error("Error fetching agents:", error);
+      
     }
   };
 
@@ -234,7 +198,7 @@ const AdminPortal = () => {
         setNotifications(archived);
       }
     } catch (error) {
-      console.error("Error fetching archived notifications:", error);
+      
     }
   };
 
@@ -257,7 +221,7 @@ const AdminPortal = () => {
         }
       }
     } catch (error) {
-      console.error("Error fetching site settings:", error);
+      
     }
   };
 
@@ -312,7 +276,7 @@ const AdminPortal = () => {
         throw new Error("Failed to update settings");
       }
     } catch (error) {
-      console.error("Error updating site settings:", error);
+      
       setUploadingBanner(false);
       toast({
         title: "Error",
@@ -353,7 +317,7 @@ const AdminPortal = () => {
         description: `${newBase64Images.length} image(s) added. Click Save Settings to upload and apply.`,
       });
     } catch (error) {
-      console.error("Error reading banner images:", error);
+      
       toast({
         title: "Error",
         description: "Failed to read image files. Please try again.",
@@ -420,7 +384,7 @@ const AdminPortal = () => {
         throw new Error("Failed to mark as complete");
       }
     } catch (error) {
-      console.error("Error marking notification as complete:", error);
+      
       toast({
         title: "Error",
         description: "Failed to mark request as complete. Please try again.",
@@ -545,22 +509,6 @@ const AdminPortal = () => {
                             
                             {/* For Property Enquiry: Show User, Owner, and Property details in separate sections */}
                             {notification.type === "property_enquiry" ? (() => {
-                              // Debug: Log the notification data to see what fields are present
-                              console.log("🔍 Rendering Property Enquiry - Notification Data:", {
-                                id: notification.id,
-                                userId: notification.userId,
-                                userName: notification.userName,
-                                userEmail: notification.userEmail,
-                                userPhone: notification.userPhone,
-                                propertyId: notification.propertyId,
-                                propertyTitle: notification.propertyTitle,
-                                propertyAddress: notification.propertyAddress,
-                                propertyListingType: notification.propertyListingType,
-                                ownerName: notification.ownerName,
-                                ownerEmail: notification.ownerEmail,
-                                ownerPhone: notification.ownerPhone
-                              });
-                              
                               // Parse user details from message for backwards compatibility with old notifications
                               let parsedUserName = notification.userName;
                               let parsedUserEmail = notification.userEmail;

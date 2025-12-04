@@ -74,7 +74,7 @@ class PropertyService {
       headers,
     });
 
-    console.log("getAllProperties - Response status:", response.status);
+    
 
     const data: PropertiesResponse = await response.json();
     
@@ -94,7 +94,7 @@ class PropertyService {
       headers,
     });
 
-    console.log("getAllPropertiesWithSettings - Response status:", response.status);
+    
 
     const data: PropertiesResponse = await response.json();
     

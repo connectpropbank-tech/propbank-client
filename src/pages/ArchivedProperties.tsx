@@ -64,7 +64,7 @@ const ArchivedProperties = () => {
 
   const fetchArchivedProperties = async (ownerUID: string) => {
     try {
-      console.log("Fetching all properties for ownerUID:", ownerUID);
+      
       const response = await fetch(`${API_BASE_URL}/properties?ownerUID=${ownerUID}`, {
         method: 'GET',
         headers: {
@@ -73,29 +73,24 @@ const ArchivedProperties = () => {
       });
 
       const data = await response.json();
-      console.log("All properties response:", data);
       
       if (data.success) {
         // Filter to only show archived properties (status === 'inactive')
         // Default to 'active' if status is not set (backward compatibility)
         const allProperties = data.properties || [];
-        console.log("Total properties fetched:", allProperties.length);
-        console.log("Sample property status values:", allProperties.map((p: Property) => ({ id: p.id, status: p.status, isActive: p.isActive })));
         
         const archivedProperties = allProperties.filter((p: Property) => {
           // Only include properties where status is 'inactive'
           // Also check isActive for backward compatibility
           return p.status === 'inactive' || (!p.status && p.isActive === false);
         });
-        console.log("Archived properties count:", archivedProperties.length);
-        console.log("Archived properties:", archivedProperties);
+        
         setProperties(archivedProperties);
       } else {
-        console.error("Failed to fetch properties:", data.message);
         setProperties([]);
       }
     } catch (error) {
-      console.error("Error fetching properties:", error);
+      
       setProperties([]);
     } finally {
       setLoading(false);
@@ -143,7 +138,7 @@ const ArchivedProperties = () => {
         });
       }
     } catch (error) {
-      console.error("Error unarchiving property:", error);
+      
       toast({
         title: "Error",
         description: "Failed to unarchive property. Please try again.",

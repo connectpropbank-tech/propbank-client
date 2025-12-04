@@ -23,8 +23,6 @@ const SearchBar = () => {
     }
 
     // Handle search functionality here for authenticated users
-    console.log("Searching for:", searchQuery, "Type:", searchType);
-    
     // Navigate to search results page with query and type
     const searchParams = new URLSearchParams();
     if (searchQuery.trim()) searchParams.append('q', searchQuery.trim());

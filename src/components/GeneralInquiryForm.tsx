@@ -92,7 +92,7 @@ const GeneralInquiryForm = ({ onSuccess }: GeneralInquiryFormProps) => {
         priority: "medium",
       };
 
-      console.log("📤 Sending General Inquiry:", notificationPayload);
+      //
 
       const response = await fetch(`${API_BASE_URL}/admin/notifications`, {
         method: "POST",
@@ -127,7 +127,7 @@ const GeneralInquiryForm = ({ onSuccess }: GeneralInquiryFormProps) => {
         throw new Error(data.message || "Failed to submit inquiry");
       }
     } catch (error) {
-      console.error("Error submitting inquiry:", error);
+      
       toast({
         title: "Error",
         description: "Failed to submit inquiry. Please try again.",

@@ -149,7 +149,7 @@ const AddPropertyForm = () => {
             // Upload to Cloudflare R2
             const uploadedUrl = await uploadBase64Image(base64Image, 'properties', 'building');
             
-            console.log('✅ R2 Upload successful, URL:', uploadedUrl);
+            
             
             setUploadedImages([uploadedUrl]);
             form.setValue('images', [uploadedUrl]);
@@ -159,9 +159,9 @@ const AddPropertyForm = () => {
               description: "Building image uploaded successfully to cloud storage.",
             });
           } catch (uploadError) {
-            console.error('R2 upload failed:', uploadError);
+            
             // Fallback to base64 if R2 upload fails
-            console.log('⚠️ Falling back to base64 storage');
+            
             setUploadedImages([base64Image]);
             form.setValue('images', [base64Image]);
             
@@ -176,7 +176,7 @@ const AddPropertyForm = () => {
         };
         reader.readAsDataURL(file);
       } catch (error) {
-        console.error('Error reading file:', error);
+        
         setIsUploading(false);
         toast({
           title: "Upload failed",
@@ -345,10 +345,6 @@ const AddPropertyForm = () => {
       // Filter furnished checklist to only include checked items (saves DB space)
       const checkedFurnishedItems = furnishedChecklist.filter(item => item.checked);
 
-      // Debug: Log images state
-      console.log('uploadedImages state:', uploadedImages);
-      console.log('form.getValues("images"):', form.getValues('images'));
-
       // Prepare property data for backend API
       const propertyData = {
         ...data,
@@ -357,8 +353,8 @@ const AddPropertyForm = () => {
         ownerUID: currentUser.uid,
       };
 
-      console.log('Sending property data:', propertyData); // Debug log
-      console.log('Images being sent:', propertyData.images); // Debug log
+       // Debug log
+       // Debug log
 
       // Send to backend API
       const response = await fetch(`${API_BASE_URL}/properties`, {

@@ -100,7 +100,7 @@ const AttachDocuments = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        
       } finally {
         setLoading(false);
       }
@@ -140,7 +140,7 @@ const AttachDocuments = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
-      console.log(`File loaded: ${file.name}, size: ${file.size} bytes, base64 length: ${result.length}`);
+      
       setFileUrl(result);
     };
     reader.onerror = () => {
@@ -191,8 +191,6 @@ const AttachDocuments = () => {
         return;
       }
 
-      console.log(`📄 Uploading document: Name=${documentName}, Type=${documentType}, File size=${Math.round(estimatedOriginalSize / 1024)}KB`);
-
       const requestBody = {
         propertyId: propertyId || '',
         documentName: documentName.trim(),
@@ -200,8 +198,6 @@ const AttachDocuments = () => {
         fileUrl: fileUrl,
         description: description.trim(),
       };
-
-      console.log(`📄 Request body size: ${JSON.stringify(requestBody).length} bytes`);
 
       const response = await fetch(`${API_BASE_URL}/documents`, {
         method: 'POST',
@@ -212,11 +208,11 @@ const AttachDocuments = () => {
         body: JSON.stringify(requestBody),
       });
 
-      console.log(`📄 Response status: ${response.status}, OK: ${response.ok}`);
+      
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Server error response:", errorText);
+        
         let errorMessage = `Server error: ${response.status} ${response.statusText}`;
         try {
           const errorData = JSON.parse(errorText);
@@ -229,13 +225,13 @@ const AttachDocuments = () => {
       }
 
       const responseText = await response.text();
-      console.log(`📄 Response text length: ${responseText.length} bytes`);
+      
       
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (parseError) {
-        console.error("❌ Failed to parse response:", parseError);
+        
         throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
       }
 
@@ -260,20 +256,20 @@ const AttachDocuments = () => {
             const documentsData = await documentsResponse.json();
             if (documentsData.success && documentsData.documents) {
               setDocuments(documentsData.documents);
-              console.log("Documents refreshed:", documentsData.documents.length, "documents");
+              
             }
           } else {
-            console.error("Failed to refresh documents list:", documentsResponse.status);
+            
           }
         } catch (refreshError) {
-          console.error("Error refreshing documents list:", refreshError);
+          
           // Still show success since document was uploaded
         }
       } else {
         throw new Error(data.message || 'Failed to upload document');
       }
     } catch (error) {
-      console.error("Error uploading document:", error);
+      
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload document. Please try again later.';
       toast({
         title: "Error",
@@ -314,7 +310,7 @@ const AttachDocuments = () => {
         throw new Error(data.message || 'Failed to delete document');
       }
     } catch (error) {
-      console.error("Error deleting document:", error);
+      
       toast({
         title: "Error",
         description: "Failed to delete document. Please try again later.",

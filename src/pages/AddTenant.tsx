@@ -142,7 +142,7 @@ const AddTenant = () => {
           }
         }
       } catch (error) {
-        console.error('Error fetching property data:', error);
+        
       }
     };
 
@@ -225,7 +225,7 @@ const AddTenant = () => {
         });
       }
     } catch (error) {
-      console.error('Error searching user:', error);
+      
       setTenants(prev => prev.map(tenant => 
         tenant.id === tenantId 
           ? {
@@ -484,7 +484,7 @@ const AddTenant = () => {
       }
 
     } catch (error) {
-      console.error('Error adding tenants:', error);
+      
       toast({
         title: "Error",
         description: "Failed to add tenants. Please try again.",

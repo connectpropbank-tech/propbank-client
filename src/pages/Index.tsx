@@ -109,7 +109,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          console.error("Error fetching user phone:", error);
+          
         }
       } else {
         setUserPhone("");
@@ -169,7 +169,7 @@ const HomePage = () => {
       setAllProperties(fetchedProperties);
       
       // Update site settings from backend
-      console.log('🖼️ Banner Images:', response.siteSettings?.bannerImages);
+      
       if (response.siteSettings) {
         setSiteSettings(prev => ({
           ...prev,
@@ -183,7 +183,7 @@ const HomePage = () => {
       setHasMore(fetchedProperties.length > ITEMS_PER_PAGE);
       setPage(1);
     } catch (error) {
-      console.error('Error loading properties:', error);
+      
       toast({
         title: "Error",
         description: "Failed to load properties. Please refresh the page.",
@@ -365,7 +365,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          console.error("Error fetching user phone:", error);
+          
         }
       }
 
@@ -387,7 +387,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          console.error("Error fetching owner details:", error);
+          
         }
       }
 
@@ -415,7 +415,7 @@ const HomePage = () => {
         priority: 'high'
       };
 
-      console.log(`📤 Sending ${requestType} Request:`, notificationPayload);
+      
 
       const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
         method: 'POST',
@@ -436,7 +436,7 @@ const HomePage = () => {
         throw new Error(notificationData.message || 'Failed to send request');
       }
     } catch (error) {
-      console.error(`Error sending ${requestType} request:`, error);
+      
       toast({
         title: "Error",
         description: "Failed to send request. Please try again later.",
@@ -478,7 +478,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          console.error("Error fetching user phone:", error);
+          
           // Continue without phone number
         }
       }
@@ -501,7 +501,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          console.error("Error fetching owner details:", error);
+          
           // Continue without phone number
         }
       }
@@ -531,7 +531,7 @@ const HomePage = () => {
       };
 
       // Debug: Log the payload being sent
-      console.log("📤 Sending Property Enquiry Notification:", notificationPayload);
+      
 
       const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
         method: 'POST',
@@ -552,7 +552,7 @@ const HomePage = () => {
         throw new Error(notificationData.message || 'Failed to send enquiry');
       }
     } catch (error) {
-      console.error('Error sending property enquiry:', error);
+      
       toast({
         title: "Error",
         description: "Failed to send enquiry. Please try again later.",
@@ -663,7 +663,7 @@ const HomePage = () => {
                             index === currentBannerIndex ? 'opacity-100' : 'opacity-0'
                           }`}
                           onError={(e) => {
-                            console.error('Banner image failed to load:', bannerUrl);
+                            
                             const target = e.target as HTMLImageElement;
                             target.src = heroImage;
                           }}

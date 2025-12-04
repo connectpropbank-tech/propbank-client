@@ -208,7 +208,7 @@ const EditProperty = () => {
       
       if (data.success) {
         const propertyData = data.property;
-        console.log("Fetched property data:", propertyData);
+        
         setProperty(propertyData);
         setUploadedImages(propertyData.images || []);
         
@@ -287,7 +287,7 @@ const EditProperty = () => {
         // Set the furnished checklist state
         setFurnishedChecklist(normalizeFurnishedChecklist(propertyData.furnishedChecklist));
         
-        console.log("Populating form with data:", formData);
+        
         form.reset(formData);
       } else {
         toast({
@@ -351,7 +351,7 @@ const EditProperty = () => {
               description: "Image uploaded successfully to cloud storage.",
             });
           } catch (uploadError) {
-            console.error('R2 upload failed:', uploadError);
+            
             // Fallback to base64 if R2 upload fails
             setUploadedImages(prev => {
               const newImages = [...prev, base64Image];
@@ -366,7 +366,7 @@ const EditProperty = () => {
             });
           }
         } catch (error) {
-          console.error('Error reading file:', error);
+          
           toast({
             title: "Upload failed",
             description: "Failed to read the image file.",
@@ -474,7 +474,7 @@ const EditProperty = () => {
         ownerUID: currentUser.uid,
       };
 
-      console.log('Sending update data:', updateData); // Debug log
+       // Debug log
 
       // Send update request to backend
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {

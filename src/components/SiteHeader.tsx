@@ -1,6 +1,6 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
-import { Menu, X, LogOut, LogIn, ChevronDown, Shield } from "lucide-react";
+import { Menu, X, LogOut, LogIn, ChevronDown, Shield, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { auth, signOutUser } from "@/firebase";
@@ -43,7 +43,7 @@ const SiteHeader = () => {
       }
     }
   } catch (error) {
-    console.error("Error fetching user phone:", error);
+    
   }
 };
 
@@ -143,6 +143,16 @@ const SiteHeader = () => {
                     <Shield className="w-5 h-5" />
                     Admin Portal
                   </NavLink>
+
+                  {/* Contact Us */}
+                  <a 
+                    href="mailto:connectpropbank@gmail.com" 
+                    className="px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Mail className="w-5 h-5" />
+                    Contact Us
+                  </a>
 
                   <div className="border-t pt-4 mt-4">
                     {user ? (

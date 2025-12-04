@@ -63,7 +63,7 @@ const RequestServices = () => {
             }
           }
         } catch (error) {
-          console.error("Error fetching user phone:", error);
+          
         }
       } else {
         setUserPhone("");
@@ -182,13 +182,13 @@ const RequestServices = () => {
                     }
                   }
                 } catch (error) {
-                  console.error("Error fetching owner details:", error);
+                  
                 }
               }
             }
           }
         } catch (error) {
-          console.error("Error fetching property details:", error);
+          
         }
       }
 
@@ -196,15 +196,15 @@ const RequestServices = () => {
       let serviceImageUrl = '';
       if (form.image) {
         try {
-          console.log('📤 Uploading service request image to Cloudflare R2...');
+          
           serviceImageUrl = await uploadBase64Image(
             form.image,
             'service-requests',
             `${user.uid}-${Date.now()}`
           );
-          console.log('✅ Image uploaded successfully:', serviceImageUrl);
+          
         } catch (uploadError) {
-          console.error('❌ Failed to upload image:', uploadError);
+          
           toast({
             title: "Image Upload Failed",
             description: "Failed to upload image. Submitting request without image.",
@@ -241,7 +241,7 @@ const RequestServices = () => {
         priority: 'high'
       };
 
-      console.log(`📤 Sending Service Request:`, notificationPayload);
+      
 
       const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
         method: 'POST',
@@ -275,7 +275,7 @@ const RequestServices = () => {
         throw new Error(notificationData.message || 'Failed to submit request');
       }
     } catch (error) {
-      console.error(`Error submitting ${serviceType} request:`, error);
+      
       toast({
         title: "Error",
         description: "Failed to submit request. Please try again later.",

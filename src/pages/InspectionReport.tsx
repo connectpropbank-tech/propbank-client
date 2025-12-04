@@ -72,7 +72,7 @@ const InspectionReport = () => {
           }
         }
       } catch (error) {
-        console.error("Error fetching property:", error);
+        
       } finally {
         setLoading(false);
       }
@@ -253,7 +253,7 @@ const InspectionReport = () => {
         throw new Error(data.message || 'Failed to submit report');
       }
     } catch (error) {
-      console.error("Error submitting inspection report:", error);
+      
       toast({
         title: "Error",
         description: "Failed to submit inspection report. Please try again later.",

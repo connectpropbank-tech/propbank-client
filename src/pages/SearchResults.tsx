@@ -118,7 +118,7 @@ const SearchResults = () => {
       setSearchParams(newParams);
       
     } catch (error) {
-      console.error('Search error:', error);
+      
       toast({
         title: "Search Error",
         description: "Failed to search properties. Please try again.",
