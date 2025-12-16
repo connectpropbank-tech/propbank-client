@@ -409,8 +409,10 @@ const EditProperty = () => {
         ];
       case "industrial":
         return [
-          { value: "unit-ncc-shed", label: "Unit / NCC / Shed / Land" },
-          { value: "ground-floor", label: "Ground / Ground+1 / etc ( if RCC )" },
+          { value: "unit", label: "Unit" },
+          { value: "shed", label: "Shed" },
+          { value: "Plot/land", label: "Plot/land" },
+          { value: "RCC", label: "RCC" },
         ];
       default:
         return [];
