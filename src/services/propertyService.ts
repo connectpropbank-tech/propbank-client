@@ -12,6 +12,7 @@ interface Property {
   propertyType: string;
   listingType?: string; // 'rent' | 'sell'
   projectCondition?: string; // 'New Project' | 'Ready Project' | 'Preleased'
+  possessionDate?: string;
   bedrooms: number;
   bathrooms: number;
   squareFeet: number;

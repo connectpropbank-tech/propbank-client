@@ -79,15 +79,26 @@ const PropertyDetailsDialog = ({ property }: PropertyDetailsDialogProps) => {
                         )}
 
                         {/* Possession */}
-                        {property.projectCondition && (
-                            <div className="col-span-2 space-y-1">
-                                <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                                    <Calendar className="h-4 w-4" />
-                                    <span>Possession Status</span>
-                                </div>
-                                <p className="font-medium text-sm">{property.projectCondition}</p>
-                            </div>
-                        )}
+                        <div className="col-span-2 space-y-1">
+                            {(property.projectCondition || property.possessionDate) && (
+                                <>
+                                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                                        <Calendar className="h-4 w-4" />
+                                        <span>Possession Date</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                        {property.projectCondition && (
+                                            <span className="font-medium text-sm">{property.projectCondition}</span>
+                                        )}
+                                        {property.possessionDate && (
+                                            <span className="text-sm font-medium">
+                                                {new Date(property.possessionDate).toLocaleDateString()}
+                                            </span>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
 
                     <div className="border-t pt-4 mt-2">

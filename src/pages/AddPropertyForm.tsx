@@ -25,17 +25,17 @@ const formSchema = z.object({
   propertyType: z.string().min(1, "Property type is required"),
   configuration: z.string().min(1, "Configuration is required"),
   listingType: z.string().min(1, "Listing type is required"), // Sell or Rent
-  
+
   // Unit Details (conditional based on property type)
   unitNumber: z.string().optional(),
   floor: z.string().optional(),
   location: z.string().min(1, "Location is required"),
-  
+
   // Area Details
   carpetArea: z.string().optional(),
   plotArea: z.string().optional(),
   constructedArea: z.string().optional(),
-  
+
   // Tenant Information (conditional - required when property is rented)
   tenantName: z.string().optional(),
   personName: z.string().optional(),
@@ -43,11 +43,11 @@ const formSchema = z.object({
   primaryNo: z.string().optional(),
   ultNo: z.string().optional(),
   emergencyContact: z.string().optional(),
-  
+
   // Tenant Employment Details
   employmentStatus: z.string().optional(),
   employer: z.string().optional(),
-  
+
   // Tenant Spouse Information
   isMarried: z.boolean().optional(),
   spouseFirstName: z.string().optional(),
@@ -57,11 +57,11 @@ const formSchema = z.object({
   spouseEmploymentStatus: z.string().optional(),
   spouseEmployer: z.string().optional(),
   spouseNotes: z.string().optional(),
-  
+
   // Pricing Details (conditional based on listing type)
   monthlyRent: z.string().optional(), // For rent
   sellingPrice: z.string().optional(), // For sell
-  
+
   // Monthly Rent Details (for rent only)
   monthlyRent1stYear: z.string().optional(),
   monthlyRent2ndYear: z.string().optional(),
@@ -71,29 +71,29 @@ const formSchema = z.object({
   rentToDate1: z.string().optional(),
   rentFromDate2: z.string().optional(),
   rentToDate2: z.string().optional(),
-  
+
   // Payment Details
   paymentDueDate: z.string().optional(),
   escalationPercentage: z.string().optional(),
   escalationAmount: z.string().optional(),
-  
+
   // Security & Agreement
   securityDeposit: z.string().optional(),
   agreementPeriod: z.string().optional(),
   agreementStartDate: z.string().optional(),
   agreementEndDate: z.string().optional(),
-  
+
   // Notice & Lock-in
   noticePeriod: z.string().optional(),
   lockInPeriod: z.string().optional(),
-  
+
   // Unit Condition & Maintenance
   unitCondition: z.string().optional(),
   maintenanceToBePaidBy: z.string().optional(),
   projectCondition: z.string().optional(),
   rentalStatus: z.string().optional(), // New field to track if property is rented
   possessionDate: z.string().optional(), // Possession date for available for rent
-  
+
   // Furnished Checklist
   furnishedChecklist: z.array(z.object({
     id: z.string(),
@@ -102,7 +102,7 @@ const formSchema = z.object({
     quantity: z.number().min(1).default(1),
     category: z.enum(['basic', 'kitchen', 'bedroom', 'living', 'appliances', 'semifurnished', 'office', 'infrastructure', 'safety', 'machinery', 'storage', 'utilities', 'other'])
   })).optional(),
-  
+
   // Images & Comments
   images: z.array(z.string()).optional(),
   specificComments: z.string().optional(),
@@ -119,7 +119,7 @@ const AddPropertyForm = () => {
   const [showFurnishedModal, setShowFurnishedModal] = useState(false);
   const [furnishedChecklist, setFurnishedChecklist] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  
+
   // Image handling functions
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -138,33 +138,33 @@ const AddPropertyForm = () => {
     const file = files[0];
     if (file && file.type.startsWith('image/')) {
       setIsUploading(true);
-      
+
       try {
         // Convert file to base64
         const reader = new FileReader();
         reader.onload = async (e) => {
           const base64Image = e.target?.result as string;
-          
+
           try {
             // Upload to Cloudflare R2
             const uploadedUrl = await uploadBase64Image(base64Image, 'properties', 'building');
-            
-            
-            
+
+
+
             setUploadedImages([uploadedUrl]);
             form.setValue('images', [uploadedUrl]);
-            
+
             toast({
               title: "Image uploaded",
               description: "Building image uploaded successfully to cloud storage.",
             });
           } catch (uploadError) {
-            
+
             // Fallback to base64 if R2 upload fails
-            
+
             setUploadedImages([base64Image]);
             form.setValue('images', [base64Image]);
-            
+
             toast({
               title: "Image saved locally",
               description: "Cloud upload failed, image will be uploaded when saving property.",
@@ -176,7 +176,7 @@ const AddPropertyForm = () => {
         };
         reader.readAsDataURL(file);
       } catch (error) {
-        
+
         setIsUploading(false);
         toast({
           title: "Upload failed",
@@ -272,7 +272,7 @@ const AddPropertyForm = () => {
         });
         return;
       }
-      
+
       if (data.listingType === "sell" && (!data.sellingPrice || data.sellingPrice.trim() === "")) {
         toast({
           title: "Missing Selling Price",
@@ -292,7 +292,7 @@ const AddPropertyForm = () => {
           });
           return;
         }
-        
+
         if (!data.mobileNumber || data.mobileNumber.trim() === "") {
           toast({
             title: "Missing Tenant Contact",
@@ -353,8 +353,8 @@ const AddPropertyForm = () => {
         ownerUID: currentUser.uid,
       };
 
-       // Debug log
-       // Debug log
+      // Debug log
+      // Debug log
 
       // Send to backend API
       const response = await fetch(`${API_BASE_URL}/properties`, {
@@ -366,7 +366,7 @@ const AddPropertyForm = () => {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         const listingTypeText = data.listingType === "rent" ? "rental property" : "property for sale";
         toast({
@@ -404,7 +404,7 @@ const AddPropertyForm = () => {
       case "commercial":
         return [
           { value: "office", label: "Office" },
-          { value: "shop", label: "Shop"},
+          { value: "shop", label: "Shop" },
         ];
       case "industrial":
         return [
@@ -446,7 +446,7 @@ const AddPropertyForm = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Property Type Selection
           </Button>
-          
+
           <div className="flex items-center gap-4 mb-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
               <Building2 className="h-8 w-8 text-primary-foreground" />
@@ -476,13 +476,13 @@ const AddPropertyForm = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                
+
                 {/* Basic Property Information */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-4 border rounded-lg">
                   <div className="lg:col-span-4">
                     <h3 className="text-lg font-semibold mb-4">Property Details</h3>
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="propertyTitle"
@@ -575,7 +575,7 @@ const AddPropertyForm = () => {
                   <div className="lg:col-span-3">
                     <h3 className="text-lg font-semibold ">Unit Details</h3>
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="unitNumber"
@@ -677,7 +677,7 @@ const AddPropertyForm = () => {
                         Since this property is already rented out, please provide the current tenant details.
                       </p>
                     </div>
-                    
+
                     <FormField
                       control={form.control}
                       name="tenantName"
@@ -717,7 +717,7 @@ const AddPropertyForm = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField control={form.control} name="ultNo"
                       render={({ field }) => (
                         <FormItem>
@@ -1100,10 +1100,10 @@ const AddPropertyForm = () => {
                           <FormItem>
                             <FormLabel>Monthly Rent (₹) *</FormLabel>
                             <FormControl>
-                              <Input 
-                                placeholder="Enter monthly rent amount (e.g., 25000)" 
+                              <Input
+                                placeholder="Enter monthly rent amount (e.g., 25000)"
                                 type="number"
-                                {...field} 
+                                {...field}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1121,10 +1121,10 @@ const AddPropertyForm = () => {
                         <FormItem>
                           <FormLabel>Selling Price (₹) *</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Enter selling price (e.g., 5000000)" 
+                            <Input
+                              placeholder="Enter selling price (e.g., 5000000)"
                               type="number"
-                              {...field} 
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
@@ -1149,55 +1149,39 @@ const AddPropertyForm = () => {
                       <h3 className="text-lg font-semibold mb-4">Security Deposit and Agreement Details</h3>
                     </div>
 
-                  <FormField
-                    control={form.control}
-                    name="securityDeposit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Security Deposit Amount (in ₹)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter security deposit amount" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                    <FormField
+                      control={form.control}
+                      name="securityDeposit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Security Deposit Amount (in ₹)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter security deposit amount" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+
+                    {/* Agreement Duration - Only for Already Rented Out */}
+                    {form.watch("rentalStatus") === "rented" && (
+                      <FormField
+                        control={form.control}
+                        name="agreementPeriod"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Agreement Duration (in Months)</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter agreement duration in months" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     )}
-                  />
 
-                  {/* Possession Date - Only for Available for Rent */}
-                  {form.watch("rentalStatus") === "available" && (
-                    <FormField
-                      control={form.control}
-                      name="possessionDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Possession Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" placeholder="Select possession date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  {/* Agreement Duration - Only for Already Rented Out */}
-                  {form.watch("rentalStatus") === "rented" && (
-                    <FormField
-                      control={form.control}
-                      name="agreementPeriod"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Agreement Duration (in Months)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter agreement duration in months" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  {/* <div className="grid grid-cols-2 gap-2">
+                    {/* <div className="grid grid-cols-2 gap-2">
                     <FormField
                       control={form.control}
                       name="agreementStartDate"
@@ -1236,34 +1220,34 @@ const AddPropertyForm = () => {
                     <div className="lg:col-span-2">
                       <h3 className="text-lg font-semibold mb-4">Notice and Lock-in Period</h3>
                     </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="noticePeriod"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notice Period / Early Termination Notice (in Months)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Specify notice period in months" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
 
-                  <FormField
-                    control={form.control}
-                    name="lockInPeriod"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Lock-in Period (in Months)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Specify lock-in period in months" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="noticePeriod"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Notice Period / Early Termination Notice (in Months)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Specify notice period in months" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="lockInPeriod"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Lock-in Period (in Months)</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Specify lock-in period in months" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 )}
 
@@ -1273,7 +1257,7 @@ const AddPropertyForm = () => {
                   <div className="lg:col-span-3">
                     <h3 className="text-lg font-semibold mb-4">Unit Condition & Maintenance</h3>
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="unitCondition"
@@ -1374,12 +1358,28 @@ const AddPropertyForm = () => {
                       )}
                     />
                   )}
+
+                  {((form.watch("listingType") === "rent" && form.watch("rentalStatus") === "available") || form.watch("listingType") === "sell") && (
+                    <FormField
+                      control={form.control}
+                      name="possessionDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Possession Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" placeholder="Select possession date" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 {/* Images & Comments */}
                 <div className="grid grid-cols-1 gap-6 p-4 border rounded-lg">
                   <h3 className="text-lg font-semibold">Additional Information</h3>
-                  
+
                   <FormField
                     control={form.control}
                     name="images"
@@ -1479,8 +1479,8 @@ const AddPropertyForm = () => {
                     onClick={() => navigate("/manage-property")}>
                     CANCEL
                   </Button>
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     className="px-8 bg-primary hover:bg-primary/90"
                   >
                     SUBMIT
