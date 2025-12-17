@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Building2, Upload, X, Image as ImageIcon, CheckSquare, User } from "lucide-react";
+import { ArrowLeft, Building2, Upload, X, Image as ImageIcon, CheckSquare, User, Plus, Trash2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { auth } from "../firebase";
@@ -63,7 +63,15 @@ const formSchema = z.object({
   monthlyRent: z.string().optional(), // For rent
   sellingPrice: z.string().optional(), // For sell
 
-  // Monthly Rent Details (for rent only)
+  // Monthly Rent Details (for rent only) - Dynamic Schedule
+  rentSchedule: z.array(z.object({
+    year: z.string().optional(),
+    amount: z.string().optional(),
+    fromDate: z.string().optional(),
+    toDate: z.string().optional(),
+  })).optional(),
+
+  // Legacy fields - kept for compatibility but will be populated from schedule if needed
   monthlyRent1stYear: z.string().optional(),
   monthlyRent2ndYear: z.string().optional(),
   monthlyRent3rdYear: z.string().optional(),
@@ -111,6 +119,21 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+const getOrdinalSuffix = (i: number) => {
+  const j = i % 10,
+    k = i % 100;
+  if (j === 1 && k !== 11) {
+    return "st";
+  }
+  if (j === 2 && k !== 12) {
+    return "nd";
+  }
+  if (j === 3 && k !== 13) {
+    return "rd";
+  }
+  return "th";
+};
 
 const AddPropertyForm = () => {
   const navigate = useNavigate();
@@ -310,6 +333,7 @@ const AddPropertyForm = () => {
       rentToDate1: "",
       rentFromDate2: "",
       rentToDate2: "",
+      rentSchedule: [{ year: "1st Year", amount: "", fromDate: "", toDate: "" }], // Start with one row
       paymentDueDate: "",
       escalationPercentage: "",
       escalationAmount: "",
@@ -328,7 +352,13 @@ const AddPropertyForm = () => {
       images: [],
       internalImages: [],
       specificComments: "",
+
     },
+  });
+
+  const { fields: rentScheduleFields, append: appendRentSchedule, remove: removeRentSchedule } = useFieldArray({
+    control: form.control,
+    name: "rentSchedule",
   });
 
   const onSubmit = async (data: FormData) => {
@@ -1051,104 +1081,7 @@ const AddPropertyForm = () => {
                   </div>
                 )}
 
-                {/* Monthly Rent */}
-                {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 border rounded-lg">
-                  <div className="lg:col-span-2">
-                    <h3 className="text-lg font-semibold mb-4">Monthly rent</h3>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="monthlyRent1stYear"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>1st year Rs. ..................</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter 1st year rent" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
-                    <FormField
-                      control={form.control}
-                      name="monthlyRent2ndYear"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Add option (if have 2nd/3rd/4th+ year) Rs. ..................</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter 2nd year rent (optional)" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-2">
-                      <FormField
-                        control={form.control}
-                        name="rentFromDate1"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>from ..../...../..........</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="rentToDate1"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>to ..../...../..........</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                      <FormField
-                        control={form.control}
-                        name="rentFromDate2"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>from ..../...../..........</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="rentToDate2"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>to ..../...../..........</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </div> */}
 
                 {/* Pricing Information */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 border rounded-lg">
@@ -1182,6 +1115,82 @@ const AddPropertyForm = () => {
                           </FormItem>
                         )}
                       />
+
+                      {/* Dynamic Monthly Rent Schedule */}
+                      {form.watch("rentalStatus") === "rented" && (
+                        <div className="mt-6 space-y-4 pt-4 border-t col-span-1 lg:col-span-2">
+                          <div className="flex items-center justify-between">
+                            <FormLabel className="text-base font-semibold">Monthly Rent Schedule</FormLabel>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => appendRentSchedule({ year: `${rentScheduleFields.length + 1}${getOrdinalSuffix(rentScheduleFields.length + 1)} Year`, amount: "", fromDate: "", toDate: "" })}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Year
+                            </Button>
+                          </div>
+
+                          <div className="space-y-4">
+                            {rentScheduleFields.map((field, index) => (
+                              <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border rounded-lg bg-gray-50/50 items-end relative">
+                                <div className="md:col-span-2">
+                                  <FormLabel className="text-xs">Year</FormLabel>
+                                  <Input
+                                    {...form.register(`rentSchedule.${index}.year`)}
+                                    className="bg-white"
+                                  />
+                                </div>
+                                <div className="md:col-span-3">
+                                  <FormLabel className="text-xs">Amount (₹)</FormLabel>
+                                  <Input
+                                    {...form.register(`rentSchedule.${index}.amount`)}
+                                    placeholder="Amount"
+                                    className="bg-white"
+                                  />
+                                </div>
+                                <div className="md:col-span-3">
+                                  <FormLabel className="text-xs">From</FormLabel>
+                                  <Input
+                                    type="date"
+                                    {...form.register(`rentSchedule.${index}.fromDate`)}
+                                    className="bg-white"
+                                  />
+                                </div>
+                                <div className="md:col-span-3">
+                                  <FormLabel className="text-xs">To</FormLabel>
+                                  <Input
+                                    type="date"
+                                    {...form.register(`rentSchedule.${index}.toDate`)}
+                                    className="bg-white"
+                                  />
+                                </div>
+
+                                {rentScheduleFields.length > 1 && (
+                                  <div className="md:col-span-1 flex justify-center pb-2">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => removeRentSchedule(index)}
+                                      className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+
+                            {rentScheduleFields.length === 0 && (
+                              <div className="text-center py-8 border-2 border-dashed rounded-lg text-muted-foreground text-sm">
+                                No rent schedule added. Click "Add Year" to define the rent structure.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
 

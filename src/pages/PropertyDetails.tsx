@@ -82,6 +82,12 @@ interface TenantInfo {
   monthlyIncome: string;
   notes: string;
   isActive: boolean;
+  rentSchedule?: Array<{
+    year: string;
+    amount: string;
+    fromDate: string;
+    toDate: string;
+  }>;
   createdAt: string;
   updatedAt: string;
 }
@@ -165,6 +171,12 @@ interface Property {
   rentToDate1: string;
   rentFromDate2: string;
   rentToDate2: string;
+  rentSchedule?: Array<{
+    year: string;
+    amount: string;
+    fromDate: string;
+    toDate: string;
+  }>;
 
   // Payment Details
   paymentDueDate: string;
@@ -1073,6 +1085,37 @@ const PropertyDetails = () => {
                               </div>
                             )}
                           </div>
+
+                          {/* Rent Schedule Display */}
+                          {tenant.rentSchedule && tenant.rentSchedule.length > 0 && (
+                            <div className="mt-4 border rounded-md overflow-hidden">
+                              <div className="bg-muted px-4 py-2 text-sm font-medium border-b">
+                                Monthly Rent Schedule
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="bg-muted/50 text-left">
+                                      <th className="px-4 py-2 font-medium bg-muted/30">Year</th>
+                                      <th className="px-4 py-2 font-medium bg-muted/30">Amount</th>
+                                      <th className="px-4 py-2 font-medium bg-muted/30">From</th>
+                                      <th className="px-4 py-2 font-medium bg-muted/30">To</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {tenant.rentSchedule.map((item, idx) => (
+                                      <tr key={idx} className="border-t">
+                                        <td className="px-4 py-2">{item.year}</td>
+                                        <td className="px-4 py-2">₹{Number(item.amount).toLocaleString()}</td>
+                                        <td className="px-4 py-2">{new Date(item.fromDate).toLocaleDateString()}</td>
+                                        <td className="px-4 py-2">{new Date(item.toDate).toLocaleDateString()}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
 
                           {tenant.notes && (
                             <div className="mt-4">

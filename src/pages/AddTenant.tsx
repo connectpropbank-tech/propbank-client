@@ -1,6 +1,7 @@
+
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, User, FileText, MapPin, Trash2, Plus, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Trash2, Plus, GripVertical, UserPlus, Phone, Mail, MapPin, Briefcase, FileText, User, Users, AlertCircle, Loader2, ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,12 @@ interface TenantData {
   searchError?: string; // Error message if user not found
   searchingUser?: boolean; // Loading state for user search
   searchTimeoutId?: NodeJS.Timeout; // Timeout ID for debounced search
+  rentSchedule: {
+    year: string;
+    amount: string;
+    fromDate: string;
+    toDate: string;
+  }[];
 }
 
 const AddTenant = () => {
@@ -95,7 +102,8 @@ const AddTenant = () => {
       noticePeriod: '',
       notes: '',
       searchError: undefined,
-      searchingUser: false
+      searchingUser: false,
+      rentSchedule: [{ year: "1st Year", amount: "", fromDate: "", toDate: "" }]
     }
   ]);
 
@@ -111,7 +119,7 @@ const AddTenant = () => {
       if (!propertyId) return;
 
       try {
-        const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
+        const response = await fetch(`${API_BASE_URL} /properties/${propertyId} `);
         const data = await response.json();
 
         if (data.success) {
@@ -170,7 +178,7 @@ const AddTenant = () => {
     ));
 
     try {
-      const response = await fetch(`${API_BASE_URL}/users/search?phone=${encodeURIComponent(phoneNumber)}`);
+      const response = await fetch(`${API_BASE_URL} /users/search ? phone = ${encodeURIComponent(phoneNumber)} `);
       const data = await response.json();
 
       if (data.success && data.user) {
@@ -204,7 +212,7 @@ const AddTenant = () => {
 
         toast({
           title: "User Found",
-          description: `Found user: ${user.name}`,
+          description: `Found user: ${user.name} `,
         });
       } else {
         // User not found
@@ -316,6 +324,60 @@ const AddTenant = () => {
     }));
   };
 
+  const getOrdinalSuffix = (i: number) => {
+    const j = i % 10,
+      k = i % 100;
+    if (j === 1 && k !== 11) {
+      return "st";
+    }
+    if (j === 2 && k !== 12) {
+      return "nd";
+    }
+    if (j === 3 && k !== 13) {
+      return "rd";
+    }
+    return "th";
+  };
+
+  const handleRentScheduleChange = (tenantId: string, index: number, field: string, value: string) => {
+    setTenants(prev => prev.map(tenant => {
+      if (tenant.id === tenantId) {
+        const newSchedule = [...(tenant.rentSchedule || [])];
+        if (!newSchedule[index]) return tenant; // Safety check
+        newSchedule[index] = { ...newSchedule[index], [field]: value };
+        return { ...tenant, rentSchedule: newSchedule };
+      }
+      return tenant;
+    }));
+  };
+
+  const addRentScheduleYear = (tenantId: string) => {
+    setTenants(prev => prev.map(tenant => {
+      if (tenant.id === tenantId) {
+        const currentSchedule = tenant.rentSchedule || [];
+        const nextYear = currentSchedule.length + 1;
+        return {
+          ...tenant,
+          rentSchedule: [
+            ...currentSchedule,
+            { year: `${nextYear}${getOrdinalSuffix(nextYear)} Year`, amount: "", fromDate: "", toDate: "" }
+          ]
+        };
+      }
+      return tenant;
+    }));
+  };
+
+  const removeRentScheduleYear = (tenantId: string, index: number) => {
+    setTenants(prev => prev.map(tenant => {
+      if (tenant.id === tenantId) {
+        const newSchedule = (tenant.rentSchedule || []).filter((_, i) => i !== index);
+        return { ...tenant, rentSchedule: newSchedule };
+      }
+      return tenant;
+    }));
+  };
+
   const addTenant = () => {
     const newTenant: TenantData = {
       id: Date.now().toString(),
@@ -342,7 +404,8 @@ const AddTenant = () => {
       noticePeriod: '',
       notes: '',
       searchError: undefined,
-      searchingUser: false
+      searchingUser: false,
+      rentSchedule: [{ year: "1st Year", amount: "", fromDate: "", toDate: "" }]
     };
     setTenants(prev => [...prev, newTenant]);
   };
@@ -414,7 +477,7 @@ const AddTenant = () => {
     }
 
     try {
-      const propertyResponse = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
+      const propertyResponse = await fetch(`${API_BASE_URL} /properties/${propertyId} `);
       const propertyData = await propertyResponse.json();
 
       if (!propertyData.success) {
@@ -447,6 +510,7 @@ const AddTenant = () => {
         escalationAmount: tenant.escalationAmount,
         noticePeriod: tenant.noticePeriod,
         notes: tenant.notes,
+        rentSchedule: tenant.rentSchedule,
         isActive: true
         // Let backend handle createdAt and updatedAt timestamps
       }));
@@ -456,7 +520,7 @@ const AddTenant = () => {
       const updatedTenants = [...existingTenants, ...newTenantInfos];
 
       // Update property with new tenants using property update API
-      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
+      const response = await fetch(`${API_BASE_URL} /properties/${propertyId} `, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -698,27 +762,27 @@ const AddTenant = () => {
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor={`firstName-${tenant.id}`}>First Name *</Label>
+                        <Label htmlFor={`firstName - ${tenant.id} `}>First Name *</Label>
                         <Input
-                          id={`firstName-${tenant.id}`}
+                          id={`firstName - ${tenant.id} `}
                           value={tenant.firstName}
                           onChange={(e) => handleInputChange(tenant.id, 'firstName', e.target.value)}
                           placeholder="Enter first name"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`lastName-${tenant.id}`}>Last Name *</Label>
+                        <Label htmlFor={`lastName - ${tenant.id} `}>Last Name *</Label>
                         <Input
-                          id={`lastName-${tenant.id}`}
+                          id={`lastName - ${tenant.id} `}
                           value={tenant.lastName}
                           onChange={(e) => handleInputChange(tenant.id, 'lastName', e.target.value)}
                           placeholder="Enter last name"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`email-${tenant.id}`}>Email *</Label>
+                        <Label htmlFor={`email - ${tenant.id} `}>Email *</Label>
                         <Input
-                          id={`email-${tenant.id}`}
+                          id={`email - ${tenant.id} `}
                           type="email"
                           value={tenant.email}
                           onChange={(e) => handleInputChange(tenant.id, 'email', e.target.value)}
@@ -726,10 +790,10 @@ const AddTenant = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`phone-${tenant.id}`}>Phone *</Label>
+                        <Label htmlFor={`phone - ${tenant.id} `}>Phone *</Label>
                         <div className="relative">
                           <Input
-                            id={`phone-${tenant.id}`}
+                            id={`phone - ${tenant.id} `}
                             value={tenant.phone}
                             onChange={(e) => handleInputChange(tenant.id, 'phone', e.target.value)}
                             placeholder="+1 (555) 123-4567"
@@ -772,9 +836,9 @@ const AddTenant = () => {
                         )}
                       </div>
                       <div className="md:col-span-2">
-                        <Label htmlFor={`emergencyContact-${tenant.id}`}>Emergency Contact</Label>
+                        <Label htmlFor={`emergencyContact - ${tenant.id} `}>Emergency Contact</Label>
                         <Input
-                          id={`emergencyContact-${tenant.id}`}
+                          id={`emergencyContact - ${tenant.id} `}
                           value={tenant.emergencyContact}
                           onChange={(e) => handleInputChange(tenant.id, 'emergencyContact', e.target.value)}
                           placeholder="Emergency contact name and phone"
@@ -784,12 +848,12 @@ const AddTenant = () => {
                       {/* Marital Status Checkbox */}
                       <div className="md:col-span-2 flex items-center space-x-2 pt-2">
                         <Checkbox
-                          id={`isMarried-${tenant.id}`}
+                          id={`isMarried - ${tenant.id} `}
                           checked={tenant.isMarried}
                           onCheckedChange={(checked) => handleMaritalStatusChange(tenant.id, checked as boolean)}
                         />
                         <Label
-                          htmlFor={`isMarried-${tenant.id}`}
+                          htmlFor={`isMarried - ${tenant.id} `}
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                         >
                           Is the tenant married?
@@ -807,27 +871,27 @@ const AddTenant = () => {
                       </h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor={`spouseFirstName-${tenant.id}`}>Spouse First Name *</Label>
+                          <Label htmlFor={`spouseFirstName - ${tenant.id} `}>Spouse First Name *</Label>
                           <Input
-                            id={`spouseFirstName-${tenant.id}`}
+                            id={`spouseFirstName - ${tenant.id} `}
                             value={tenant.spouse?.firstName || ''}
                             onChange={(e) => handleSpouseChange(tenant.id, 'firstName', e.target.value)}
                             placeholder="Enter spouse first name"
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`spouseLastName-${tenant.id}`}>Spouse Last Name *</Label>
+                          <Label htmlFor={`spouseLastName - ${tenant.id} `}>Spouse Last Name *</Label>
                           <Input
-                            id={`spouseLastName-${tenant.id}`}
+                            id={`spouseLastName - ${tenant.id} `}
                             value={tenant.spouse?.lastName || ''}
                             onChange={(e) => handleSpouseChange(tenant.id, 'lastName', e.target.value)}
                             placeholder="Enter spouse last name"
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`spouseEmail-${tenant.id}`}>Spouse Email</Label>
+                          <Label htmlFor={`spouseEmail - ${tenant.id} `}>Spouse Email</Label>
                           <Input
-                            id={`spouseEmail-${tenant.id}`}
+                            id={`spouseEmail - ${tenant.id} `}
                             type="email"
                             value={tenant.spouse?.email || ''}
                             onChange={(e) => handleSpouseChange(tenant.id, 'email', e.target.value)}
@@ -835,16 +899,16 @@ const AddTenant = () => {
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`spousePhone-${tenant.id}`}>Spouse Phone *</Label>
+                          <Label htmlFor={`spousePhone - ${tenant.id} `}>Spouse Phone *</Label>
                           <Input
-                            id={`spousePhone-${tenant.id}`}
+                            id={`spousePhone - ${tenant.id} `}
                             value={tenant.spouse?.phone || ''}
                             onChange={(e) => handleSpouseChange(tenant.id, 'phone', e.target.value)}
                             placeholder="+1 (555) 123-4567"
                           />
                         </div>
                         <div>
-                          <Label htmlFor={`spouseEmploymentStatus-${tenant.id}`}>Spouse Employment Status</Label>
+                          <Label htmlFor={`spouseEmploymentStatus - ${tenant.id} `}>Spouse Employment Status</Label>
                           <Select
                             value={tenant.spouse?.employmentStatus || ''}
                             onValueChange={(value) => handleSpouseChange(tenant.id, 'employmentStatus', value)}
@@ -863,18 +927,18 @@ const AddTenant = () => {
                           </Select>
                         </div>
                         <div>
-                          <Label htmlFor={`spouseEmployer-${tenant.id}`}>Spouse Employer/Company</Label>
+                          <Label htmlFor={`spouseEmployer - ${tenant.id} `}>Spouse Employer/Company</Label>
                           <Input
-                            id={`spouseEmployer-${tenant.id}`}
+                            id={`spouseEmployer - ${tenant.id} `}
                             value={tenant.spouse?.employer || ''}
                             onChange={(e) => handleSpouseChange(tenant.id, 'employer', e.target.value)}
                             placeholder="Company name"
                           />
                         </div>
                         <div className="md:col-span-2">
-                          <Label htmlFor={`spouseNotes-${tenant.id}`}>Spouse Additional Notes</Label>
+                          <Label htmlFor={`spouseNotes - ${tenant.id} `}>Spouse Additional Notes</Label>
                           <Textarea
-                            id={`spouseNotes-${tenant.id}`}
+                            id={`spouseNotes - ${tenant.id} `}
                             value={tenant.spouse?.notes || ''}
                             onChange={(e) => handleSpouseChange(tenant.id, 'notes', e.target.value)}
                             placeholder="Any additional notes about the spouse"
@@ -893,45 +957,117 @@ const AddTenant = () => {
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor={`leaseStartDate-${tenant.id}`}>Lease Start Date</Label>
+                        <Label htmlFor={`leaseStartDate - ${tenant.id} `}>Lease Start Date</Label>
                         <Input
-                          id={`leaseStartDate-${tenant.id}`}
+                          id={`leaseStartDate - ${tenant.id} `}
                           type="date"
                           value={tenant.leaseStartDate}
                           onChange={(e) => handleInputChange(tenant.id, 'leaseStartDate', e.target.value)}
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`leaseEndDate-${tenant.id}`}>Lease End Date</Label>
+                        <Label htmlFor={`leaseEndDate - ${tenant.id} `}>Lease End Date</Label>
                         <Input
-                          id={`leaseEndDate-${tenant.id}`}
+                          id={`leaseEndDate - ${tenant.id} `}
                           type="date"
                           value={tenant.leaseEndDate}
                           onChange={(e) => handleInputChange(tenant.id, 'leaseEndDate', e.target.value)}
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`monthlyRent-${tenant.id}`}>Monthly Rent</Label>
+                        <Label htmlFor={`monthlyRent - ${tenant.id} `}>Monthly Rent</Label>
                         <Input
-                          id={`monthlyRent-${tenant.id}`}
+                          id={`monthlyRent - ${tenant.id} `}
                           value={tenant.monthlyRent}
                           onChange={(e) => handleInputChange(tenant.id, 'monthlyRent', e.target.value)}
                           placeholder="2500"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`securityDeposit-${tenant.id}`}>Security Deposit</Label>
+                        <Label htmlFor={`securityDeposit - ${tenant.id} `}>Security Deposit</Label>
                         <Input
-                          id={`securityDeposit-${tenant.id}`}
+                          id={`securityDeposit - ${tenant.id} `}
                           value={tenant.securityDeposit}
                           onChange={(e) => handleInputChange(tenant.id, 'securityDeposit', e.target.value)}
                           placeholder="5000"
                         />
                       </div>
+
+                      {/* Dynamic Rent Schedule */}
+                      <div className="md:col-span-2 mt-2 space-y-4 pt-4 border-t">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-base font-semibold">Monthly Rent Schedule</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addRentScheduleYear(tenant.id)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Year
+                          </Button>
+                        </div>
+
+                        <div className="space-y-4">
+                          {(tenant.rentSchedule || []).map((item, index) => (
+                            <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border rounded-lg bg-gray-50/50 items-end relative">
+                              <div className="md:col-span-2">
+                                <Label className="text-xs">Year</Label>
+                                <Input
+                                  value={item.year}
+                                  onChange={(e) => handleRentScheduleChange(tenant.id, index, 'year', e.target.value)}
+                                  className="bg-white"
+                                />
+                              </div>
+                              <div className="md:col-span-3">
+                                <Label className="text-xs">Amount (₹)</Label>
+                                <Input
+                                  value={item.amount}
+                                  onChange={(e) => handleRentScheduleChange(tenant.id, index, 'amount', e.target.value)}
+                                  placeholder="Amount"
+                                  className="bg-white"
+                                />
+                              </div>
+                              <div className="md:col-span-3">
+                                <Label className="text-xs">From</Label>
+                                <Input
+                                  type="date"
+                                  value={item.fromDate}
+                                  onChange={(e) => handleRentScheduleChange(tenant.id, index, 'fromDate', e.target.value)}
+                                  className="bg-white"
+                                />
+                              </div>
+                              <div className="md:col-span-3">
+                                <Label className="text-xs">To</Label>
+                                <Input
+                                  type="date"
+                                  value={item.toDate}
+                                  onChange={(e) => handleRentScheduleChange(tenant.id, index, 'toDate', e.target.value)}
+                                  className="bg-white"
+                                />
+                              </div>
+
+                              {(tenant.rentSchedule || []).length > 1 && (
+                                <div className="md:col-span-1 flex justify-center pb-2">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeRentScheduleYear(tenant.id, index)}
+                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                       <div>
-                        <Label htmlFor={`paymentDueDate-${tenant.id}`}>Payment Due Date (Day of Month)</Label>
+                        <Label htmlFor={`paymentDueDate - ${tenant.id} `}>Payment Due Date (Day of Month)</Label>
                         <Input
-                          id={`paymentDueDate-${tenant.id}`}
+                          id={`paymentDueDate - ${tenant.id} `}
                           type="number"
                           min="1"
                           max="31"
@@ -941,7 +1077,7 @@ const AddTenant = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`noticePeriod-${tenant.id}`}>Notice Period *</Label>
+                        <Label htmlFor={`noticePeriod - ${tenant.id} `}>Notice Period *</Label>
                         <Select
                           value={tenant.noticePeriod}
                           onValueChange={(value) => handleInputChange(tenant.id, 'noticePeriod', value)}
@@ -968,9 +1104,9 @@ const AddTenant = () => {
                     </h4>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor={`previousAddress-${tenant.id}`}>Previous Address</Label>
+                        <Label htmlFor={`previousAddress - ${tenant.id} `}>Previous Address</Label>
                         <Textarea
-                          id={`previousAddress-${tenant.id}`}
+                          id={`previousAddress - ${tenant.id} `}
                           value={tenant.previousAddress}
                           onChange={(e) => handleInputChange(tenant.id, 'previousAddress', e.target.value)}
                           placeholder="Enter previous address"
@@ -979,7 +1115,7 @@ const AddTenant = () => {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor={`employmentStatus-${tenant.id}`}>Employment Status</Label>
+                          <Label htmlFor={`employmentStatus - ${tenant.id} `}>Employment Status</Label>
                           <Select value={tenant.employmentStatus} onValueChange={(value) => handleInputChange(tenant.id, 'employmentStatus', value)}>
                             <SelectTrigger>
                               <SelectValue placeholder="Select status" />
@@ -995,16 +1131,16 @@ const AddTenant = () => {
                         </div>
 
                         <div>
-                          <Label htmlFor={`employer-${tenant.id}`}>Employer/Company</Label>
-                          <Input id={`employer-${tenant.id}`} value={tenant.employer} placeholder="Company name"
+                          <Label htmlFor={`employer - ${tenant.id} `}>Employer/Company</Label>
+                          <Input id={`employer - ${tenant.id} `} value={tenant.employer} placeholder="Company name"
                             onChange={(e) => handleInputChange(tenant.id, 'employer', e.target.value)} />
                         </div>
 
                       </div>
 
                       <div>
-                        <Label htmlFor={`notes-${tenant.id}`}>Additional Notes</Label>
-                        <Textarea id={`notes-${tenant.id}`} value={tenant.notes} rows={3} placeholder="Any additional notes about the tenant"
+                        <Label htmlFor={`notes - ${tenant.id} `}>Additional Notes</Label>
+                        <Textarea id={`notes - ${tenant.id} `} value={tenant.notes} rows={3} placeholder="Any additional notes about the tenant"
                           onChange={(e) => handleInputChange(tenant.id, 'notes', e.target.value)} />
                       </div>
 
