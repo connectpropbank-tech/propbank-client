@@ -138,7 +138,7 @@ const ManageProperty = () => {
 
       if (currentUser) {
 
-        fetchProperties(currentUser.uid);
+        fetchProperties(currentUser);
       } else {
 
         setLoading(false);
@@ -148,9 +148,9 @@ const ManageProperty = () => {
     return () => unsubscribe();
   }, []);
 
-  const fetchProperties = async (ownerUID: string) => {
+  const fetchProperties = async (currentUser: User) => {
     try {
-
+      const ownerUID = currentUser.uid;
 
       // Fetch owned properties
       const ownedResponse = await fetch(`${API_BASE_URL}/properties?ownerUID=${ownerUID}`, {
@@ -164,7 +164,6 @@ const ManageProperty = () => {
 
       let owned: Property[] = [];
       if (ownedData.success) {
-
         // Filter to only show active properties (status === 'active') owned by current user
         owned = (ownedData.properties || []).filter((p: Property) => {
           const isActive = (p.status === 'active' || (!p.status && p.isActive !== false));
@@ -172,13 +171,11 @@ const ManageProperty = () => {
           const isOwnedByUser = p.ownerUID === ownerUID;
           return isActive && isOwnedByUser;
         }).map((p: Property) => ({ ...p, userRole: 'owner' }));
-
       }
 
       // Fetch properties where user is a tenant
-      const tenantEmail = user?.email || 'rains.dwivedi98@gmail.com';
-
-      const tenantResponse = await fetch(`${API_BASE_URL}/properties/tenant/?userEmail=${tenantEmail}`, {
+      const userEmail = currentUser.email;
+      const tenantResponse = await fetch(`${API_BASE_URL}/properties/tenant/?userEmail=${userEmail}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -195,7 +192,7 @@ const ManageProperty = () => {
             .filter((p: Property) => {
               const isActive = (p.status === 'active' || (!p.status && p.isActive !== false));
               // Only include if user is NOT the owner (avoid duplication)
-              const notOwnedByUser = p.ownerUID !== ownerUID;
+              const notOwnedByUser = p.ownerUID !== currentUser.uid;
               return isActive && notOwnedByUser;
             })
             .map((p: Property) => ({ ...p, userRole: 'tenant' }));
@@ -384,7 +381,7 @@ const ManageProperty = () => {
             : "Property set to active and unarchived"
         });
         // Refresh properties list (this will filter out inactive properties)
-        fetchProperties(user.uid);
+        fetchProperties(user);
       } else {
         toast({
           title: "Error",
@@ -427,7 +424,7 @@ const ManageProperty = () => {
           description: "Property archived successfully"
         });
         // Refresh properties list
-        fetchProperties(user.uid);
+        fetchProperties(user);
       } else {
         toast({
           title: "Error",
@@ -492,7 +489,7 @@ const ManageProperty = () => {
         }));
 
         // Refresh properties list
-        fetchProperties(user.uid);
+        fetchProperties(user);
       } else {
         toast({
           title: "Error",

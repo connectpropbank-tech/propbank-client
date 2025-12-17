@@ -38,6 +38,7 @@ const formSchema = z.object({
 
   // Tenant Information (conditional - required when property is rented)
   tenantName: z.string().optional(),
+  tenantEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   personName: z.string().optional(),
   mobileNumber: z.string().optional(),
   primaryNo: z.string().optional(),
@@ -282,6 +283,7 @@ const AddPropertyForm = () => {
       constructedArea: "",
       // Tenant Information
       tenantName: "",
+      tenantEmail: "",
       personName: "",
       mobileNumber: "",
       primaryNo: "",
@@ -762,6 +764,20 @@ const AddPropertyForm = () => {
 
                     <FormField
                       control={form.control}
+                      name="tenantEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tenant Email</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter tenant email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
                       name="personName"
                       render={({ field }) => (
                         <FormItem>
@@ -780,18 +796,6 @@ const AddPropertyForm = () => {
                           <FormLabel>Mobile Number <span className="text-red-500">*</span></FormLabel>
                           <FormControl>
                             <Input placeholder="Enter mobile number" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField control={form.control} name="ultNo"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Alternate Contact</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Alternate contact number" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
