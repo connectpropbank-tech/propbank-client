@@ -932,7 +932,7 @@ const ManageProperty = () => {
                                             className="text-red-600"
                                           >
                                             <XCircle className="h-4 w-4 mr-2" />
-                                            4. Terminate Agreement
+                                            Terminate Agreement
                                           </DropdownMenuItem>
                                           {property.rentalStatus === 'inactive' && (
                                             <>

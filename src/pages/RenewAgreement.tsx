@@ -13,11 +13,13 @@ const RenewAgreement = () => {
   const { propertyId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [property, setProperty] = useState<any>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+
+  const isOwner = user && property && user.uid === property.ownerUID;
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -51,7 +53,7 @@ const RenewAgreement = () => {
           }
         }
       } catch (error) {
-        
+
       } finally {
         setLoading(false);
       }
@@ -75,13 +77,21 @@ const RenewAgreement = () => {
       return;
     }
 
-    if (!confirm("Are you sure you want to request agreement renewal? Admin will be notified.")) {
+    const isTenantRequest = !isOwner;
+    const confirmationMessage = isTenantRequest
+      ? "Are you sure you want to request agreement renewal? The owner will be notified."
+      : "Are you sure you want to extend this agreement? This will update the agreement period.";
+
+    if (!confirm(confirmationMessage)) {
       return;
     }
 
     setSubmitting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/agreements/renew`, {
+      const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+      const endpoint = isTenantRequest ? '/agreements/request-renewal' : '/agreements/renew';
+
+      const response = await fetch(`${baseUrl}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,18 +106,18 @@ const RenewAgreement = () => {
 
       if (data.success) {
         toast({
-          title: "Renewal Request Submitted",
-          description: "Your agreement renewal request has been submitted. Admin has been notified.",
+          title: isTenantRequest ? "Renewal Request Sent" : "Agreement Renewed",
+          description: data.message || (isTenantRequest ? "Request sent to owner." : "Agreement renewed successfully."),
         });
         navigate(`/manage-property`);
       } else {
-        throw new Error(data.message || 'Failed to submit renewal request');
+        throw new Error(data.message || 'Failed to process request');
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
-        description: "Failed to submit renewal request. Please try again later.",
+        description: "Failed to process request. Please try again later.",
         variant: "destructive"
       });
     } finally {
@@ -144,7 +154,7 @@ const RenewAgreement = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <RefreshCw className="h-5 w-5" />
-              3. Go for Renewal
+              {isOwner ? "Renew Agreement" : "Request Renewal"}
             </CardTitle>
             <CardDescription>
               {property && `Property: ${property.title || property.id}`}
@@ -154,7 +164,10 @@ const RenewAgreement = () => {
             <div className="space-y-6">
               <div className="p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-900">
-                  Requesting agreement renewal will notify the admin. The admin will process your renewal request and contact you.
+                  {isOwner
+                    ? "Renewing this agreement will extend the current lease period. Ensure you have discussed terms with the tenant."
+                    : "Requesting agreement renewal will notify the owner. The owner will review your request."
+                  }
                 </p>
               </div>
 
@@ -193,7 +206,7 @@ const RenewAgreement = () => {
                   ) : (
                     <>
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Request Renewal
+                      {isOwner ? "Renew Agreement" : "Request Renewal"}
                     </>
                   )}
                 </Button>

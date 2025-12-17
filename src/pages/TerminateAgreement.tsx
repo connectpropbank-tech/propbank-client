@@ -14,11 +14,32 @@ const TerminateAgreement = () => {
   const { propertyId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [property, setProperty] = useState<any>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+  const [isOwner, setIsOwner] = useState<boolean>(false);
+
+  const [noticePeriod, setNoticePeriod] = useState<string>("Immediate"); // "Immediate", "1 Month", "2 Months", "3 Months"
+  const [terminationDate, setTerminationDate] = useState<Date | null>(null);
+
+  const handleNoticeChange = (period: string) => {
+    setNoticePeriod(period);
+    if (period === "Immediate") {
+      setTerminationDate(null);
+      return;
+    }
+
+    const today = new Date();
+    const months = parseInt(period.split(" ")[0]); // Extract number
+    const calculatedDate = new Date(today);
+    calculatedDate.setMonth(today.getMonth() + months);
+    setTerminationDate(calculatedDate);
+  };
+
+
+
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -52,7 +73,7 @@ const TerminateAgreement = () => {
           }
         }
       } catch (error) {
-        
+
       } finally {
         setLoading(false);
       }
@@ -65,45 +86,70 @@ const TerminateAgreement = () => {
     }
   }, [propertyId]);
 
+  useEffect(() => {
+    if (user && property) {
+      if (user.uid === property.ownerUID) {
+        setIsOwner(true);
+      } else {
+        setIsOwner(false);
+      }
+    }
+  }, [user, property]);
+
   const handleTerminate = async () => {
     if (!user) {
-      toast({
-        title: "Login Required",
-        description: "Please login to terminate agreement",
-        variant: "destructive"
-      });
-      navigate("/auth");
       return;
     }
 
-    if (!confirm("Are you sure you want to terminate this agreement? This will:\n\n• Remove all tenant information from this property\n• Mark the property as 'Available for Rent'\n• Notify the admin about this termination\n\nThis action cannot be undone.")) {
+    // Determine mode: Owner terminating or Tenant requesting
+    const isTenantRequest = !isOwner;
+
+    let confirmationMessage = "";
+    if (isTenantRequest) {
+      if (noticePeriod === "Immediate") {
+        confirmationMessage = "Are you sure you want to request IMMEDIATE termination? The owner will be notified.";
+      } else {
+        confirmationMessage = `Are you sure you want to request termination with a ${noticePeriod}? The owner will be notified.`;
+      }
+    } else {
+      // Owner Mode
+      if (noticePeriod === "Immediate") {
+        confirmationMessage = "Are you sure you want to terminate this agreement IMMEDIATELY? This will:\n\n• Remove all tenant information\n• Mark property as Available\n• This action cannot be undone.";
+      } else {
+        confirmationMessage = `Are you sure you want to serve a ${noticePeriod}? This will:\n\n• Set anticipated termination date\n• Notify the tenant via email\n• Keep property occupied until final termination.\n\nProceed?`;
+      }
+    }
+
+    if (!confirm(confirmationMessage)) {
       return;
     }
 
     setSubmitting(true);
     try {
-      // Ensure API_BASE_URL doesn't have trailing slash
       const baseUrl = API_BASE_URL.endsWith('/') ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
-      const url = `${baseUrl}/agreements/terminate`;
-      
-      
-      
-      
-      
+
+      // Select endpoint based on role
+      const endpoint = isTenantRequest ? '/agreements/request-termination' : '/agreements/terminate';
+      const url = `${baseUrl}${endpoint}`;
+
+      const body = {
+        propertyId: propertyId || '',
+        noticePeriod: noticePeriod,
+        // Only include terminationDate for Owner actions as it's calculated
+        ...(isOwner && { terminationDate: terminationDate ? terminationDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : "" }),
+      };
+
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-User-ID': user.uid,
         },
-        body: JSON.stringify({
-          propertyId: propertyId || '',
-        }),
+        body: JSON.stringify(body),
       });
 
-      // Read response text once
       const responseText = await response.text();
-      
+
       if (!response.ok) {
         throw new Error(`Server error: ${response.status} ${response.statusText}`);
       }
@@ -111,30 +157,26 @@ const TerminateAgreement = () => {
       let data;
       try {
         data = JSON.parse(responseText);
-        
       } catch (parseError) {
-        
         throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
       }
 
-      // Check if we got the root endpoint response by mistake
       if (data.message === "ShoPROP Backend API is running!") {
-        
         throw new Error("Request was redirected to root endpoint. Please check the API URL and server configuration.");
       }
 
       if (data.success) {
         toast({
-          title: "Agreement Terminated",
-          description: "Tenant information has been removed and property is now available for rent. Admin has been notified.",
+          title: isTenantRequest ? "Request Sent" : (noticePeriod === "Immediate" ? "Agreement Terminated" : "Notice Served"),
+          description: data.message || "Action completed successfully.",
         });
-        navigate(`/manage-property`);
+        // Navigate back
+        navigate(-1);
       } else {
-        throw new Error(data.message || 'Failed to terminate agreement');
+        throw new Error(data.message || 'Failed to process request');
       }
     } catch (error) {
-      
-      const errorMessage = error instanceof Error ? error.message : 'Failed to terminate agreement. Please try again later.';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process request. Please try again later.';
       toast({
         title: "Error",
         description: errorMessage,
@@ -155,10 +197,27 @@ const TerminateAgreement = () => {
     );
   }
 
+  // Removed Access Denied block
+
+  if (!property) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Property not found or you do not have access.
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <Helmet>
-        <title>Terminate Agreement | PropBank</title>
+        <title>PropBank</title>
       </Helmet>
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <Button
@@ -174,7 +233,7 @@ const TerminateAgreement = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5" />
-              4. Terminate Agreement
+              {isOwner ? "Terminate Agreement" : "Request Termination"}
             </CardTitle>
             <CardDescription>
               {property && `Property: ${property.title || property.id}`}
@@ -182,26 +241,91 @@ const TerminateAgreement = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <Alert variant="destructive" className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <AlertDescription className="flex-1">
-                  <strong>Warning:</strong> Terminating this agreement will:
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>Remove all tenant information from this property</li>
-                    <li>Clear agreement dates and lease details</li>
-                    <li>Mark the property as "Available for Rent"</li>
-                    <li>Notify the admin with full owner, tenant and property details</li>
-                    <li>This action cannot be undone</li>
-                  </ul>
-                </AlertDescription>
-              </Alert>
+              {/* Notice Period Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notice Period</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {["Immediate", "1 Month", "2 Months", "3 Months"].map((option) => (
+                    <Button
+                      key={option}
+                      type="button"
+                      variant={noticePeriod === option ? "default" : "outline"}
+                      onClick={() => handleNoticeChange(option)}
+                      className="w-full"
+                    >
+                      {option}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {noticePeriod !== "Immediate" && terminationDate && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-blue-800 font-medium">
+                    Calculated Termination Date: {terminationDate.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                  </p>
+                  <p className="text-sm text-blue-600 mt-1">
+                    {isOwner
+                      ? "Serving notice will notify the tenant via email. It will NOT remove tenant data yet."
+                      : "Sending this request will notify the owner of your intended termination date."
+                    }
+                  </p>
+                </div>
+              )}
+
+              {/* Warnings */}
+              {isOwner ? (
+                // Owner Warnings (Existing)
+                noticePeriod === "Immediate" ? (
+                  <Alert variant="destructive" className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                    <AlertDescription className="flex-1">
+                      <strong>Warning:</strong> Terminating this agreement immediately will:
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Remove all tenant information from this property</li>
+                        <li>Clear agreement dates and lease details</li>
+                        <li>Mark the property as "Available for Rent"</li>
+                        <li>Notify the admin with full owner, tenant and property details</li>
+                        <li>This action cannot be undone</li>
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert className="bg-yellow-50 border-yellow-200 flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-yellow-600" />
+                    <AlertDescription className="flex-1 text-yellow-800">
+                      <strong>Notice Action:</strong>
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>Sends termination notice email to Tenant & User</li>
+                        <li>Sets "Anticipated Termination Date" on property</li>
+                        <li>Property status changes to "Notice Served"</li>
+                        <li>Tenant data remains visible until final termination</li>
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )
+              ) : (
+                // Tenant Warnings (New)
+                <Alert className="bg-blue-50 border-blue-200 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0 text-blue-600" />
+                  <AlertDescription className="flex-1 text-blue-800">
+                    <strong>Request Action:</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Sends a termination request to the Property Owner</li>
+                      <li>Owner will be notified of your intended notice period: <strong>{noticePeriod}</strong></li>
+                      <li>Owner must approve/acknowledge for the process to complete</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+
 
               {property && (
                 <div className="space-y-4">
                   {/* Tenant Details Section */}
                   {(property.tenantName || property.mobileNumber || (property.tenants && property.tenants.length > 0)) && (
                     <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                      <h3 className="font-semibold text-orange-800 mb-2">Tenant Information (Will be removed):</h3>
+                      <h3 className="font-semibold text-orange-800 mb-2">Tenant Information {isOwner && noticePeriod === "Immediate" ? "(Will be removed):" : ":"}</h3>
                       {property.tenantName && (
                         <p className="text-sm text-orange-700">
                           <span className="font-medium">Tenant Name:</span> {property.tenantName}
@@ -271,18 +395,24 @@ const TerminateAgreement = () => {
                 <Button
                   onClick={handleTerminate}
                   disabled={submitting}
-                  variant="destructive"
+                  variant={isOwner && noticePeriod === "Immediate" ? "destructive" : "default"}
                   className="flex-1"
                 >
                   {submitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Terminating...
+                      Processing...
                     </>
                   ) : (
                     <>
-                      <XCircle className="h-4 w-4 mr-2" />
-                      Terminate Agreement
+                      {isOwner
+                        ? (noticePeriod === "Immediate" ? <XCircle className="h-4 w-4 mr-2" /> : <AlertTriangle className="h-4 w-4 mr-2" />)
+                        : <AlertTriangle className="h-4 w-4 mr-2" />
+                      }
+                      {isOwner
+                        ? (noticePeriod === "Immediate" ? "Terminate Immediately" : "Serve Termination Notice")
+                        : "Request Termination"
+                      }
                     </>
                   )}
                 </Button>
@@ -302,6 +432,5 @@ const TerminateAgreement = () => {
     </>
   );
 };
-
 export default TerminateAgreement;
 

@@ -1,10 +1,31 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, MapPin, Home, Calendar, CheckCircle, ClipboardList, FileText, Scale, Wrench, RefreshCw, FileX, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Eye, MapPin, Home, Calendar, CheckCircle, ClipboardList, FileText, Scale, Wrench, RefreshCw, FileX, Image as ImageIcon, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/firebase";
+import { User, onAuthStateChanged } from "firebase/auth";
 import { API_BASE_URL } from "../utils/config";
 
 // Raised Request interface for service requests, inspection reports, etc.
@@ -111,7 +132,6 @@ interface Property {
   squareFeet: number;
 
   // Tenant Information
-  tenantName: string;
   personName: string;
   mobileNumber: string;
   primaryNo: string;
@@ -187,6 +207,8 @@ interface Property {
   specificComments: string;
 
   // Tenants
+  tenantName?: string;
+  tenantEmail?: string;
   tenants: TenantInfo[];
 
   // Buyers
@@ -204,10 +226,22 @@ interface Property {
 const PropertyDetails = () => {
   const { propertyId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [raisedRequests, setRaisedRequests] = useState<RaisedRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isTerminationDialogOpen, setIsTerminationDialogOpen] = useState(false);
+  const [selectedNoticePeriod, setSelectedNoticePeriod] = useState("Immediate");
+  const [submittingTermination, setSubmittingTermination] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     if (propertyId) {
@@ -330,12 +364,60 @@ const PropertyDetails = () => {
     return <Badge variant="outline">Unknown</Badge>;
   };
 
+  const handleRequestTermination = () => {
+    setIsTerminationDialogOpen(true);
+  };
+
+  const submitTerminationRequest = async () => {
+    setSubmittingTermination(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/agreements/request-termination`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-ID': user?.uid || '',
+        },
+        body: JSON.stringify({
+          propertyId: propertyId,
+          noticePeriod: selectedNoticePeriod,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Request Sent",
+          description: `Termination request with ${selectedNoticePeriod} notice sent to owner.`,
+        });
+        setIsTerminationDialogOpen(false);
+      } else {
+        throw new Error(data.message || "Failed to send request");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send termination request",
+        variant: "destructive",
+      });
+      setSubmittingTermination(false);
+    }
+  };
+
+  // Check if current user is a tenant
+  const isTenant = user && property && (
+    (property.tenants && property.tenants.some((t: any) => t.isActive && (t.email === user.email || t.phone === user.phoneNumber))) ||
+    (property.tenantEmail === user.email) ||
+    (property.mobileNumber === user.phoneNumber)
+  );
+
+  const isOwner = user && property && user.uid === property.ownerUID;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading property details...</p>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
         </div>
       </div>
     );
@@ -343,51 +425,93 @@ const PropertyDetails = () => {
 
   if (!property) {
     return (
-      <main className="container mx-auto py-8 px-4">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Property Not Found</h1>
-          <Button onClick={() => navigate("/manage-property")}>
-            Back to Properties
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-12">
+          <p className="text-gray-500 text-lg">Property not found</p>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/")}
+            className="mt-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Home
           </Button>
         </div>
-      </main>
+      </div>
     );
   }
 
-
   return (
-    <main className="container mx-auto py-8 px-4">
+    <div className="min-h-screen bg-gray-50 pb-12">
       <Helmet>
-        <title>{property.title} — Property Details</title>
-        <meta name="description" content={`Details for ${property.title}`} />
+        <title>{property.title} | PropBank</title>
       </Helmet>
 
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <Button variant="ghost" onClick={() => navigate("/manage-property")} className="mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Manage Properties
-          </Button>
+      {/* Hero Section */}
+      <div className="relative h-[400px] md:h-[500px] bg-gray-900 group">
+        {property.images && property.images.length > 0 ? (
+          <img
+            src={property.images[0]}
+            alt={property.title}
+            className="w-full h-full object-cover opacity-60"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-r from-gray-800 to-gray-900 opacity-90" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/50 to-transparent" />
 
-          <div className="flex items-center gap-4 mb-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
-              <Eye className="h-8 w-8 text-primary-foreground" />
+        <div className="absolute inset-0 container mx-auto px-4 flex flex-col justify-end pb-8 md:pb-12">
+          <div className="max-w-4xl space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 text-sm font-medium">
+                {property.propertyType}
+              </Badge>
+              <Badge variant="outline" className="text-white border-white/30 bg-white/10 backdrop-blur-sm px-3 py-1">
+                {property.listingType === 'rent' ? 'For Rent' : 'For Sale'}
+              </Badge>
+              <Badge variant="outline" className={`border-white/30 bg-white/10 backdrop-blur-sm px-3 py-1 ${property.rentalStatus === 'rented' ? 'text-amber-300 border-amber-300/50' : 'text-green-300 border-green-300/50'
+                }`}>
+                {property.rentalStatus === 'rented' ? 'Rented' : 'Available'}
+              </Badge>
             </div>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-bold">{property.title}</h1>
-                {getListingTypeBadge(property.listingType)}
-              </div>
-              <p className="text-lg text-muted-foreground">Property Details</p>
+
+            <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight">
+              {property.title}
+            </h1>
+
+            <div className="flex items-center text-gray-300 text-lg">
+              <MapPin className="h-5 w-5 mr-2 text-blue-400" />
+              {property.location}
+            </div>
+
+            <div className="pt-4 flex flex-wrap gap-4">
+              {isTenant && (
+                <Button
+                  variant="destructive"
+                  onClick={handleRequestTermination}
+                  className="shadow-lg hover:shadow-xl transition-all"
+                >
+                  <FileX className="h-4 w-4 mr-2" />
+                  Request Termination
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Property Information */}
+        <Button
+          variant="outline"
+          size="icon"
+          className="absolute top-4 left-4 rounded-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:text-white transition-all backdrop-blur-md"
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+      </div>
+
+      <div className="container mx-auto px-4 -mt-16 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* Basic Property Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Property Information</CardTitle>
@@ -404,22 +528,26 @@ const PropertyDetails = () => {
                 </div>
 
                 {/* Unit Condition */}
-                {property.unitCondition && (
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-muted-foreground" />
-                    <span className="capitalize">{property.unitCondition}</span>
-                  </div>
-                )}
+                {
+                  property.unitCondition && (
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-muted-foreground" />
+                      <span className="capitalize">{property.unitCondition}</span>
+                    </div>
+                  )
+                }
 
                 {/* Last Modified */}
-                {property.updatedAt && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    <span>Last modified: {new Date(property.updatedAt).toLocaleDateString('en-GB')} at {new Date(property.updatedAt).toLocaleTimeString()}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                {
+                  property.updatedAt && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Calendar className="h-4 w-4" />
+                      <span>Last modified: {new Date(property.updatedAt).toLocaleDateString('en-GB')} at {new Date(property.updatedAt).toLocaleTimeString()}</span>
+                    </div>
+                  )
+                }
+              </CardContent >
+            </Card >
 
             <Card>
               <CardHeader>
@@ -447,31 +575,33 @@ const PropertyDetails = () => {
             </Card>
 
             {/* Internal Images */}
-            {property.internalImages && property.internalImages.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Internal Images</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {property.internalImages.map((img, index) => (
-                      <div key={index} className="rounded-lg overflow-hidden border bg-gray-100 relative h-32 flex items-center justify-center group">
-                        <img
-                          src={img}
-                          alt={`Internal ${index + 1}`}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {
+              property.internalImages && property.internalImages.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Internal Images</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {property.internalImages.map((img, index) => (
+                        <div key={index} className="rounded-lg overflow-hidden border bg-gray-100 relative h-32 flex items-center justify-center group">
+                          <img
+                            src={img}
+                            alt={`Internal ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
 
             {/* Unit Details */}
             <Card>
@@ -528,548 +658,577 @@ const PropertyDetails = () => {
             </Card>
 
             {/* Tenant Information */}
-            {(property.tenantName || property.personName || property.mobileNumber || property.employmentStatus) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Tenant Information</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {property.tenantName && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Tenant Name</label>
-                        <p className="text-sm">{property.tenantName}</p>
-                      </div>
-                    )}
-                    {property.personName && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Person Name</label>
-                        <p className="text-sm">{property.personName}</p>
-                      </div>
-                    )}
-                    {property.mobileNumber && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Mobile Number</label>
-                        <p className="text-sm">{property.mobileNumber}</p>
-                      </div>
-                    )}
-                    {property.primaryNo && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Primary Number</label>
-                        <p className="text-sm">{property.primaryNo}</p>
-                      </div>
-                    )}
-                    {property.ultNo && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Alt Number</label>
-                        <p className="text-sm">{property.ultNo}</p>
-                      </div>
-                    )}
-                    {property.emergencyContact && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Emergency Contact</label>
-                        <p className="text-sm">{property.emergencyContact}</p>
-                      </div>
-                    )}
-                    {property.employmentStatus && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Employment Status</label>
-                        <p className="text-sm capitalize">{property.employmentStatus}</p>
-                      </div>
-                    )}
-                    {property.employer && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Employer</label>
-                        <p className="text-sm">{property.employer}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Spouse Information */}
-                  {property.isMarried && (property.spouseFirstName || property.spousePhone) && (
-                    <div className="mt-4 pt-4 border-t">
-                      <h4 className="text-sm font-semibold mb-3">Spouse Information</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(property.spouseFirstName || property.spouseLastName) && (
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Spouse Name</label>
-                            <p className="text-sm">{property.spouseFirstName} {property.spouseLastName}</p>
-                          </div>
-                        )}
-                        {property.spouseEmail && (
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Spouse Email</label>
-                            <p className="text-sm">{property.spouseEmail}</p>
-                          </div>
-                        )}
-                        {property.spousePhone && (
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Spouse Phone</label>
-                            <p className="text-sm">{property.spousePhone}</p>
-                          </div>
-                        )}
-                        {property.spouseEmploymentStatus && (
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Spouse Employment</label>
-                            <p className="text-sm capitalize">{property.spouseEmploymentStatus}</p>
-                          </div>
-                        )}
-                        {property.spouseEmployer && (
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Spouse Employer</label>
-                            <p className="text-sm">{property.spouseEmployer}</p>
-                          </div>
-                        )}
-                        {property.spouseNotes && (
-                          <div className="md:col-span-2">
-                            <label className="text-sm font-medium text-muted-foreground">Spouse Notes</label>
-                            <p className="text-sm">{property.spouseNotes}</p>
-                          </div>
-                        )}
-                      </div>
+            {
+              (property.tenantName || property.personName || property.mobileNumber || property.employmentStatus) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Tenant Information</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {property.tenantName && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Tenant Name</label>
+                          <p className="text-sm">{property.tenantName}</p>
+                        </div>
+                      )}
+                      {property.personName && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Person Name</label>
+                          <p className="text-sm">{property.personName}</p>
+                        </div>
+                      )}
+                      {property.mobileNumber && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Mobile Number</label>
+                          <p className="text-sm">{property.mobileNumber}</p>
+                        </div>
+                      )}
+                      {property.primaryNo && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Primary Number</label>
+                          <p className="text-sm">{property.primaryNo}</p>
+                        </div>
+                      )}
+                      {property.ultNo && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Alt Number</label>
+                          <p className="text-sm">{property.ultNo}</p>
+                        </div>
+                      )}
+                      {property.emergencyContact && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Emergency Contact</label>
+                          <p className="text-sm">{property.emergencyContact}</p>
+                        </div>
+                      )}
+                      {property.employmentStatus && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Employment Status</label>
+                          <p className="text-sm capitalize">{property.employmentStatus}</p>
+                        </div>
+                      )}
+                      {property.employer && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Employer</label>
+                          <p className="text-sm">{property.employer}</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+
+                    {/* Spouse Information */}
+                    {property.isMarried && (property.spouseFirstName || property.spousePhone) && (
+                      <div className="mt-4 pt-4 border-t">
+                        <h4 className="text-sm font-semibold mb-3">Spouse Information</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {(property.spouseFirstName || property.spouseLastName) && (
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Spouse Name</label>
+                              <p className="text-sm">{property.spouseFirstName} {property.spouseLastName}</p>
+                            </div>
+                          )}
+                          {property.spouseEmail && (
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Spouse Email</label>
+                              <p className="text-sm">{property.spouseEmail}</p>
+                            </div>
+                          )}
+                          {property.spousePhone && (
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Spouse Phone</label>
+                              <p className="text-sm">{property.spousePhone}</p>
+                            </div>
+                          )}
+                          {property.spouseEmploymentStatus && (
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Spouse Employment</label>
+                              <p className="text-sm capitalize">{property.spouseEmploymentStatus}</p>
+                            </div>
+                          )}
+                          {property.spouseEmployer && (
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Spouse Employer</label>
+                              <p className="text-sm">{property.spouseEmployer}</p>
+                            </div>
+                          )}
+                          {property.spouseNotes && (
+                            <div className="md:col-span-2">
+                              <label className="text-sm font-medium text-muted-foreground">Spouse Notes</label>
+                              <p className="text-sm">{property.spouseNotes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            }
 
             {/* Agreement & Security Details */}
-            {(property.securityDeposit || property.agreementPeriod || property.agreementStartDate || property.agreementEndDate || property.noticePeriod) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Agreement & Security</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {property.securityDeposit && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Security Deposit</label>
-                        <p className="text-sm font-semibold">₹{Number(property.securityDeposit).toLocaleString()}</p>
-                      </div>
-                    )}
-                    {property.agreementPeriod && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Agreement Period</label>
-                        <p className="text-sm">{property.agreementPeriod}</p>
-                      </div>
-                    )}
-                    {property.agreementStartDate && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Agreement Start Date</label>
-                        <p className="text-sm">{new Date(property.agreementStartDate).toLocaleDateString()}</p>
-                      </div>
-                    )}
-                    {property.agreementEndDate && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Agreement End Date</label>
-                        <p className="text-sm">{new Date(property.agreementEndDate).toLocaleDateString()}</p>
-                      </div>
-                    )}
-                    {property.noticePeriod && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Notice Period</label>
-                        <p className="text-sm">{property.noticePeriod}</p>
-                      </div>
-                    )}
-                    {property.lockInPeriod && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Lock-in Period</label>
-                        <p className="text-sm">{property.lockInPeriod}</p>
-                      </div>
-                    )}
-                    {property.paymentDueDate && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Payment Due Date</label>
-                        <p className="text-sm">{property.paymentDueDate} of each month</p>
-                      </div>
-                    )}
-                    {property.escalationPercentage && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Annual Escalation</label>
-                        <p className="text-sm">{property.escalationPercentage}%</p>
-                      </div>
-                    )}
-                    {property.escalationAmount && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Escalation Amount</label>
-                        <p className="text-sm font-semibold">₹{Number(property.escalationAmount).toLocaleString()}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {
+              (property.securityDeposit || property.agreementPeriod || property.agreementStartDate || property.agreementEndDate || property.noticePeriod) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Agreement & Security</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {property.securityDeposit && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Security Deposit</label>
+                          <p className="text-sm font-semibold">₹{Number(property.securityDeposit).toLocaleString()}</p>
+                        </div>
+                      )}
+                      {property.agreementPeriod && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Agreement Period</label>
+                          <p className="text-sm">{property.agreementPeriod}</p>
+                        </div>
+                      )}
+                      {property.agreementStartDate && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Agreement Start Date</label>
+                          <p className="text-sm">{new Date(property.agreementStartDate).toLocaleDateString()}</p>
+                        </div>
+                      )}
+                      {property.agreementEndDate && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Agreement End Date</label>
+                          <p className="text-sm">{new Date(property.agreementEndDate).toLocaleDateString()}</p>
+                        </div>
+                      )}
+                      {property.noticePeriod && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Notice Period</label>
+                          <p className="text-sm">{property.noticePeriod}</p>
+                        </div>
+                      )}
+                      {property.lockInPeriod && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Lock-in Period</label>
+                          <p className="text-sm">{property.lockInPeriod}</p>
+                        </div>
+                      )}
+                      {property.paymentDueDate && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Payment Due Date</label>
+                          <p className="text-sm">{property.paymentDueDate} of each month</p>
+                        </div>
+                      )}
+                      {property.escalationPercentage && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Annual Escalation</label>
+                          <p className="text-sm">{property.escalationPercentage}%</p>
+                        </div>
+                      )}
+                      {property.escalationAmount && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Escalation Amount</label>
+                          <p className="text-sm font-semibold">₹{Number(property.escalationAmount).toLocaleString()}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
 
             {/* Unit Condition & Maintenance */}
-            {(property.unitCondition || property.maintenanceToBePaidBy || property.rentalStatus || property.projectCondition || property.possessionDate) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Unit Condition & Maintenance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {property.unitCondition && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Unit Condition</label>
-                        <p className="text-sm capitalize">{property.unitCondition}</p>
-                      </div>
-                    )}
-                    {property.maintenanceToBePaidBy && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Maintenance To Be Paid By</label>
-                        <p className="text-sm capitalize">{property.maintenanceToBePaidBy}</p>
-                      </div>
-                    )}
-                    {property.rentalStatus && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Rental Status</label>
-                        <p className="text-sm capitalize">{property.rentalStatus}</p>
-                      </div>
-                    )}
-                    {property.projectCondition && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Project Condition</label>
-                        <p className="text-sm">{property.projectCondition}</p>
-                      </div>
-                    )}
-                    {property.possessionDate && (
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">Possession Date</label>
-                        <p className="text-sm">{new Date(property.possessionDate).toLocaleDateString()}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {
+              (property.unitCondition || property.maintenanceToBePaidBy || property.rentalStatus || property.projectCondition || property.possessionDate) && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Unit Condition & Maintenance</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {property.unitCondition && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Unit Condition</label>
+                          <p className="text-sm capitalize">{property.unitCondition}</p>
+                        </div>
+                      )}
+                      {property.maintenanceToBePaidBy && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Maintenance To Be Paid By</label>
+                          <p className="text-sm capitalize">{property.maintenanceToBePaidBy}</p>
+                        </div>
+                      )}
+                      {property.rentalStatus && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Rental Status</label>
+                          <p className="text-sm capitalize">{property.rentalStatus}</p>
+                        </div>
+                      )}
+                      {property.projectCondition && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Project Condition</label>
+                          <p className="text-sm">{property.projectCondition}</p>
+                        </div>
+                      )}
+                      {property.possessionDate && (
+                        <div>
+                          <label className="text-sm font-medium text-muted-foreground">Possession Date</label>
+                          <p className="text-sm">{new Date(property.possessionDate).toLocaleDateString()}</p>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
 
             {/* Furnished Checklist */}
-            {property.furnishedChecklist && property.furnishedChecklist.filter((item: any) => item.checked).length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    Furnished Items ({property.furnishedChecklist.filter((item: any) => item.checked).length})
-                  </CardTitle>
-                  <CardDescription>
-                    Items included with this property
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {/* Group items by category */}
-                  {(() => {
-                    const checkedItems = property.furnishedChecklist.filter((item: any) => item.checked);
-                    const groupedByCategory = checkedItems.reduce((acc: any, item: any) => {
-                      const category = item.category || 'other';
-                      if (!acc[category]) {
-                        acc[category] = [];
-                      }
-                      acc[category].push(item);
-                      return acc;
-                    }, {});
-
-                    const categoryLabels: Record<string, string> = {
-                      basic: 'Basic Furnishing',
-                      kitchen: 'Kitchen Items',
-                      bedroom: 'Bedroom Items',
-                      living: 'Living Room Items',
-                      appliances: 'Appliances',
-                      semifurnished: 'Semi Furnished Items',
-                      office: 'Office Furniture & Setup',
-                      infrastructure: 'Infrastructure & IT',
-                      safety: 'Safety & Security',
-                      machinery: 'Machinery & Equipment',
-                      storage: 'Storage & Warehouse',
-                      utilities: 'Utilities & Amenities',
-                      other: 'Custom Items'
-                    };
-
-                    return (
-                      <div className="space-y-4">
-                        {Object.entries(groupedByCategory).map(([category, items]: [string, any]) => (
-                          <div key={category} className="space-y-2">
-                            <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-                              {categoryLabels[category] || category}
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {items.map((item: any, index: number) => (
-                                <div
-                                  key={item.id || index}
-                                  className="flex items-center justify-between space-x-3 bg-green-50 border border-green-200 rounded-lg p-3 hover:bg-green-100 transition-colors"
-                                >
-                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                    <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                                    <div className="flex-1 min-w-0">
-                                      <span className="text-sm font-medium text-gray-800 block truncate">
-                                        {item.name}
-                                      </span>
-                                      {item.category === 'other' && (
-                                        <span className="text-xs text-muted-foreground italic">Custom Item</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <span className="text-xs font-semibold text-green-700 bg-green-200 px-2 py-1 rounded whitespace-nowrap">
-                                      Qty: {item.quantity || 1}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  })()}
-
-                  <div className="mt-4 pt-3 border-t bg-blue-50 rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-blue-600" />
-                        <p className="text-sm font-medium text-blue-800">
-                          Total: {property.furnishedChecklist.filter((item: any) => item.checked).length} item{property.furnishedChecklist.filter((item: any) => item.checked).length !== 1 ? 's' : ''}
-                          ({property.furnishedChecklist.filter((item: any) => item.checked).reduce((sum: number, item: any) => sum + (item.quantity || 1), 0)} total quantity)
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Comments */}
-            {property.specificComments && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Additional Comments</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm">{property.specificComments}</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Tenants Information - Moved below Additional Comments */}
-            {property.tenants && property.tenants.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Home className="h-5 w-5" />
-                    Current Tenants ({property.tenants.length})
-                  </CardTitle>
-                  <CardDescription>
-                    Active tenants for this property
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {property.tenants.filter(tenant => tenant.isActive).map((tenant, index) => (
-                      <div key={tenant.id}>
-                        {index > 0 && <div className="border-t pt-6 mt-6"></div>}
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h4 className="font-semibold text-base">
-                              {tenant.firstName} {tenant.lastName}
-                            </h4>
-                            <p className="text-sm text-muted-foreground">{tenant.email}</p>
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            Tenant {index + 1}
-                          </Badge>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium text-muted-foreground">Phone</label>
-                            <p className="text-sm">{tenant.phone}</p>
-                          </div>
-                          {tenant.monthlyRent && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Monthly Rent</label>
-                              <p className="text-sm font-semibold">₹{Number(tenant.monthlyRent).toLocaleString()}</p>
-                            </div>
-                          )}
-                          {tenant.leaseStartDate && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Lease Start</label>
-                              <p className="text-sm">{new Date(tenant.leaseStartDate).toLocaleDateString()}</p>
-                            </div>
-                          )}
-                          {tenant.leaseEndDate && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Lease End</label>
-                              <p className="text-sm">{new Date(tenant.leaseEndDate).toLocaleDateString()}</p>
-                            </div>
-                          )}
-                          {tenant.employer && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Employer</label>
-                              <p className="text-sm">{tenant.employer}</p>
-                            </div>
-                          )}
-                          {tenant.paymentDueDate && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Payment Due</label>
-                              <p className="text-sm">{tenant.paymentDueDate}th of each month</p>
-                            </div>
-                          )}
-                          {tenant.escalationPercentage && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Annual Escalation</label>
-                              <p className="text-sm">{tenant.escalationPercentage}</p>
-                            </div>
-                          )}
-                          {tenant.emergencyContact && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Emergency Contact</label>
-                              <p className="text-sm">{tenant.emergencyContact}</p>
-                            </div>
-                          )}
-                          {tenant.updatedAt && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Last Modified</label>
-                              <p className="text-sm">{new Date(tenant.updatedAt).toLocaleDateString('en-GB')} at {new Date(tenant.updatedAt).toLocaleTimeString()}</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {tenant.notes && (
-                          <div className="mt-4">
-                            <label className="text-sm font-medium text-muted-foreground">Notes</label>
-                            <p className="text-sm">{tenant.notes}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Service Request History Section */}
-            {raisedRequests.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ClipboardList className="h-5 w-5" />
-                    Service Request History ({raisedRequests.length})
-                  </CardTitle>
-                  <CardDescription>
-                    All service requests for this property
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {raisedRequests.map((request, index) => {
-                      const getRequestTypeLabel = (type: string) => {
-                        switch (type) {
-                          case 'service_request': return 'Service Request';
-                          case 'inspection_report': return 'Inspection Report';
-                          case 'legal_service_request': return 'Legal Service';
-                          case 'other_service_request': return 'Other Service';
-                          case 'agreement_renewal': return 'Agreement Renewal';
-                          case 'agreement_termination': return 'Agreement Termination';
-                          default: return 'Request';
+            {
+              property.furnishedChecklist && property.furnishedChecklist.filter((item: any) => item.checked).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      Furnished Items ({property.furnishedChecklist.filter((item: any) => item.checked).length})
+                    </CardTitle>
+                    <CardDescription>
+                      Items included with this property
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Group items by category */}
+                    {(() => {
+                      const checkedItems = property.furnishedChecklist.filter((item: any) => item.checked);
+                      const groupedByCategory = checkedItems.reduce((acc: any, item: any) => {
+                        const category = item.category || 'other';
+                        if (!acc[category]) {
+                          acc[category] = [];
                         }
-                      };
+                        acc[category].push(item);
+                        return acc;
+                      }, {});
 
-                      const getRequestIcon = (type: string) => {
-                        switch (type) {
-                          case 'service_request': return <Wrench className="h-4 w-4" />;
-                          case 'inspection_report': return <ClipboardList className="h-4 w-4" />;
-                          case 'legal_service_request': return <Scale className="h-4 w-4" />;
-                          case 'other_service_request': return <FileText className="h-4 w-4" />;
-                          case 'agreement_renewal': return <RefreshCw className="h-4 w-4" />;
-                          case 'agreement_termination': return <FileX className="h-4 w-4" />;
-                          default: return <FileText className="h-4 w-4" />;
-                        }
-                      };
-
-                      const getStatusBadge = (request: RaisedRequest) => {
-                        if (request.isRead) {
-                          return (
-                            <div className="flex flex-col items-end gap-1">
-                              <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-300">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Resolved
-                              </Badge>
-                              {request.resolvedAt && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {new Date(request.resolvedAt).toLocaleDateString()} at {new Date(request.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        }
-                        return <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">Pending</Badge>;
+                      const categoryLabels: Record<string, string> = {
+                        basic: 'Basic Furnishing',
+                        kitchen: 'Kitchen Items',
+                        bedroom: 'Bedroom Items',
+                        living: 'Living Room Items',
+                        appliances: 'Appliances',
+                        semifurnished: 'Semi Furnished Items',
+                        office: 'Office Furniture & Setup',
+                        infrastructure: 'Infrastructure & IT',
+                        safety: 'Safety & Security',
+                        machinery: 'Machinery & Equipment',
+                        storage: 'Storage & Warehouse',
+                        utilities: 'Utilities & Amenities',
+                        other: 'Custom Items'
                       };
 
                       return (
-                        <div key={request.id} className="p-4 border rounded-lg bg-muted/20">
-                          {index > 0 && <div className="border-t -mt-4 mb-4"></div>}
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <div className="p-2 bg-primary/10 rounded-lg">
-                                {getRequestIcon(request.type)}
-                              </div>
-                              <div>
-                                <h4 className="font-semibold text-sm">{getRequestTypeLabel(request.type)}</h4>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(request.timestamp || request.createdAt).toLocaleDateString()}
-                                </p>
+                        <div className="space-y-4">
+                          {Object.entries(groupedByCategory).map(([category, items]: [string, any]) => (
+                            <div key={category} className="space-y-2">
+                              <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+                                {categoryLabels[category] || category}
+                              </h4>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {items.map((item: any, index: number) => (
+                                  <div
+                                    key={item.id || index}
+                                    className="flex items-center justify-between space-x-3 bg-green-50 border border-green-200 rounded-lg p-3 hover:bg-green-100 transition-colors"
+                                  >
+                                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                      <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <span className="text-sm font-medium text-gray-800 block truncate">
+                                          {item.name}
+                                        </span>
+                                        {item.category === 'other' && (
+                                          <span className="text-xs text-muted-foreground italic">Custom Item</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      <span className="text-xs font-semibold text-green-700 bg-green-200 px-2 py-1 rounded whitespace-nowrap">
+                                        Qty: {item.quantity || 1}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                            {getStatusBadge(request)}
-                          </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            {request.serviceType && (
-                              <div>
-                                <label className="text-xs font-medium text-muted-foreground">Service Type</label>
-                                <p className="text-sm capitalize">{request.serviceType.replace(/_/g, ' ')}</p>
-                              </div>
-                            )}
-                            {request.title && (
-                              <div>
-                                <label className="text-xs font-medium text-muted-foreground">Title</label>
-                                <p className="text-sm">{request.title}</p>
-                              </div>
-                            )}
-                            {request.userName && (
-                              <div>
-                                <label className="text-xs font-medium text-muted-foreground">Requested By</label>
-                                <p className="text-sm">{request.userName}</p>
-                              </div>
-                            )}
-                            {request.userPhone && (
-                              <div>
-                                <label className="text-xs font-medium text-muted-foreground">Contact</label>
-                                <p className="text-sm">{request.userPhone}</p>
-                              </div>
-                            )}
-                          </div>
+                    <div className="mt-4 pt-3 border-t bg-blue-50 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-blue-600" />
+                          <p className="text-sm font-medium text-blue-800">
+                            Total: {property.furnishedChecklist.filter((item: any) => item.checked).length} item{property.furnishedChecklist.filter((item: any) => item.checked).length !== 1 ? 's' : ''}
+                            ({property.furnishedChecklist.filter((item: any) => item.checked).reduce((sum: number, item: any) => sum + (item.quantity || 1), 0)} total quantity)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
 
-                          {request.serviceComment && (
-                            <div className="mt-3 pt-3 border-t">
-                              <label className="text-xs font-medium text-muted-foreground">Comment</label>
-                              <p className="text-sm">{request.serviceComment}</p>
+            {/* Comments */}
+            {
+              property.specificComments && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Additional Comments</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm">{property.specificComments}</p>
+                  </CardContent>
+                </Card>
+              )
+            }
+
+            {/* Tenants Information - Moved below Additional Comments */}
+            {
+              property.tenants && property.tenants.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Home className="h-5 w-5" />
+                      Current Tenants ({property.tenants.length})
+                    </CardTitle>
+                    <CardDescription>
+                      Active tenants for this property
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6">
+                      {property.tenants.filter(tenant => tenant.isActive).map((tenant, index) => (
+                        <div key={tenant.id}>
+                          {index > 0 && <div className="border-t pt-6 mt-6"></div>}
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h4 className="font-semibold text-base">
+                                {tenant.firstName} {tenant.lastName}
+                              </h4>
+                              <p className="text-sm text-muted-foreground">{tenant.email}</p>
                             </div>
-                          )}
+                            <Badge variant="outline" className="text-xs">
+                              Tenant {index + 1}
+                            </Badge>
+                          </div>
 
-                          {request.message && !request.serviceComment && (
-                            <div className="mt-3 pt-3 border-t">
-                              <label className="text-xs font-medium text-muted-foreground">Message</label>
-                              <p className="text-sm">{request.message}</p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="text-sm font-medium text-muted-foreground">Phone</label>
+                              <p className="text-sm">{tenant.phone}</p>
+                            </div>
+                            {tenant.monthlyRent && (
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Monthly Rent</label>
+                                <p className="text-sm font-semibold">₹{Number(tenant.monthlyRent).toLocaleString()}</p>
+                              </div>
+                            )}
+                            {tenant.leaseStartDate && (
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Lease Start</label>
+                                <p className="text-sm">{new Date(tenant.leaseStartDate).toLocaleDateString()}</p>
+                              </div>
+                            )}
+                            {tenant.leaseEndDate && (
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Lease End</label>
+                                <p className="text-sm">{new Date(tenant.leaseEndDate).toLocaleDateString()}</p>
+                              </div>
+                            )}
+                            {tenant.employer && (
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Employer</label>
+                                <p className="text-sm">{tenant.employer}</p>
+                              </div>
+                            )}
+                            {tenant.paymentDueDate && (
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Payment Due</label>
+                                <p className="text-sm">{tenant.paymentDueDate}th of each month</p>
+                              </div>
+                            )}
+                            {tenant.escalationPercentage && (
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Annual Escalation</label>
+                                <p className="text-sm">{tenant.escalationPercentage}</p>
+                              </div>
+                            )}
+                            {tenant.emergencyContact && (
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Emergency Contact</label>
+                                <p className="text-sm">{tenant.emergencyContact}</p>
+                              </div>
+                            )}
+                            {tenant.updatedAt && (
+                              <div>
+                                <label className="text-sm font-medium text-muted-foreground">Last Modified</label>
+                                <p className="text-sm">{new Date(tenant.updatedAt).toLocaleDateString('en-GB')} at {new Date(tenant.updatedAt).toLocaleTimeString()}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {tenant.notes && (
+                            <div className="mt-4">
+                              <label className="text-sm font-medium text-muted-foreground">Notes</label>
+                              <p className="text-sm">{tenant.notes}</p>
                             </div>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
+
+            {/* Service Request History Section */}
+            {
+              raisedRequests.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ClipboardList className="h-5 w-5" />
+                      Service Request History ({raisedRequests.length})
+                    </CardTitle>
+                    <CardDescription>
+                      All service requests for this property
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {raisedRequests.map((request, index) => {
+                        const getRequestTypeLabel = (type: string) => {
+                          switch (type) {
+                            case 'service_request': return 'Service Request';
+                            case 'inspection_report': return 'Inspection Report';
+                            case 'legal_service_request': return 'Legal Service';
+                            case 'other_service_request': return 'Other Service';
+                            case 'agreement_renewal': return 'Agreement Renewal';
+                            case 'agreement_termination': return 'Agreement Termination';
+                            default: return 'Request';
+                          }
+                        };
+
+                        const getRequestIcon = (type: string) => {
+                          switch (type) {
+                            case 'service_request': return <Wrench className="h-4 w-4" />;
+                            case 'inspection_report': return <ClipboardList className="h-4 w-4" />;
+                            case 'legal_service_request': return <Scale className="h-4 w-4" />;
+                            case 'other_service_request': return <FileText className="h-4 w-4" />;
+                            case 'agreement_renewal': return <RefreshCw className="h-4 w-4" />;
+                            case 'agreement_termination': return <FileX className="h-4 w-4" />;
+                            default: return <FileText className="h-4 w-4" />;
+                          }
+                        };
+
+                        const getStatusBadge = (request: RaisedRequest) => {
+                          if (request.isRead) {
+                            return (
+                              <div className="flex flex-col items-end gap-1">
+                                <Badge variant="secondary" className="text-xs bg-green-50 text-green-700 border-green-300">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Resolved
+                                </Badge>
+                                {request.resolvedAt && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {new Date(request.resolvedAt).toLocaleDateString()} at {new Date(request.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+                          return <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">Pending</Badge>;
+                        };
+
+                        return (
+                          <div key={request.id} className="p-4 border rounded-lg bg-muted/20">
+                            {index > 0 && <div className="border-t -mt-4 mb-4"></div>}
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                  {getRequestIcon(request.type)}
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-sm">{getRequestTypeLabel(request.type)}</h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    {new Date(request.timestamp || request.createdAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              {getStatusBadge(request)}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {request.serviceType && (
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground">Service Type</label>
+                                  <p className="text-sm capitalize">{request.serviceType.replace(/_/g, ' ')}</p>
+                                </div>
+                              )}
+                              {request.title && (
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground">Title</label>
+                                  <p className="text-sm">{request.title}</p>
+                                </div>
+                              )}
+                              {request.userName && (
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground">Requested By</label>
+                                  <p className="text-sm">{request.userName}</p>
+                                </div>
+                              )}
+                              {request.userPhone && (
+                                <div>
+                                  <label className="text-xs font-medium text-muted-foreground">Contact</label>
+                                  <p className="text-sm">{request.userPhone}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {request.serviceComment && (
+                              <div className="mt-3 pt-3 border-t">
+                                <label className="text-xs font-medium text-muted-foreground">Comment</label>
+                                <p className="text-sm">{request.serviceComment}</p>
+                              </div>
+                            )}
+
+                            {request.message && !request.serviceComment && (
+                              <div className="mt-3 pt-3 border-t">
+                                <label className="text-xs font-medium text-muted-foreground">Message</label>
+                                <p className="text-sm">{request.message}</p>
+                              </div>
+                            )}
+
+                            {isOwner && !request.resolvedAt && (request.type === 'agreement_termination' || request.type === 'agreement_renewal') && (
+                              <div className="mt-3 pt-3 border-t flex justify-end">
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => {
+                                    if (request.type === 'agreement_termination') navigate(`/terminate-agreement/${propertyId}`);
+                                    if (request.type === 'agreement_renewal') navigate(`/renew-agreement/${propertyId}`);
+                                  }}
+                                >
+                                  Review & {request.type === 'agreement_termination' ? 'Terminate' : 'Renew'}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
+          </div >
 
           <div className="space-y-6">
             {/* Pricing */}
@@ -1244,10 +1403,73 @@ const PropertyDetails = () => {
               </Card>
             )}
           </div>
-        </div>
+        </div >
 
-      </div>
-    </main>
+        <Dialog open={isTerminationDialogOpen} onOpenChange={setIsTerminationDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Request Termination</DialogTitle>
+              <DialogDescription>
+                Notify the owner that you wish to terminate the lease agreement.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="py-4">
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="notice-period" className="mb-2 block">Select Notice Period</Label>
+                  <RadioGroup
+                    id="notice-period"
+                    value={selectedNoticePeriod}
+                    onValueChange={setSelectedNoticePeriod}
+                    className="grid grid-cols-2 gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="Immediate" id="immediate" />
+                      <Label htmlFor="immediate">Immediate</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="1 Month" id="1-month" />
+                      <Label htmlFor="1-month">1 Month</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="2 Months" id="2-months" />
+                      <Label htmlFor="2-months">2 Months</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="3 Months" id="3-months" />
+                      <Label htmlFor="3-months">3 Months</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                <div className="bg-blue-50 p-3 rounded-md border border-blue-100 text-sm text-blue-800">
+                  <p>
+                    <strong>Note:</strong> Sending this request will notify the owner.
+                    {selectedNoticePeriod === "Immediate"
+                      ? " Since you selected 'Immediate', you are requesting to vacate as soon as possible."
+                      : ` You are engaging to serve a notice period of ${selectedNoticePeriod}.`
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="sm:justify-between">
+              <Button variant="ghost" onClick={() => setIsTerminationDialogOpen(false)}>Cancel</Button>
+              <Button onClick={submitTerminationRequest} disabled={submittingTermination}>
+                {submittingTermination ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : "Send Request"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div >
+    </div >
   );
 };
 
