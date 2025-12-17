@@ -116,31 +116,31 @@ const ManageProperty = () => {
   const [filteredTenantProperties, setFilteredTenantProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
-  
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedPropertyType, setSelectedPropertyType] = useState<string>("");
   const [selectedListingType, setSelectedListingType] = useState<string>("");
-  
+
   // View toggle state - 'owned' or 'tenant'
   const [activeView, setActiveView] = useState<'owned' | 'tenant'>('owned');
-  
+
   // Toggle states for "Want to Sell" - default false for all properties
-  const [wantToSellToggles, setWantToSellToggles] = useState<{[key: string]: boolean}>({});
+  const [wantToSellToggles, setWantToSellToggles] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
-    
-    
+
+
     // Listen for authentication state changes
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      
+
       setUser(currentUser);
-      
+
       if (currentUser) {
-        
+
         fetchProperties(currentUser.uid);
       } else {
-        
+
         setLoading(false);
       }
     });
@@ -150,8 +150,8 @@ const ManageProperty = () => {
 
   const fetchProperties = async (ownerUID: string) => {
     try {
-      
-      
+
+
       // Fetch owned properties
       const ownedResponse = await fetch(`${API_BASE_URL}/properties?ownerUID=${ownerUID}`, {
         method: 'GET',
@@ -161,10 +161,10 @@ const ManageProperty = () => {
       });
 
       const ownedData = await ownedResponse.json();
-      
+
       let owned: Property[] = [];
       if (ownedData.success) {
-        
+
         // Filter to only show active properties (status === 'active') owned by current user
         owned = (ownedData.properties || []).filter((p: Property) => {
           const isActive = (p.status === 'active' || (!p.status && p.isActive !== false));
@@ -172,12 +172,12 @@ const ManageProperty = () => {
           const isOwnedByUser = p.ownerUID === ownerUID;
           return isActive && isOwnedByUser;
         }).map((p: Property) => ({ ...p, userRole: 'owner' }));
-        
+
       }
 
       // Fetch properties where user is a tenant
       const tenantEmail = user?.email || 'rains.dwivedi98@gmail.com';
-      
+
       const tenantResponse = await fetch(`${API_BASE_URL}/properties/tenant/?userEmail=${tenantEmail}`, {
         method: 'GET',
         headers: {
@@ -189,7 +189,7 @@ const ManageProperty = () => {
       if (tenantResponse.ok) {
         const tenantData = await tenantResponse.json();
         if (tenantData.success) {
-          
+
           // Filter to only show active properties where user is tenant but NOT the owner
           tenant = (tenantData.properties || [])
             .filter((p: Property) => {
@@ -199,7 +199,7 @@ const ManageProperty = () => {
               return isActive && notOwnedByUser;
             })
             .map((p: Property) => ({ ...p, userRole: 'tenant' }));
-          
+
         }
       }
 
@@ -207,15 +207,15 @@ const ManageProperty = () => {
       setTenantProperties(tenant);
       setFilteredOwnedProperties(owned);
       setFilteredTenantProperties(tenant);
-      
+
       // Initialize wantToSell toggles from owned property data only
-      const initialToggles: {[key: string]: boolean} = {};
+      const initialToggles: { [key: string]: boolean } = {};
       owned.forEach((p: Property) => {
         initialToggles[p.id] = p.wantToSell || false;
       });
       setWantToSellToggles(initialToggles);
     } catch (error) {
-      
+
       setOwnedProperties([]);
       setTenantProperties([]);
       setFilteredOwnedProperties([]);
@@ -283,11 +283,11 @@ const ManageProperty = () => {
   const formatPrice = (property: any) => {
     // Helper function to get a valid price value
     const getValidPrice = (value: any): number => {
-      
-      
+
+
       if (!value) return 0;
       if (value === "") return 0;
-      
+
       let numValue: number;
       if (typeof value === 'string') {
         // Remove any currency symbols, commas, or spaces
@@ -296,40 +296,40 @@ const ManageProperty = () => {
       } else {
         numValue = Number(value);
       }
-      
+
       const result = isNaN(numValue) ? 0 : numValue;
-      
+
       return result;
     };
 
     if (property.listingType === 'rent') {
       // Try multiple possible field names for monthly rent
-      const monthlyRent = getValidPrice(property.monthlyRent) || 
-                         getValidPrice(property.monthly_rent) || 
-                         getValidPrice(property.price);
-      
+      const monthlyRent = getValidPrice(property.monthlyRent) ||
+        getValidPrice(property.monthly_rent) ||
+        getValidPrice(property.price);
+
       if (monthlyRent > 0) {
         return `₹${monthlyRent.toLocaleString()}/month`;
       }
     } else if (property.listingType === 'sell') {
       // Try multiple possible field names for selling price
-      const sellingPrice = getValidPrice(property.sellingPrice) || 
-                          getValidPrice(property.selling_price) || 
-                          getValidPrice(property.price);
-      
-      
-      
+      const sellingPrice = getValidPrice(property.sellingPrice) ||
+        getValidPrice(property.selling_price) ||
+        getValidPrice(property.price);
+
+
+
       if (sellingPrice > 0) {
         return `₹${sellingPrice.toLocaleString()}`;
       }
     }
-    
+
     // Final fallback to price field
     const genericPrice = getValidPrice(property.price);
     if (genericPrice > 0) {
       return `₹${genericPrice.toLocaleString()}`;
     }
-    
+
     return 'Price not set';
   };
 
@@ -354,17 +354,17 @@ const ManageProperty = () => {
 
   const handleToggleStatus = async (propertyId: string, isInactive: boolean) => {
     if (!user) return;
-    
+
     try {
-      
+
       const updateData = {
         ownerUID: user.uid,
         status: isInactive ? 'inactive' : 'active', // Set status to 'inactive' or 'active'
         // isActive remains unchanged - keep independent from status
         rentalStatus: isInactive ? 'inactive' : 'available'
       };
-      
-      
+
+
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PUT',
         headers: {
@@ -374,13 +374,13 @@ const ManageProperty = () => {
       });
 
       const data = await response.json();
-      
-      
+
+
       if (data.success) {
         toast({
           title: "Success",
-          description: isInactive 
-            ? "Property set to inactive and archived" 
+          description: isInactive
+            ? "Property set to inactive and archived"
             : "Property set to active and unarchived"
         });
         // Refresh properties list (this will filter out inactive properties)
@@ -393,7 +393,7 @@ const ManageProperty = () => {
         });
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to update property status. Please try again.",
@@ -404,7 +404,7 @@ const ManageProperty = () => {
 
   const handleArchive = async (propertyId: string) => {
     if (!user) return;
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PUT',
@@ -420,7 +420,7 @@ const ManageProperty = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         toast({
           title: "Success",
@@ -436,7 +436,7 @@ const ManageProperty = () => {
         });
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to archive property. Please try again.",
@@ -462,7 +462,7 @@ const ManageProperty = () => {
 
   const handleToggleWantToSell = async (propertyId: string, propertyTitle: string, newValue: boolean) => {
     if (!user) return;
-    
+
     try {
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PUT',
@@ -476,21 +476,21 @@ const ManageProperty = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         toast({
           title: "Success",
-          description: newValue 
-            ? "Admin has been notified that you want to sell this property" 
+          description: newValue
+            ? "Admin has been notified that you want to sell this property"
             : "Admin has been notified that you cancelled the sell request"
         });
-        
+
         // Update local toggle state
         setWantToSellToggles(prev => ({
           ...prev,
           [propertyId]: newValue
         }));
-        
+
         // Refresh properties list
         fetchProperties(user.uid);
       } else {
@@ -506,7 +506,7 @@ const ManageProperty = () => {
         }));
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to update property. Please try again.",
@@ -534,7 +534,7 @@ const ManageProperty = () => {
       });
 
       const updateData = await updateResponse.json();
-      
+
       if (updateData.success) {
         // Create admin notification
         const notificationResponse = await fetch('${API_BASE_URL}/admin/notifications', {
@@ -556,17 +556,17 @@ const ManageProperty = () => {
         });
 
         const notificationData = await notificationResponse.json();
-        
+
         if (notificationData.success) {
-          
+
         } else {
-          
+
         }
 
         // Update local state to reflect the change
         setOwnedProperties(prevProperties =>
           prevProperties.map(prop =>
-            prop.id === propertyId 
+            prop.id === propertyId
               ? { ...prop, listingType: 'sell' }
               : prop
           )
@@ -574,7 +574,7 @@ const ManageProperty = () => {
 
         setFilteredOwnedProperties(prevFiltered =>
           prevFiltered.map(prop =>
-            prop.id === propertyId 
+            prop.id === propertyId
               ? { ...prop, listingType: 'sell' }
               : prop
           )
@@ -585,9 +585,9 @@ const ManageProperty = () => {
           title: "Success",
           description: `Property "${propertyTitle}" has been switched to sell mode. Admin has been notified.`,
         });
-        
+
       } else {
-        
+
         toast({
           title: "Error",
           description: "Failed to update property listing type. Please try again.",
@@ -595,7 +595,7 @@ const ManageProperty = () => {
         });
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "An error occurred while updating the property. Please try again.",
@@ -604,8 +604,8 @@ const ManageProperty = () => {
     }
   };
 
-  
- 
+
+
   return (
     <main className="container mx-auto py-4 sm:py-8 px-4">
       <Helmet>
@@ -628,7 +628,7 @@ const ManageProperty = () => {
               </div>
             </div>
             <div className="flex-shrink-0 w-full sm:w-auto flex gap-2">
-              <Button 
+              <Button
                 className="w-full sm:w-auto px-6 sm:px-12 py-2 sm:py-3 rounded-lg border-2 border-primary/20 bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm"
                 variant="outline"
                 onClick={() => navigate("/select-property-type")}
@@ -636,7 +636,7 @@ const ManageProperty = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Property
               </Button>
-              <Button 
+              <Button
                 className="w-full sm:w-auto px-6 sm:px-12 py-2 sm:py-3 rounded-lg border-2 border-orange-200 bg-orange-50 hover:bg-orange-100 transition-colors shadow-sm"
                 variant="outline"
                 onClick={() => navigate("/archived-properties")}
@@ -649,17 +649,16 @@ const ManageProperty = () => {
           <p className="text-sm sm:text-base text-muted-foreground">
             Manage your listings and property portfolio.
           </p>
-          
+
           {/* View Toggle Tabs */}
           <div className="mt-4 flex gap-2">
             <Button
               variant={activeView === 'owned' ? 'default' : 'outline'}
               size="sm"
-              className={`flex-1 sm:flex-none px-6 py-2 rounded-lg transition-all ${
-                activeView === 'owned' 
-                  ? 'bg-primary text-primary-foreground shadow-md' 
+              className={`flex-1 sm:flex-none px-6 py-2 rounded-lg transition-all ${activeView === 'owned'
+                  ? 'bg-primary text-primary-foreground shadow-md'
                   : 'border-2 border-muted hover:bg-muted/50'
-              }`}
+                }`}
               onClick={() => setActiveView('owned')}
             >
               <Building2 className="h-4 w-4 mr-2" />
@@ -668,11 +667,10 @@ const ManageProperty = () => {
             <Button
               variant={activeView === 'tenant' ? 'default' : 'outline'}
               size="sm"
-              className={`flex-1 sm:flex-none px-6 py-2 rounded-lg transition-all ${
-                activeView === 'tenant' 
-                  ? 'bg-primary text-primary-foreground shadow-md' 
+              className={`flex-1 sm:flex-none px-6 py-2 rounded-lg transition-all ${activeView === 'tenant'
+                  ? 'bg-primary text-primary-foreground shadow-md'
                   : 'border-2 border-muted hover:bg-muted/50'
-              }`}
+                }`}
               onClick={() => setActiveView('tenant')}
             >
               <Key className="h-4 w-4 mr-2" />
@@ -683,13 +681,13 @@ const ManageProperty = () => {
 
         {/* Property List Section */}
         <div className="space-y-6">
-         
+
           {/* Property Type Filter */}
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground/80">Property Types</h3>
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-              <Button 
-                variant={!selectedPropertyType || selectedPropertyType === "all" ? "default" : "outline"} 
+              <Button
+                variant={!selectedPropertyType || selectedPropertyType === "all" ? "default" : "outline"}
                 size="sm"
                 className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedPropertyType("")}
@@ -697,8 +695,8 @@ const ManageProperty = () => {
                 <Home className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 All Properties
               </Button>
-              <Button 
-                variant={selectedPropertyType === "residential" ? "default" : "outline"} 
+              <Button
+                variant={selectedPropertyType === "residential" ? "default" : "outline"}
                 size="sm"
                 className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedPropertyType(selectedPropertyType === "residential" ? "" : "residential")}
@@ -706,8 +704,8 @@ const ManageProperty = () => {
                 <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Residential
               </Button>
-              <Button 
-                variant={selectedPropertyType === "commercial" ? "default" : "outline"} 
+              <Button
+                variant={selectedPropertyType === "commercial" ? "default" : "outline"}
                 size="sm"
                 className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedPropertyType(selectedPropertyType === "commercial" ? "" : "commercial")}
@@ -715,8 +713,8 @@ const ManageProperty = () => {
                 <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Commercial
               </Button>
-              <Button 
-                variant={selectedPropertyType === "industrial" ? "default" : "outline"} 
+              <Button
+                variant={selectedPropertyType === "industrial" ? "default" : "outline"}
                 size="sm"
                 className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedPropertyType(selectedPropertyType === "industrial" ? "" : "industrial")}
@@ -731,24 +729,24 @@ const ManageProperty = () => {
           <div className="space-y-3">
             <h3 className="text-sm font-medium text-foreground/80">Listing Types</h3>
             <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2">
-              <Button 
-                variant={!selectedListingType || selectedListingType === "all" ? "default" : "outline"} 
+              <Button
+                variant={!selectedListingType || selectedListingType === "all" ? "default" : "outline"}
                 size="sm"
                 className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedListingType("")}
               >
                 All Listings
               </Button>
-              <Button 
-                variant={selectedListingType === "rent" ? "default" : "outline"} 
+              <Button
+                variant={selectedListingType === "rent" ? "default" : "outline"}
                 size="sm"
                 className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedListingType(selectedListingType === "rent" ? "" : "rent")}
               >
                 For Rent
               </Button>
-              <Button 
-                variant={selectedListingType === "sell" ? "default" : "outline"} 
+              <Button
+                variant={selectedListingType === "sell" ? "default" : "outline"}
                 size="sm"
                 className="justify-center text-xs sm:text-sm"
                 onClick={() => setSelectedListingType(selectedListingType === "sell" ? "" : "sell")}
@@ -796,439 +794,437 @@ const ManageProperty = () => {
 
           {/* Properties List */}
           <div className="space-y-8 pb-20">
-              {!user ? (
-                <div className="text-center py-12">
-                  <Building2 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                  <h3 className="text-xl font-semibold mb-2">Please Sign In</h3>
-                  <p className="text-muted-foreground mb-4">
-                    You need to be signed in to view and manage your properties.
-                  </p>
-                  <Button onClick={() => navigate("/auth")}>
-                    Sign In
-                  </Button>
-                </div>
-              ) 
-            : 
+            {!user ? (
+              <div className="text-center py-12">
+                <Building2 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                <h3 className="text-xl font-semibold mb-2">Please Sign In</h3>
+                <p className="text-muted-foreground mb-4">
+                  You need to be signed in to view and manage your properties.
+                </p>
+                <Button onClick={() => navigate("/auth")}>
+                  Sign In
+                </Button>
+              </div>
+            )
+              :
               loading ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <p>Loading properties...</p>
                 </div>
-              ) 
-            : (
-              <>
-                {/* Show section based on active view */}
-                {activeView === 'owned' ? (
-                  /* Owned Properties Section */
-                  <div className="space-y-4">
-                  
-                  {filteredOwnedProperties.length > 0 ? (
-                    filteredOwnedProperties.map((property, index) => (
-                      <Card key={property.id} className="hover:shadow-lg transition-shadow overflow-hidden">
-                        <div className="flex flex-col sm:flex-row">
-                          {/* Property Image Thumbnail - Always show with fallback */}
-                          <div className="w-full sm:w-40 h-32 sm:h-auto flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden flex items-center justify-center">
-                            {property.images && property.images.length > 0 && property.images[0] ? (
-                              <img
-                                src={property.images[0]}
-                                alt={property.title}
-                                className="w-full h-full object-cover absolute inset-0"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                }}
-                              />
-                            ) : null}
-                            <Building2 className="h-12 w-12 text-gray-400" />
-                          </div>
-                          <CardContent className="p-3 sm:p-6 flex-1">
-                          <div className="flex flex-col space-y-3 sm:space-y-4">
-                            {/* Header with number and action menu */}
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-                                <span className="text-base sm:text-lg font-semibold text-muted-foreground flex-shrink-0 mt-0.5">{index + 1}.</span>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className="font-semibold text-sm sm:text-lg leading-tight text-gray-900 break-words">
-                                      {property.title}
-                                      {property.unitNumber ? ` (${property.unitNumber})` : ""}
-                                      {property.address ? `, ${property.address}` : ""}
-                                    </h3>
-                                    <Badge 
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      Owner
-                                    </Badge>
-                                  </div>
-                                  {/* Show active tenants on a separate line if property is rented out */}
-                                  {property.tenants && property.tenants.length > 0 && (
-                                    <p className="text-sm text-purple-600 font-medium mt-1">
-                                      Active Tenants: {property.tenants.map(t => t.firstName).join(", ")}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                              {/* Action Menu for Owners */}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-gray-100 flex-shrink-0">
-                                    <MoreVertical className="h-4 w-4 sm:h-5 sm:w-5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={() => handleView(property.id)}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleEdit(property.id)}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit Property
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  {property.listingType === 'rent' && (
-                                    <DropdownMenuItem onClick={() => handleAddTenant(property.id)}>
-                                      {property.tenants && property.tenants.length > 0 ? (
-                                        <>
-                                          <Eye className="h-4 w-4 mr-2" />
-                                          View Tenant Details ({property.tenants.length})
-                                        </>
-                                      ) : (
-                                        <>
-                                          <UserPlus className="h-4 w-4 mr-2" />
-                                          Add Tenant Info
-                                        </>
-                                      )}
-                                    </DropdownMenuItem>
-                                  )}
-                                  <DropdownMenuItem onClick={() => handleRequestServices(property.id)}>
-                                    <Wrench className="h-4 w-4 mr-2" />
-                                    Request Services
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/inspection-report/${property.id}`)}>
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    Inspection Report
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/review/${property.id}`)}>
-                                    <Star className="h-4 w-4 mr-2" />
-                                    Review
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/legal-services/${property.id}`)}>
-                                    <Scale className="h-4 w-4 mr-2" />
-                                    Legal Services
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/other-services/${property.id}`)}>
-                                    <Wrench className="h-4 w-4 mr-2" />
-                                    Other Related Services
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => navigate(`/attach-documents/${property.id}`)}>
-                                    <Paperclip className="h-4 w-4 mr-2" />
-                                    2. Attach Documents
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/renew-agreement/${property.id}`)}>
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                    3. Go for Renewal
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => navigate(`/terminate-agreement/${property.id}`)}
-                                    className="text-red-600"
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    4. Terminate Agreement
-                                  </DropdownMenuItem>
-                                  {property.rentalStatus === 'inactive' && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem 
-                                        className="text-orange-600"
-                                        onClick={() => handleArchive(property.id)}
-                                      >
-                                        <Archive className="h-4 w-4 mr-2" />
-                                        Archive Property
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
+              )
+                : (
+                  <>
+                    {/* Show section based on active view */}
+                    {activeView === 'owned' ? (
+                      /* Owned Properties Section */
+                      <div className="space-y-4">
 
-                            {/* Property Details */}
-                            <div className="ml-5 sm:ml-8 space-y-2">
-                              <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground items-center">
-                                <span className="flex items-center gap-1 whitespace-nowrap">
-                                  🏠 {property.propertyType.toUpperCase()}
-                                </span>
-                                {property.squareFeet > 0 && (
-                                  <span className="flex items-center gap-1 whitespace-nowrap">
-                                    📐 {property.squareFeet} sqft
-                                  </span>
-                                )}
-                                {property.updatedAt && (
-                                  <span className="hidden sm:flex items-center gap-1 whitespace-nowrap">
-                                    📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()} at {new Date(property.updatedAt).toLocaleTimeString()}
-                                  </span>
-                                )}
-                                {property.listingType === 'rent' && (
-                                  <div className="flex items-center gap-2">
-                                    <div className="flex items-center gap-2">
-                                      <Switch
-                                        id={`status-${property.id}`}
-                                        checked={property.status === 'inactive'}
-                                        onCheckedChange={(checked) => handleToggleStatus(property.id, checked)}
-                                      />
-                                      <Label 
-                                        htmlFor={`status-${property.id}`}
-                                        className="text-xs text-muted-foreground cursor-pointer"
-                                      >
-                                        {property.status === 'inactive' ? 'Inactive' : 'Active'}
-                                      </Label>
-                                    </div>
-                                    {property.status && property.status !== 'inactive' && (
-                                      <Badge variant="outline" className={
-                                        (property.tenants && property.tenants.length > 0) || property.rentalStatus === 'rented'
-                                          ? 'bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap'
-                                          : 'bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap'
-                                      }>
-                                        {(property.tenants && property.tenants.length > 0) || property.rentalStatus === 'rented' 
-                                          ? 'Currently Rented' 
-                                          : 'Available for Rent'}
-                                      </Badge>
-                                    )}
-                                    {property.status === 'inactive' && (
-                                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs whitespace-nowrap">
-                                        Inactive (Archived)
-                                      </Badge>
-                                    )}
-                                  </div>
-                                )}
-                                {property.listingType && (
-                                  <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs whitespace-nowrap">
-                                    {property.listingType === 'rent' ? 'Rent' : property.listingType === 'sell' ? 'Sell' : property.listingType}
-                                  </Badge>
-                                )}
-                              </div>
-                              {property.updatedAt && (
-                                <div className="sm:hidden text-xs text-muted-foreground">
-                                  📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Want to Sell Toggle - Only for rent properties owned by user */}
-                            {property.listingType === 'rent' && (
-                              <div className="ml-5 sm:ml-8 pt-2 border-t border-gray-100">
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Want to Sell?</span>
-                                  <button
-                                    className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                      wantToSellToggles[property.id] ? 'bg-slate-800' : 'bg-gray-300'
-                                    }`}
-                                    onClick={() => {
-                                      const currentState = wantToSellToggles[property.id] || false;
-                                      const newValue = !currentState;
-                                      
-                                      if (newValue) {
-                                        const confirmed = window.confirm(
-                                          `Are you sure you want to mark "${property.title}" as "Want to Sell"?\n\nThis will notify the admin with your property and contact details.`
-                                        );
-                                        if (confirmed) {
-                                          setWantToSellToggles(prev => ({ ...prev, [property.id]: true }));
-                                          handleToggleWantToSell(property.id, property.title, true);
-                                        }
-                                      } else {
-                                        const confirmed = window.confirm(
-                                          `Are you sure you want to cancel the sell request for "${property.title}"?\n\nThe admin will be notified of this cancellation.`
-                                        );
-                                        if (confirmed) {
-                                          setWantToSellToggles(prev => ({ ...prev, [property.id]: false }));
-                                          handleToggleWantToSell(property.id, property.title, false);
-                                        }
-                                      }
-                                    }}
-                                  >
-                                    <span
-                                      className={`inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform ${
-                                        wantToSellToggles[property.id] ? 'translate-x-5 sm:translate-x-6' : 'translate-x-1'
-                                      }`}
+                        {filteredOwnedProperties.length > 0 ? (
+                          filteredOwnedProperties.map((property, index) => (
+                            <Card key={property.id} className="hover:shadow-lg transition-shadow overflow-hidden">
+                              <div className="flex flex-col sm:flex-row">
+                                {/* Property Image Thumbnail - Always show with fallback */}
+                                <div className="w-full sm:w-40 h-32 sm:h-auto flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden flex items-center justify-center">
+                                  {property.images && property.images.length > 0 && property.images[0] ? (
+                                    <img
+                                      src={property.images[0]}
+                                      alt={property.title}
+                                      className="w-full h-full object-cover absolute inset-0"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }}
                                     />
-                                  </button>
+                                  ) : null}
+                                  <Building2 className="h-12 w-12 text-gray-400" />
                                 </div>
+                                <CardContent className="p-3 sm:p-6 flex-1">
+                                  <div className="flex flex-col space-y-3 sm:space-y-4">
+                                    {/* Header with number and action menu */}
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                                        <span className="text-base sm:text-lg font-semibold text-muted-foreground flex-shrink-0 mt-0.5">{index + 1}.</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="font-semibold text-sm sm:text-lg leading-tight text-gray-900 break-words">
+                                              {property.title}
+                                              {property.unitNumber ? ` (${property.unitNumber})` : ""}
+                                              {property.address ? `, ${property.address}` : ""}
+                                            </h3>
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs"
+                                            >
+                                              Owner
+                                            </Badge>
+                                          </div>
+                                          {/* Show active tenants on a separate line if property is rented out */}
+                                          {property.tenants && property.tenants.length > 0 && (
+                                            <p className="text-sm text-purple-600 font-medium mt-1">
+                                              Active Tenants: {property.tenants.map(t => t.firstName).join(", ")}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {/* Action Menu for Owners */}
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-gray-100 flex-shrink-0">
+                                            <MoreVertical className="h-4 w-4 sm:h-5 sm:w-5" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-48">
+                                          <DropdownMenuItem onClick={() => handleView(property.id)}>
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            View Details
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleEdit(property.id)}>
+                                            <Edit className="h-4 w-4 mr-2" />
+                                            Edit Property
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          {property.listingType === 'rent' && (
+                                            <DropdownMenuItem onClick={() => handleAddTenant(property.id)}>
+                                              {property.tenants && property.tenants.length > 0 ? (
+                                                <>
+                                                  <Eye className="h-4 w-4 mr-2" />
+                                                  View Tenant Details ({property.tenants.length})
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <UserPlus className="h-4 w-4 mr-2" />
+                                                  Add Tenant Info
+                                                </>
+                                              )}
+                                            </DropdownMenuItem>
+                                          )}
+                                          <DropdownMenuItem onClick={() => handleRequestServices(property.id)}>
+                                            <Wrench className="h-4 w-4 mr-2" />
+                                            Request Services
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => navigate(`/inspection-report/${property.id}`)}>
+                                            <FileText className="h-4 w-4 mr-2" />
+                                            Inspection Report
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => navigate(`/review/${property.id}`)}>
+                                            <Star className="h-4 w-4 mr-2" />
+                                            Review
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => navigate(`/legal-services/${property.id}`)}>
+                                            <Scale className="h-4 w-4 mr-2" />
+                                            Legal Services
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => navigate(`/other-services/${property.id}`)}>
+                                            <Wrench className="h-4 w-4 mr-2" />
+                                            Other Related Services
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem onClick={() => navigate(`/attach-documents/${property.id}`)}>
+                                            <Paperclip className="h-4 w-4 mr-2" />
+                                            2. Attach Documents
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => navigate(`/renew-agreement/${property.id}`)}>
+                                            <RefreshCw className="h-4 w-4 mr-2" />
+                                            3. Go for Renewal
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => navigate(`/terminate-agreement/${property.id}`)}
+                                            className="text-red-600"
+                                          >
+                                            <XCircle className="h-4 w-4 mr-2" />
+                                            4. Terminate Agreement
+                                          </DropdownMenuItem>
+                                          {property.rentalStatus === 'inactive' && (
+                                            <>
+                                              <DropdownMenuSeparator />
+                                              <DropdownMenuItem
+                                                className="text-orange-600"
+                                                onClick={() => handleArchive(property.id)}
+                                              >
+                                                <Archive className="h-4 w-4 mr-2" />
+                                                Archive Property
+                                              </DropdownMenuItem>
+                                            </>
+                                          )}
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
+
+                                    {/* Property Details */}
+                                    <div className="ml-5 sm:ml-8 space-y-2">
+                                      <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground items-center">
+                                        <span className="flex items-center gap-1 whitespace-nowrap">
+                                          🏠 {property.propertyType.toUpperCase()}
+                                        </span>
+                                        {property.squareFeet > 0 && (
+                                          <span className="flex items-center gap-1 whitespace-nowrap">
+                                            📐 {property.squareFeet} sqft
+                                          </span>
+                                        )}
+                                        {property.updatedAt && (
+                                          <span className="hidden sm:flex items-center gap-1 whitespace-nowrap">
+                                            📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()} at {new Date(property.updatedAt).toLocaleTimeString()}
+                                          </span>
+                                        )}
+                                        {property.listingType === 'rent' && (
+                                          <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2">
+                                              <Switch
+                                                id={`status-${property.id}`}
+                                                checked={property.status === 'inactive'}
+                                                onCheckedChange={(checked) => handleToggleStatus(property.id, checked)}
+                                              />
+                                              <Label
+                                                htmlFor={`status-${property.id}`}
+                                                className="text-xs text-muted-foreground cursor-pointer"
+                                              >
+                                                {property.status === 'inactive' ? 'Inactive' : 'Active'}
+                                              </Label>
+                                            </div>
+                                            {property.status && property.status !== 'inactive' && (
+                                              <Badge variant="outline" className={
+                                                (property.tenants && property.tenants.length > 0)
+                                                  ? 'bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap'
+                                                  : 'bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap'
+                                              }>
+                                                {(property.tenants && property.tenants.length > 0)
+                                                  ? 'Currently Rented'
+                                                  : 'Available for Rent'}
+                                              </Badge>
+                                            )}
+                                            {property.status === 'inactive' && (
+                                              <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs whitespace-nowrap">
+                                                Inactive (Archived)
+                                              </Badge>
+                                            )}
+                                          </div>
+                                        )}
+                                        {property.listingType && (
+                                          <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs whitespace-nowrap">
+                                            {property.listingType === 'rent' ? 'Rent' : property.listingType === 'sell' ? 'Sell' : property.listingType}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {property.updatedAt && (
+                                        <div className="sm:hidden text-xs text-muted-foreground">
+                                          📅 Last modified: {new Date(property.updatedAt).toLocaleDateString()}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Want to Sell Toggle - Only for rent properties owned by user */}
+                                    {property.listingType === 'rent' && (
+                                      <div className="ml-5 sm:ml-8 pt-2 border-t border-gray-100">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-xs sm:text-sm font-medium text-foreground whitespace-nowrap">Want to Sell?</span>
+                                          <button
+                                            className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${wantToSellToggles[property.id] ? 'bg-slate-800' : 'bg-gray-300'
+                                              }`}
+                                            onClick={() => {
+                                              const currentState = wantToSellToggles[property.id] || false;
+                                              const newValue = !currentState;
+
+                                              if (newValue) {
+                                                const confirmed = window.confirm(
+                                                  `Are you sure you want to mark "${property.title}" as "Want to Sell"?\n\nThis will notify the admin with your property and contact details.`
+                                                );
+                                                if (confirmed) {
+                                                  setWantToSellToggles(prev => ({ ...prev, [property.id]: true }));
+                                                  handleToggleWantToSell(property.id, property.title, true);
+                                                }
+                                              } else {
+                                                const confirmed = window.confirm(
+                                                  `Are you sure you want to cancel the sell request for "${property.title}"?\n\nThe admin will be notified of this cancellation.`
+                                                );
+                                                if (confirmed) {
+                                                  setWantToSellToggles(prev => ({ ...prev, [property.id]: false }));
+                                                  handleToggleWantToSell(property.id, property.title, false);
+                                                }
+                                              }
+                                            }}
+                                          >
+                                            <span
+                                              className={`inline-block h-3 w-3 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform ${wantToSellToggles[property.id] ? 'translate-x-5 sm:translate-x-6' : 'translate-x-1'
+                                                }`}
+                                            />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </div>
+                            </Card>
+                          ))
+                        ) : (
+                          <div className="text-center py-6 text-muted-foreground bg-muted/30 rounded-lg">
+                            {hasActiveFilters ? (
+                              <p className="text-sm">No owned properties match your filters</p>
+                            ) : (
+                              <div>
+                                <Building2 className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+                                <p className="text-sm">No properties owned yet. Click "Add Property" to get started.</p>
                               </div>
                             )}
                           </div>
-                        </CardContent>
-                        </div>
-                      </Card>
-                    ))
-                  ) : (
-                    <div className="text-center py-6 text-muted-foreground bg-muted/30 rounded-lg">
-                      {hasActiveFilters ? (
-                        <p className="text-sm">No owned properties match your filters</p>
-                      ) : (
-                        <div>
-                          <Building2 className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
-                          <p className="text-sm">No properties owned yet. Click "Add Property" to get started.</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                        )}
+                      </div>
 
-                ) : (
-                  /* Tenant Properties Section */
-                  <div className="space-y-4">
-                  
-                  {filteredTenantProperties.length > 0 ? (
-                    filteredTenantProperties.map((property, index) => (
-                      <Card key={property.id} className="hover:shadow-lg transition-shadow overflow-hidden">
-                        <div className="flex flex-col sm:flex-row">
-                          {/* Property Image Thumbnail - Always show with fallback */}
-                          <div className="w-full sm:w-40 h-32 sm:h-auto flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden flex items-center justify-center">
-                            {property.images && property.images.length > 0 && property.images[0] ? (
-                              <img
-                                src={property.images[0]}
-                                alt={property.title}
-                                className="w-full h-full object-cover absolute inset-0"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                }}
-                              />
-                            ) : null}
-                            <Building2 className="h-12 w-12 text-gray-400" />
-                          </div>
-                          <CardContent className="p-3 sm:p-6 flex-1">
-                          <div className="flex flex-col space-y-3 sm:space-y-4">
-                            {/* Header with number and action menu */}
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-                                <span className="text-base sm:text-lg font-semibold text-muted-foreground flex-shrink-0 mt-0.5">{index + 1}.</span>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <h3 className="font-semibold text-sm sm:text-lg leading-tight text-gray-900 break-words">
-                                      {property.title}
-                                      {property.unitNumber ? ` (${property.unitNumber})` : ""}
-                                      {property.address ? `, ${property.address}` : ""}
-                                    </h3>
-                                    <Badge 
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      Tenant
-                                    </Badge>
-                                  </div>
-                                  {/* Show owner info */}
-                                  {property.ownerName && (
-                                    <p className="text-sm text-gray-600 mt-1">
-                                      Owner: {property.ownerName}
-                                    </p>
-                                  )}
+                    ) : (
+                      /* Tenant Properties Section */
+                      <div className="space-y-4">
+
+                        {filteredTenantProperties.length > 0 ? (
+                          filteredTenantProperties.map((property, index) => (
+                            <Card key={property.id} className="hover:shadow-lg transition-shadow overflow-hidden">
+                              <div className="flex flex-col sm:flex-row">
+                                {/* Property Image Thumbnail - Always show with fallback */}
+                                <div className="w-full sm:w-40 h-32 sm:h-auto flex-shrink-0 bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden flex items-center justify-center">
+                                  {property.images && property.images.length > 0 && property.images[0] ? (
+                                    <img
+                                      src={property.images[0]}
+                                      alt={property.title}
+                                      className="w-full h-full object-cover absolute inset-0"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }}
+                                    />
+                                  ) : null}
+                                  <Building2 className="h-12 w-12 text-gray-400" />
                                 </div>
-                              </div>
-                              {/* Action Menu for Tenants - Limited options */}
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-gray-100 flex-shrink-0">
-                                    <MoreVertical className="h-4 w-4 sm:h-5 sm:w-5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-48">
-                                  <DropdownMenuItem onClick={() => handleView(property.id)}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Details
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleRequestServices(property.id)}>
-                                    <Wrench className="h-4 w-4 mr-2" />
-                                    Request Services
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/inspection-report/${property.id}`)}>
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    Inspection Report
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/review/${property.id}`)}>
-                                    <Star className="h-4 w-4 mr-2" />
-                                    Review
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => navigate(`/other-services/${property.id}`)}>
-                                    <Wrench className="h-4 w-4 mr-2" />
-                                    Other Related Services
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => navigate(`/renew-agreement/${property.id}`)}>
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                    Request Renewal
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    onClick={() => navigate(`/terminate-agreement/${property.id}`)}
-                                    className="text-red-600"
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Request Termination
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
+                                <CardContent className="p-3 sm:p-6 flex-1">
+                                  <div className="flex flex-col space-y-3 sm:space-y-4">
+                                    {/* Header with number and action menu */}
+                                    <div className="flex items-start justify-between">
+                                      <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                                        <span className="text-base sm:text-lg font-semibold text-muted-foreground flex-shrink-0 mt-0.5">{index + 1}.</span>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="font-semibold text-sm sm:text-lg leading-tight text-gray-900 break-words">
+                                              {property.title}
+                                              {property.unitNumber ? ` (${property.unitNumber})` : ""}
+                                              {property.address ? `, ${property.address}` : ""}
+                                            </h3>
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs"
+                                            >
+                                              Tenant
+                                            </Badge>
+                                          </div>
+                                          {/* Show owner info */}
+                                          {property.ownerName && (
+                                            <p className="text-sm text-gray-600 mt-1">
+                                              Owner: {property.ownerName}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      {/* Action Menu for Tenants - Limited options */}
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="sm" className="h-8 w-8 sm:h-9 sm:w-9 p-0 hover:bg-gray-100 flex-shrink-0">
+                                            <MoreVertical className="h-4 w-4 sm:h-5 sm:w-5" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end" className="w-48">
+                                          <DropdownMenuItem onClick={() => handleView(property.id)}>
+                                            <Eye className="h-4 w-4 mr-2" />
+                                            View Details
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem onClick={() => handleRequestServices(property.id)}>
+                                            <Wrench className="h-4 w-4 mr-2" />
+                                            Request Services
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => navigate(`/inspection-report/${property.id}`)}>
+                                            <FileText className="h-4 w-4 mr-2" />
+                                            Inspection Report
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => navigate(`/review/${property.id}`)}>
+                                            <Star className="h-4 w-4 mr-2" />
+                                            Review
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => navigate(`/other-services/${property.id}`)}>
+                                            <Wrench className="h-4 w-4 mr-2" />
+                                            Other Related Services
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem onClick={() => navigate(`/renew-agreement/${property.id}`)}>
+                                            <RefreshCw className="h-4 w-4 mr-2" />
+                                            Request Renewal
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            onClick={() => navigate(`/terminate-agreement/${property.id}`)}
+                                            className="text-red-600"
+                                          >
+                                            <XCircle className="h-4 w-4 mr-2" />
+                                            Request Termination
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
 
-                            {/* Property Details */}
-                            <div className="ml-5 sm:ml-8 space-y-2">
-                              <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground items-center">
-                                <span className="flex items-center gap-1 whitespace-nowrap">
-                                  🏠 {property.propertyType.toUpperCase()}
-                                </span>
-                                {property.squareFeet > 0 && (
-                                  <span className="flex items-center gap-1 whitespace-nowrap">
-                                    📐 {property.squareFeet} sqft
-                                  </span>
-                                )}
-                                {property.listingType && (
-                                  <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs whitespace-nowrap">
-                                    {property.listingType === 'rent' ? 'Rent' : property.listingType === 'sell' ? 'Sell' : property.listingType}
-                                  </Badge>
-                                )}
+                                    {/* Property Details */}
+                                    <div className="ml-5 sm:ml-8 space-y-2">
+                                      <div className="flex flex-wrap gap-2 sm:gap-3 text-xs sm:text-sm text-muted-foreground items-center">
+                                        <span className="flex items-center gap-1 whitespace-nowrap">
+                                          🏠 {property.propertyType.toUpperCase()}
+                                        </span>
+                                        {property.squareFeet > 0 && (
+                                          <span className="flex items-center gap-1 whitespace-nowrap">
+                                            📐 {property.squareFeet} sqft
+                                          </span>
+                                        )}
+                                        {property.listingType && (
+                                          <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs whitespace-nowrap">
+                                            {property.listingType === 'rent' ? 'Rent' : property.listingType === 'sell' ? 'Sell' : property.listingType}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
                               </div>
-                            </div>
+                            </Card>
+                          ))
+                        ) : (
+                          <div className="text-center py-6 text-muted-foreground bg-purple-50/50 rounded-lg">
+                            {hasActiveFilters ? (
+                              <p className="text-sm">No tenant properties match your filters</p>
+                            ) : (
+                              <div>
+                                <Users className="h-10 w-10 mx-auto mb-2 text-purple-300" />
+                                <p className="text-sm">You are not listed as a tenant on any property.</p>
+                              </div>
+                            )}
                           </div>
-                        </CardContent>
-                        </div>
-                      </Card>
-                    ))
-                  ) : (
-                    <div className="text-center py-6 text-muted-foreground bg-purple-50/50 rounded-lg">
-                      {hasActiveFilters ? (
-                        <p className="text-sm">No tenant properties match your filters</p>
-                      ) : (
-                        <div>
-                          <Users className="h-10 w-10 mx-auto mb-2 text-purple-300" />
-                          <p className="text-sm">You are not listed as a tenant on any property.</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                )}
+                        )}
+                      </div>
+                    )}
 
-                {/* Empty state when no properties in current view */}
-                {activeView === 'owned' && filteredOwnedProperties.length === 0 && hasActiveFilters && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Filter className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="mb-2">No owned properties match your current filters</p>
-                    <Button variant="outline" onClick={clearAllFilters}>
-                      Clear Filters
-                    </Button>
-                  </div>
+                    {/* Empty state when no properties in current view */}
+                    {activeView === 'owned' && filteredOwnedProperties.length === 0 && hasActiveFilters && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Filter className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="mb-2">No owned properties match your current filters</p>
+                        <Button variant="outline" onClick={clearAllFilters}>
+                          Clear Filters
+                        </Button>
+                      </div>
+                    )}
+                    {activeView === 'tenant' && filteredTenantProperties.length === 0 && hasActiveFilters && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Filter className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="mb-2">No tenant properties match your current filters</p>
+                        <Button variant="outline" onClick={clearAllFilters}>
+                          Clear Filters
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 )}
-                {activeView === 'tenant' && filteredTenantProperties.length === 0 && hasActiveFilters && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Filter className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <p className="mb-2">No tenant properties match your current filters</p>
-                    <Button variant="outline" onClick={clearAllFilters}>
-                      Clear Filters
-                    </Button>
-                  </div>
-                )}
-              </>
-            )}
           </div>
 
         </div>
