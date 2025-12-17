@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Property } from "@/services/propertyService";
-import { Building2, MapPin, Home, Ruler, Calendar, Banknote } from "lucide-react";
+import { Building2, MapPin, Home, Ruler, Calendar, Banknote, Image as ImageIcon } from "lucide-react";
 
 interface PropertyDetailsDialogProps {
     property: Property;
@@ -100,6 +100,23 @@ const PropertyDetailsDialog = ({ property }: PropertyDetailsDialogProps) => {
                             )}
                         </div>
                     </div>
+
+                    {/* Internal Images */}
+                    {property.internalImages && property.internalImages.length > 0 && (
+                        <div className="border-t pt-4 mt-2">
+                            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
+                                <ImageIcon className="h-4 w-4" />
+                                <span>Internal Images</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                                {property.internalImages.map((img, idx) => (
+                                    <div key={idx} className="aspect-video rounded-md overflow-hidden bg-gray-100">
+                                        <img src={img} alt={`Internal ${idx}`} className="w-full h-full object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     <div className="border-t pt-4 mt-2">
                         <div className="flex justify-between items-center mb-2">

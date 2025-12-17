@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, MapPin, Home, Calendar, CheckCircle, ClipboardList, FileText, Scale, Wrench, RefreshCw, FileX } from "lucide-react";
+import { ArrowLeft, Eye, MapPin, Home, Calendar, CheckCircle, ClipboardList, FileText, Scale, Wrench, RefreshCw, FileX, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -93,7 +93,7 @@ interface Property {
   propertyType: string;
   configuration: string;
   listingType: string;
-  
+
   // Unit Details
   unitNumber: string;
   floor: string;
@@ -103,13 +103,13 @@ interface Property {
   city: string;
   state: string;
   zipCode: string;
-  
+
   // Area Details
   carpetArea: string;
   plotArea: string;
   constructedArea: string;
   squareFeet: number;
-  
+
   // Tenant Information
   tenantName: string;
   personName: string;
@@ -117,11 +117,11 @@ interface Property {
   primaryNo: string;
   ultNo: string;
   emergencyContact: string;
-  
+
   // Tenant Employment Details
   employmentStatus: string;
   employer: string;
-  
+
   // Tenant Spouse Information
   isMarried: boolean;
   spouseFirstName: string;
@@ -131,11 +131,11 @@ interface Property {
   spouseEmploymentStatus: string;
   spouseEmployer: string;
   spouseNotes: string;
-  
+
   // Pricing Details
   monthlyRent: string;
   sellingPrice: string;
-  
+
   // Monthly Rent Details
   monthlyRent1stYear: string;
   monthlyRent2ndYear: string;
@@ -145,23 +145,23 @@ interface Property {
   rentToDate1: string;
   rentFromDate2: string;
   rentToDate2: string;
-  
+
   // Payment Details
   paymentDueDate: string;
   escalationPercentage: string;
   escalationAmount: string;
-  
+
   // Security & Agreement
   securityDeposit: string;
   agreementPeriod: string;
   agreementStartDate: string;
   agreementEndDate: string;
   possessionDate: string;
-  
+
   // Notice & Lock-in
   noticePeriod: string;
   lockInPeriod: string;
-  
+
   // Unit Condition & Maintenance
   unitCondition: string;
   maintenanceToBePaidBy: string;
@@ -174,23 +174,24 @@ interface Property {
     quantity: number;
     category: string;
   }>;
-  
+
   // Legacy fields
   description: string;
   price: number;
   bedrooms: number;
   bathrooms: number;
-  
+
   // Images & Comments
   images: string[];
+  internalImages: string[];
   specificComments: string;
-  
+
   // Tenants
   tenants: TenantInfo[];
-  
+
   // Buyers
   buyers: BuyerInfo[];
-  
+
   // System Info
   ownerUID: string;
   ownerName: string;
@@ -230,20 +231,20 @@ const PropertyDetails = () => {
         // Filter for request types: service_request, inspection_report, legal_service_request, 
         // other_service_request, agreement_renewal, agreement_termination
         const requestTypes = [
-          'service_request', 
-          'inspection_report', 
-          'legal_service_request', 
-          'other_service_request', 
-          'agreement_renewal', 
+          'service_request',
+          'inspection_report',
+          'legal_service_request',
+          'other_service_request',
+          'agreement_renewal',
           'agreement_termination'
         ];
-        const filteredRequests = Array.isArray(data) 
+        const filteredRequests = Array.isArray(data)
           ? data.filter((req: RaisedRequest) => requestTypes.includes(req.type))
           : [];
         setRaisedRequests(filteredRequests);
       }
     } catch (error) {
-      
+
     } finally {
       setLoadingRequests(false);
     }
@@ -257,7 +258,7 @@ const PropertyDetails = () => {
     category: string;
   }> => {
     if (!checklist || !Array.isArray(checklist)) return [];
-    
+
     return checklist.map((item: any) => {
       // If it's already in the new format (object with id, name, etc.)
       if (typeof item === 'object' && item !== null && item.name) {
@@ -293,7 +294,7 @@ const PropertyDetails = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         // Normalize furnished checklist for backward compatibility
         const normalizedProperty = {
@@ -302,10 +303,10 @@ const PropertyDetails = () => {
         };
         setProperty(normalizedProperty);
       } else {
-        
+
       }
     } catch (error) {
-      
+
     } finally {
       setLoading(false);
     }
@@ -368,7 +369,7 @@ const PropertyDetails = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Manage Properties
           </Button>
-          
+
           <div className="flex items-center gap-4 mb-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
               <Eye className="h-8 w-8 text-primary-foreground" />
@@ -396,7 +397,7 @@ const PropertyDetails = () => {
                   <MapPin className="h-5 w-5 text-muted-foreground" />
                   <span>{property.address || property.location}, {property.city}, {property.state} {property.zipCode}</span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <Home className="h-5 w-5 text-muted-foreground" />
                   <span className="capitalize">{property.propertyType} - {property.configuration}</span>
@@ -420,16 +421,15 @@ const PropertyDetails = () => {
               </CardContent>
             </Card>
 
-            {/* Property Image - Always show with placeholder */}
             <Card>
               <CardHeader>
                 <CardTitle>Property Image</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="rounded-lg overflow-hidden border bg-gradient-to-br from-gray-100 to-gray-200 relative h-64 flex items-center justify-center">
-                  {property.images && property.images.length > 0 && property.images[0] ? (                   
-                    <img 
-                      src={property.images[0]} 
+                  {property.images && property.images.length > 0 && property.images[0] ? (
+                    <img
+                      src={property.images[0]}
                       alt={property.title}
                       className="w-full h-full object-cover absolute inset-0"
                       onError={(e) => {
@@ -445,6 +445,33 @@ const PropertyDetails = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Internal Images */}
+            {property.internalImages && property.internalImages.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Internal Images</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {property.internalImages.map((img, index) => (
+                      <div key={index} className="rounded-lg overflow-hidden border bg-gray-100 relative h-32 flex items-center justify-center group">
+                        <img
+                          src={img}
+                          alt={`Internal ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Unit Details */}
             <Card>
@@ -557,7 +584,7 @@ const PropertyDetails = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Spouse Information */}
                   {property.isMarried && (property.spouseFirstName || property.spousePhone) && (
                     <div className="mt-4 pt-4 border-t">
@@ -766,8 +793,8 @@ const PropertyDetails = () => {
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               {items.map((item: any, index: number) => (
-                                <div 
-                                  key={item.id || index} 
+                                <div
+                                  key={item.id || index}
                                   className="flex items-center justify-between space-x-3 bg-green-50 border border-green-200 rounded-lg p-3 hover:bg-green-100 transition-colors"
                                 >
                                   <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -794,13 +821,13 @@ const PropertyDetails = () => {
                       </div>
                     );
                   })()}
-                  
+
                   <div className="mt-4 pt-3 border-t bg-blue-50 rounded-lg p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-blue-600" />
                         <p className="text-sm font-medium text-blue-800">
-                          Total: {property.furnishedChecklist.filter((item: any) => item.checked).length} item{property.furnishedChecklist.filter((item: any) => item.checked).length !== 1 ? 's' : ''} 
+                          Total: {property.furnishedChecklist.filter((item: any) => item.checked).length} item{property.furnishedChecklist.filter((item: any) => item.checked).length !== 1 ? 's' : ''}
                           ({property.furnishedChecklist.filter((item: any) => item.checked).reduce((sum: number, item: any) => sum + (item.quantity || 1), 0)} total quantity)
                         </p>
                       </div>
@@ -850,7 +877,7 @@ const PropertyDetails = () => {
                             Tenant {index + 1}
                           </Badge>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label className="text-sm font-medium text-muted-foreground">Phone</label>
@@ -994,7 +1021,7 @@ const PropertyDetails = () => {
                             </div>
                             {getStatusBadge(request)}
                           </div>
-                          
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {request.serviceType && (
                               <div>
@@ -1136,7 +1163,7 @@ const PropertyDetails = () => {
                             Buyer {index + 1}
                           </Badge>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                           <div>
                             <label className="text-xs font-medium text-muted-foreground">Email</label>

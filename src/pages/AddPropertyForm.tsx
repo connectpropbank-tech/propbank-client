@@ -105,6 +105,7 @@ const formSchema = z.object({
 
   // Images & Comments
   images: z.array(z.string()).optional(),
+  internalImages: z.array(z.string()).optional(),
   specificComments: z.string().optional(),
 });
 
@@ -115,10 +116,13 @@ const AddPropertyForm = () => {
   const [searchParams] = useSearchParams();
   const selectedPropertyType = searchParams.get('type') || '';
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedInternalImages, setUploadedInternalImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const internalFileInputRef = useRef<HTMLInputElement>(null);
   const [showFurnishedModal, setShowFurnishedModal] = useState(false);
   const [furnishedChecklist, setFurnishedChecklist] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isInternalUploading, setIsInternalUploading] = useState(false);
 
   // Image handling functions
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,6 +204,69 @@ const AddPropertyForm = () => {
     });
   };
 
+  const handleInternalImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files) return;
+
+    if (uploadedInternalImages.length + files.length > 6) {
+      toast({
+        title: "Limit exceeded",
+        description: "You can only upload up to 6 internal images.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsInternalUploading(true);
+    const newImages: string[] = [];
+
+    // Process files sequentially
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (file && file.type.startsWith('image/')) {
+        try {
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+          const base64Image = await base64Promise;
+
+          try {
+            const uploadedUrl = await uploadBase64Image(base64Image, 'properties', 'internal');
+            newImages.push(uploadedUrl);
+          } catch (e) {
+            // Fallback
+            newImages.push(base64Image);
+          }
+        } catch (error) {
+          console.error("Error reading file", error);
+        }
+      }
+    }
+
+    setUploadedInternalImages(prev => {
+      const update = [...prev, ...newImages];
+      form.setValue('internalImages', update);
+      return update;
+    });
+    setIsInternalUploading(false);
+
+    // Reset input
+    if (internalFileInputRef.current) {
+      internalFileInputRef.current.value = '';
+    }
+  };
+
+  const removeInternalImage = (index: number) => {
+    setUploadedInternalImages(prev => {
+      const newImages = prev.filter((_, i) => i !== index);
+      form.setValue('internalImages', newImages);
+      return newImages;
+    });
+  };
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -254,9 +321,10 @@ const AddPropertyForm = () => {
       maintenanceToBePaidBy: "",
       projectCondition: "",
       rentalStatus: "",
-      possessionDate: "",
+      possessionDate: '',
       furnishedChecklist: [],
       images: [],
+      internalImages: [],
       specificComments: "",
     },
   });
@@ -1446,6 +1514,63 @@ const AddPropertyForm = () => {
                                 </p>
                               </div>
                             )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="internalImages"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Internal Images (Max 6)</FormLabel>
+                        <FormDescription className="text-xs text-muted-foreground">
+                          Upload internal photos of the property.
+                        </FormDescription>
+                        <FormControl>
+                          <div className="space-y-4">
+                            {/* Upload Button */}
+                            <div className="flex items-center gap-4">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => internalFileInputRef.current?.click()}
+                                disabled={uploadedInternalImages.length >= 6 || isInternalUploading}
+                                className="flex items-center gap-2"
+                              >
+                                <Upload className="h-4 w-4" />
+                                {isInternalUploading ? 'Uploading...' : `Upload Internal Images (${uploadedInternalImages.length}/6)`}
+                              </Button>
+                              <input
+                                ref={internalFileInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                onChange={handleInternalImageUpload}
+                                className="hidden"
+                              />
+                            </div>
+
+                            {/* Image Grid */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                              {uploadedInternalImages.map((img, index) => (
+                                <div key={index} className="relative group aspect-video rounded-lg border border-gray-200 overflow-hidden">
+                                  <img src={img} alt={`Internal ${index + 1}`} className="w-full h-full object-cover" />
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => removeInternalImage(index)}
+                                    className="absolute top-1 right-1 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         </FormControl>
                         <FormMessage />
