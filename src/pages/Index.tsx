@@ -16,11 +16,12 @@ import { auth } from "@/firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { useSearch } from "@/contexts/SearchContext";
 import { API_BASE_URL } from "@/utils/config";
+import PropertyDetailsDialog from "@/components/PropertyDetailsDialog";
 
 // Utility function to get placeholder image URL
 const getPlaceholderImage = (propertyType?: string): string => {
   const type = propertyType?.toLowerCase() || 'property';
-  
+
   if (type.includes('commercial')) {
     return 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80';
   } else if (type.includes('residential')) {
@@ -58,13 +59,13 @@ const HomePage = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [selectedProjectCondition, setSelectedProjectCondition] = useState<string>("");
-  const [budgetRange, setBudgetRange] = useState<{min: number; max: number}>({min: 0, max: 0});
+  const [budgetRange, setBudgetRange] = useState<{ min: number; max: number }>({ min: 0, max: 0 });
   const observerTarget = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [userPhone, setUserPhone] = useState<string>("");
   const [sendingEnquiry, setSendingEnquiry] = useState<string | null>(null); // Track which property enquiry is being sent
-  
+
   // Site settings from admin (dynamic content)
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({
     quote: "Manage your properties and plan visits with ease",
@@ -81,7 +82,7 @@ const HomePage = () => {
   const {
     searchQuery,
     setSearchQuery,
-    searchType, 
+    searchType,
     setSearchType,
     selectedCategories,
     setSelectedCategories,
@@ -109,7 +110,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          
+
         }
       } else {
         setUserPhone("");
@@ -167,23 +168,23 @@ const HomePage = () => {
       const response = await propertyService.getAllPropertiesWithSettings();
       const fetchedProperties = response.properties;
       setAllProperties(fetchedProperties);
-      
+
       // Update site settings from backend
-      
+
       if (response.siteSettings) {
         setSiteSettings(prev => ({
           ...prev,
           ...response.siteSettings,
         }));
       }
-      
+
       // Initially show first page of properties
       const initialProperties = fetchedProperties.slice(0, ITEMS_PER_PAGE);
       setProperties(initialProperties);
       setHasMore(fetchedProperties.length > ITEMS_PER_PAGE);
       setPage(1);
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to load properties. Please refresh the page.",
@@ -198,14 +199,14 @@ const HomePage = () => {
     if (!hasMore || loadingMore) return;
 
     setLoadingMore(true);
-    
+
     // Simulate network delay for smooth UX
     setTimeout(() => {
       const startIndex = page * ITEMS_PER_PAGE;
       const endIndex = startIndex + ITEMS_PER_PAGE;
       const sourceProperties = isSearching ? getFilteredProperties() : allProperties;
       const newProperties = sourceProperties.slice(startIndex, endIndex);
-      
+
       if (newProperties.length > 0) {
         setProperties(prev => [...prev, ...newProperties]);
         setPage(prev => prev + 1);
@@ -213,7 +214,7 @@ const HomePage = () => {
       } else {
         setHasMore(false);
       }
-      
+
       setLoadingMore(false);
     }, 500);
   }, [page, hasMore, loadingMore, isSearching, allProperties]);
@@ -253,7 +254,7 @@ const HomePage = () => {
     }
 
     const categoriesToFilter = selectedCategories.length > 0 ? selectedCategories : [];
-    
+
     if (categoriesToFilter.length > 0) {
       filtered = filtered.filter(property =>
         categoriesToFilter.some(category =>
@@ -292,11 +293,11 @@ const HomePage = () => {
 
     const filteredProperties = getFilteredProperties();
     const initialResults = filteredProperties.slice(0, ITEMS_PER_PAGE);
-    
+
     setProperties(initialResults);
     setPage(1);
     setHasMore(filteredProperties.length > ITEMS_PER_PAGE);
-    
+
     if (filteredProperties.length === 0 && (searchQuery.trim() || selectedCategories.length > 0)) {
       toast({
         title: "No Results",
@@ -318,7 +319,7 @@ const HomePage = () => {
     setSearchType("buy");
     setSelectedCategories([]);
     setSelectedProjectCondition("");
-    setBudgetRange({min: 0, max: 0});
+    setBudgetRange({ min: 0, max: 0 });
     setIsSearching(false);
     setPage(1);
 
@@ -328,7 +329,7 @@ const HomePage = () => {
   };
 
   const handleCategoryToggle = (categoryId: string) => {
-    const newCategories = selectedCategories.includes(categoryId) 
+    const newCategories = selectedCategories.includes(categoryId)
       ? selectedCategories.filter(id => id !== categoryId)
       : [...selectedCategories, categoryId];
     setSelectedCategories(newCategories);
@@ -365,7 +366,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          
+
         }
       }
 
@@ -387,7 +388,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          
+
         }
       }
 
@@ -415,7 +416,7 @@ const HomePage = () => {
         priority: 'high'
       };
 
-      
+
 
       const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
         method: 'POST',
@@ -426,7 +427,7 @@ const HomePage = () => {
       });
 
       const notificationData = await notificationResponse.json();
-      
+
       if (notificationData.success) {
         toast({
           title: "Request Sent",
@@ -436,7 +437,7 @@ const HomePage = () => {
         throw new Error(notificationData.message || 'Failed to send request');
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to send request. Please try again later.",
@@ -478,7 +479,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          
+
           // Continue without phone number
         }
       }
@@ -501,7 +502,7 @@ const HomePage = () => {
             }
           }
         } catch (error) {
-          
+
           // Continue without phone number
         }
       }
@@ -531,7 +532,7 @@ const HomePage = () => {
       };
 
       // Debug: Log the payload being sent
-      
+
 
       const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
         method: 'POST',
@@ -542,7 +543,7 @@ const HomePage = () => {
       });
 
       const notificationData = await notificationResponse.json();
-      
+
       if (notificationData.success) {
         toast({
           title: "Enquiry Sent",
@@ -552,7 +553,7 @@ const HomePage = () => {
         throw new Error(notificationData.message || 'Failed to send enquiry');
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to send enquiry. Please try again later.",
@@ -568,12 +569,12 @@ const HomePage = () => {
   useEffect(() => {
     // Don't run if properties haven't been loaded yet
     if (allProperties.length === 0) return;
-    
+
     if (selectedCategories.length > 0 || selectedListingTypes?.length > 0 || searchQuery.trim() || selectedProjectCondition || budgetRange.min > 0 || budgetRange.max > 0) {
       setIsSearching(true);
       const filteredProperties = getFilteredProperties();
       const initialResults = filteredProperties.slice(0, ITEMS_PER_PAGE);
-      
+
       setProperties(initialResults);
       setPage(1);
       setHasMore(filteredProperties.length > ITEMS_PER_PAGE);
@@ -596,7 +597,7 @@ const HomePage = () => {
         <meta name="description" content="Buy, sell, or rent properties with Propbank. Modern PWA for real estate with buyer/tenant and seller/landlord profiles." />
         <link rel="canonical" href="/" />
       </Helmet>
-      
+
       <style>{`
         @keyframes float {
           0%, 100% {
@@ -648,7 +649,7 @@ const HomePage = () => {
                     {siteSettings.heroSubtitle || "Manage, list your properties and find your dream house— all in one platform"}
                   </p>
                 </div>
-                
+
                 <div className="glass-panel shadow-elegant rounded-xl overflow-hidden relative w-full">
                   {/* Banner Carousel or Fallback Hero Image */}
                   {siteSettings.bannerImages && siteSettings.bannerImages.length > 0 ? (
@@ -659,11 +660,10 @@ const HomePage = () => {
                           src={bannerUrl}
                           alt={`Banner ${index + 1}`}
                           loading={index === 0 ? "eager" : "lazy"}
-                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
-                            index === currentBannerIndex ? 'opacity-100' : 'opacity-0'
-                          }`}
+                          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${index === currentBannerIndex ? 'opacity-100' : 'opacity-0'
+                            }`}
                           onError={(e) => {
-                            
+
                             const target = e.target as HTMLImageElement;
                             target.src = heroImage;
                           }}
@@ -676,11 +676,10 @@ const HomePage = () => {
                             <button
                               key={index}
                               onClick={() => setCurrentBannerIndex(index)}
-                              className={`w-2 h-2 rounded-full transition-all ${
-                                index === currentBannerIndex 
-                                  ? 'bg-white w-4' 
-                                  : 'bg-white/50 hover:bg-white/75'
-                              }`}
+                              className={`w-2 h-2 rounded-full transition-all ${index === currentBannerIndex
+                                ? 'bg-white w-4'
+                                : 'bg-white/50 hover:bg-white/75'
+                                }`}
                               aria-label={`Go to slide ${index + 1}`}
                             />
                           ))}
@@ -702,11 +701,11 @@ const HomePage = () => {
                 <div className="text-center space-y-4">
                   <h2 className="text-muted-foreground">{siteSettings.quote || "Manage your properties and plan visits with ease"}</h2>
                 </div>
-              
+
                 <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-white/20 space-y-4 w-full">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                    <div 
+                    <div
                       onClick={() => navigate('/manage-property')}
                       className="group cursor-pointer bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-md transition-shadow"
                     >
@@ -714,9 +713,9 @@ const HomePage = () => {
                         <div className="relative bg-gradient-to-br from-blue-400/20 to-blue-600/30 p-3 sm:p-4 rounded-xl flex-shrink-0 border border-gray-200 flex items-center justify-center shadow-sm">
                           <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center">
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg shadow-md"></div>
-                            <img 
-                              src="/icons/icon-512.png" 
-                              alt="Propbank Logo" 
+                            <img
+                              src="/icons/icon-512.png"
+                              alt="Propbank Logo"
                               className="relative h-10 w-10 sm:h-14 sm:w-14 object-contain drop-shadow-lg"
                               style={{
                                 filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))',
@@ -752,7 +751,7 @@ const HomePage = () => {
                     </div>
 
                     {/* Visit Planner Card */}
-                    <div 
+                    <div
                       onClick={() => navigate('/visit-planner')}
                       className="group cursor-pointer bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-md transition-shadow"
                     >
@@ -760,7 +759,7 @@ const HomePage = () => {
                         <div className="relative bg-gradient-to-br from-purple-400/20 to-purple-600/30 p-3 sm:p-4 rounded-xl flex-shrink-0 border border-gray-200 flex items-center justify-center shadow-sm">
                           <div className="relative w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center">
                             <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-purple-600 rounded-lg shadow-md"></div>
-                            <Calendar className="relative h-6 w-6 sm:h-8 sm:w-8 text-white drop-shadow-lg" 
+                            <Calendar className="relative h-6 w-6 sm:h-8 sm:w-8 text-white drop-shadow-lg"
                               style={{
                                 filter: 'drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2))',
                               }}
@@ -809,7 +808,7 @@ const HomePage = () => {
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Find Your Dream Property</h2>
             <p className="text-gray-600 text-base sm:text-lg">Your dream property is just a search away</p>
           </div>
-          
+
           <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border">
             <div className="mb-4 sm:mb-6">
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
@@ -823,7 +822,7 @@ const HomePage = () => {
                       <SelectItem value="rent">Rent</SelectItem>
                     </SelectContent>
                   </Select>
-                  
+
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -831,8 +830,8 @@ const HomePage = () => {
                     className="flex-1 border-0 rounded-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-xs sm:text-sm"
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                   />
-                  
-                  <Button 
+
+                  <Button
                     onClick={handleSearch}
                     className="rounded-none px-3 sm:px-6 text-xs sm:text-sm"
                     variant="default"
@@ -850,8 +849,8 @@ const HomePage = () => {
               <div className="space-y-3">
                 <h3 className="text-sm font-medium text-foreground text-center sm:text-left">Property Types</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-                  <Button 
-                    variant={selectedCategories.length === 0 ? "default" : "outline"} 
+                  <Button
+                    variant={selectedCategories.length === 0 ? "default" : "outline"}
                     size="sm"
                     className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
                     onClick={() => {
@@ -863,8 +862,8 @@ const HomePage = () => {
                     <Home className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>All</span>
                   </Button>
-                  <Button 
-                    variant={selectedCategories.includes("residential") ? "default" : "outline"} 
+                  <Button
+                    variant={selectedCategories.includes("residential") ? "default" : "outline"}
                     size="sm"
                     className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
                     onClick={() => handleCategoryToggle("residential")}
@@ -872,8 +871,8 @@ const HomePage = () => {
                     <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>Residential</span>
                   </Button>
-                  <Button 
-                    variant={selectedCategories.includes("commercial") ? "default" : "outline"} 
+                  <Button
+                    variant={selectedCategories.includes("commercial") ? "default" : "outline"}
                     size="sm"
                     className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
                     onClick={() => handleCategoryToggle("commercial")}
@@ -881,8 +880,8 @@ const HomePage = () => {
                     <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
                     <span>Commercial</span>
                   </Button>
-                  <Button 
-                    variant={selectedCategories.includes("industrial") ? "default" : "outline"} 
+                  <Button
+                    variant={selectedCategories.includes("industrial") ? "default" : "outline"}
                     size="sm"
                     className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
                     onClick={() => handleCategoryToggle("industrial")}
@@ -942,9 +941,9 @@ const HomePage = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Min Budget</label>
-                      <Select 
-                        value={budgetRange.min.toString()} 
-                        onValueChange={(value) => setBudgetRange({...budgetRange, min: parseInt(value) || 0})}
+                      <Select
+                        value={budgetRange.min.toString()}
+                        onValueChange={(value) => setBudgetRange({ ...budgetRange, min: parseInt(value) || 0 })}
                       >
                         <SelectTrigger className="w-full text-xs">
                           <SelectValue placeholder="Select Min" />
@@ -989,9 +988,9 @@ const HomePage = () => {
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Max Budget</label>
-                      <Select 
-                        value={budgetRange.max.toString()} 
-                        onValueChange={(value) => setBudgetRange({...budgetRange, max: parseInt(value) || 0})}
+                      <Select
+                        value={budgetRange.max.toString()}
+                        onValueChange={(value) => setBudgetRange({ ...budgetRange, max: parseInt(value) || 0 })}
                       >
                         <SelectTrigger className="w-full text-xs">
                           <SelectValue placeholder="Select Max" />
@@ -1084,9 +1083,9 @@ const HomePage = () => {
                     )}
                     {(budgetRange.min > 0 || budgetRange.max > 0) && (
                       <Badge variant="default" className="bg-green-600 text-white hover:bg-green-700 text-xs">
-                        ₹{searchType === 'rent' 
-                          ? `${budgetRange.min > 0 ? `${(budgetRange.min/1000).toFixed(0)}K` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max/1000).toFixed(0)}K` : '∞'}/mo`
-                          : `${budgetRange.min > 0 ? `${(budgetRange.min/100000).toFixed(0)}L` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max/100000).toFixed(0)}L` : '∞'}`
+                        ₹{searchType === 'rent'
+                          ? `${budgetRange.min > 0 ? `${(budgetRange.min / 1000).toFixed(0)}K` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max / 1000).toFixed(0)}K` : '∞'}/mo`
+                          : `${budgetRange.min > 0 ? `${(budgetRange.min / 100000).toFixed(0)}L` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max / 100000).toFixed(0)}L` : '∞'}`
                         }
                       </Badge>
                     )}
@@ -1109,11 +1108,10 @@ const HomePage = () => {
             </h2>
             <p className="text-muted-foreground">
               {isSearching || selectedCategories.length > 0 || selectedProjectCondition || budgetRange.min > 0 || budgetRange.max > 0
-                ? `Found ${getFilteredProperties().length} properties${searchQuery ? ` matching "${searchQuery}"` : ''}${selectedCategories.length > 0 ? ` in ${selectedCategories.join(', ')} categories` : ''}${selectedProjectCondition ? ` with ${selectedProjectCondition} condition` : ''}${(budgetRange.min > 0 || budgetRange.max > 0) ? ` in budget range ₹${
-                  searchType === 'rent' 
-                    ? `${budgetRange.min > 0 ? `${(budgetRange.min/1000).toFixed(0)}K` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max/1000).toFixed(0)}K` : '∞'}/month`
-                    : `${budgetRange.min > 0 ? `${(budgetRange.min/100000).toFixed(0)}L` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max/100000).toFixed(0)}L` : '∞'}`
-                }` : ''}`
+                ? `Found ${getFilteredProperties().length} properties${searchQuery ? ` matching "${searchQuery}"` : ''}${selectedCategories.length > 0 ? ` in ${selectedCategories.join(', ')} categories` : ''}${selectedProjectCondition ? ` with ${selectedProjectCondition} condition` : ''}${(budgetRange.min > 0 || budgetRange.max > 0) ? ` in budget range ₹${searchType === 'rent'
+                  ? `${budgetRange.min > 0 ? `${(budgetRange.min / 1000).toFixed(0)}K` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max / 1000).toFixed(0)}K` : '∞'}/month`
+                  : `${budgetRange.min > 0 ? `${(budgetRange.min / 100000).toFixed(0)}L` : '0'} - ${budgetRange.max > 0 ? `${(budgetRange.max / 100000).toFixed(0)}L` : '∞'}`
+                  }` : ''}`
                 : 'Discover some of our best properties available now'
               }
             </p>
@@ -1139,7 +1137,7 @@ const HomePage = () => {
             <>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 px-2">
                 {properties
-                  .filter(property => 
+                  .filter(property =>
                     // Show available rental properties OR all properties for sale
                     (property.listingType === "rent" && property.rentalStatus === "available") ||
                     (property.listingType === "sell")
@@ -1149,9 +1147,9 @@ const HomePage = () => {
                       {/* Property Image */}
                       <div className="relative aspect-video overflow-hidden">
                         <img src={
-                            property.images && property.images.length > 0 && property.images[0] 
-                              ? property.images[0] 
-                              : getPlaceholderImage(property.propertyType)}
+                          property.images && property.images.length > 0 && property.images[0]
+                            ? property.images[0]
+                            : getPlaceholderImage(property.propertyType)}
                           alt={property.title || 'Property'}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           onError={(e) => {
@@ -1169,14 +1167,14 @@ const HomePage = () => {
                             }
                           }}
                         />
-                        <div 
+                        <div
                           className="w-full h-full hidden items-center justify-center"
-                          style={{ 
-                            background: property.propertyType?.toLowerCase().includes('commercial') 
-                              ? 'linear-gradient(135deg, #f0f9ff, #e0e7ff)' 
+                          style={{
+                            background: property.propertyType?.toLowerCase().includes('commercial')
+                              ? 'linear-gradient(135deg, #f0f9ff, #e0e7ff)'
                               : property.propertyType?.toLowerCase().includes('residential')
-                              ? 'linear-gradient(135deg, #fef7cd, #fef3c7)'
-                              : 'linear-gradient(135deg, #f1f5f9, #e2e8f0)'
+                                ? 'linear-gradient(135deg, #fef7cd, #fef3c7)'
+                                : 'linear-gradient(135deg, #f1f5f9, #e2e8f0)'
                           }}
                         >
                           <div className="text-center">
@@ -1188,7 +1186,7 @@ const HomePage = () => {
                             </p>
                           </div>
                         </div>
-                        
+
                         {/* Listing Type Badge */}
                         {property.listingType && (
                           <div className="absolute top-3 left-3">
@@ -1214,21 +1212,34 @@ const HomePage = () => {
                         </div>
 
                         {/* Pricing */}
-                        {property.price > 0 && (
-                          <div className="text-lg font-bold text-primary">
-                            ₹{property.price.toLocaleString('en-IN')}{property.listingType === 'rent' ? '/month' : ''}
-                          </div>
-                        )}
+                        <div className="text-lg font-bold text-primary">
+                          ₹{
+                            property.price > 0
+                              ? property.price.toLocaleString('en-IN')
+                              : property.listingType === 'rent' && property.monthlyRent
+                                ? parseInt(property.monthlyRent).toLocaleString('en-IN')
+                                : property.listingType === 'sell' && property.sellingPrice
+                                  ? parseInt(property.sellingPrice).toLocaleString('en-IN')
+                                  : "0"
+                          }
+                          {property.listingType === 'rent' ? '/month' : ''}
+                        </div>
 
-                        {/* Enquire Button */}
-                        <Button 
-                          size="sm" 
-                          className="w-full mt-2"
-                          onClick={() => handleEnquireProperty(property)}
-                          disabled={sendingEnquiry === property.id || !auth.currentUser}
-                        >
-                          {sendingEnquiry === property.id ? "Sending..." : "Enquire Now"}
-                        </Button>
+                        {/* Property Details Grid Removed - Moved to Dialog */}
+
+                        {/* Buttons Grid */}
+                        <div className="grid grid-cols-2 gap-2 mt-auto pt-4">
+                          <PropertyDetailsDialog property={property} />
+
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            onClick={() => handleEnquireProperty(property)}
+                            disabled={sendingEnquiry === property.id || !auth.currentUser}
+                          >
+                            {sendingEnquiry === property.id ? "Sending..." : "Enquire Now"}
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -1244,7 +1255,7 @@ const HomePage = () => {
                 ) : hasMore ? (
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground mb-2">Scroll down for more properties</p>
-                    <Button 
+                    <Button
                       onClick={loadMoreProperties}
                       variant="outline"
                       size="sm"
@@ -1255,7 +1266,7 @@ const HomePage = () => {
                 ) : (
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">
-                      {properties.length > 0 
+                      {properties.length > 0
                         ? "You've reached the end of the results"
                         : "No more properties to show"
                       }

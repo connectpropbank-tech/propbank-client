@@ -25,6 +25,12 @@ interface Property {
   createdAt: string;
   updatedAt: string;
   unitNumber?: string; // Optional unit number
+  configuration?: string; // e.g., "2 BHK"
+  unitCondition?: string; // e.g., "Unfurnished"
+  carpetArea?: string; // e.g., "1200 sqft"
+  constructedArea?: string; // e.g., "1500 sqft"
+  monthlyRent?: string;
+  sellingPrice?: string;
 }
 
 // Site settings from admin
@@ -74,10 +80,10 @@ class PropertyService {
       headers,
     });
 
-    
+
 
     const data: PropertiesResponse = await response.json();
-    
+
     if (!data.success) {
       throw new Error('Failed to fetch properties');
     }
@@ -94,10 +100,10 @@ class PropertyService {
       headers,
     });
 
-    
+
 
     const data: PropertiesResponse = await response.json();
-    
+
     if (!data.success) {
       throw new Error('Failed to fetch properties');
     }
@@ -118,14 +124,14 @@ class PropertyService {
 
   async getPropertiesByListingType(listingType: 'rent' | 'sell'): Promise<Property[]> {
     const headers = await this.getHeaders();
-    
+
     const response = await fetch(`${API_BASE_URL}/properties?listingType=${listingType}`, {
       method: 'GET',
       headers,
     });
 
     const data: PropertiesResponse = await response.json();
-    
+
     if (!data.success) {
       throw new Error(`Failed to fetch ${listingType} properties`);
     }
@@ -143,14 +149,14 @@ class PropertyService {
 
   async getPropertyById(propertyId: string): Promise<Property> {
     const headers = await this.getHeaders();
-    
+
     const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
       method: 'GET',
       headers,
     });
 
     const data = await response.json();
-    
+
     if (!data.success) {
       throw new Error('Failed to fetch property details');
     }
@@ -160,14 +166,14 @@ class PropertyService {
 
   async getPropertiesByOwner(ownerUID: string): Promise<Property[]> {
     const headers = await this.getHeaders();
-    
+
     const response = await fetch(`${API_BASE_URL}/properties?ownerUID=${ownerUID}`, {
       method: 'GET',
       headers,
     });
 
     const data: PropertiesResponse = await response.json();
-    
+
     if (!data.success) {
       throw new Error('Failed to fetch owner properties');
     }
@@ -177,7 +183,7 @@ class PropertyService {
 
   async searchProperties(query: string, listingType?: 'buy' | 'rent', projectCondition?: string): Promise<Property[]> {
     const headers = await this.getHeaders();
-    
+
     // Build query parameters
     const searchParams = new URLSearchParams();
     if (query) searchParams.append('q', query);
@@ -189,14 +195,14 @@ class PropertyService {
     if (projectCondition && projectCondition !== '') {
       searchParams.append('projectCondition', projectCondition);
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/properties/search?${searchParams.toString()}`, {
       method: 'GET',
       headers,
     });
 
     const data: PropertiesResponse = await response.json();
-    
+
     if (!data.success) {
       throw new Error('Failed to search properties');
     }
