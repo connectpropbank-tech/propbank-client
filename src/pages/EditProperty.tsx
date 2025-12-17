@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Building2, CheckSquare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,17 +29,20 @@ const formSchema = z.object({
   carpetArea: z.string().optional(),
   plotArea: z.string().optional(),
   constructedArea: z.string().optional(),
-  
+
   // Tenant Information
   tenantName: z.string().optional(),
+  tenantEmail: z.string().optional(),
   personName: z.string().optional(),
   mobileNumber: z.string().optional(),
+  emergencyContact: z.string().optional(),
   primaryNo: z.string().optional(),
   ultNo: z.string().optional(),
-  
+
   // Pricing Details
   monthlyRent: z.string().optional(),
   sellingPrice: z.string().optional(),
+  paymentDueDate: z.string().optional(),
   monthlyRent1stYear: z.string().optional(),
   monthlyRent2ndYear: z.string().optional(),
   monthlyRent3rdYear: z.string().optional(),
@@ -82,14 +85,14 @@ interface Property {
   carpetArea: string;
   plotArea: string;
   constructedArea: string;
-  
+
   // Tenant Information
   tenantName: string;
   personName: string;
   mobileNumber: string;
   primaryNo: string;
   ultNo: string;
-  
+
   // Pricing Details
   monthlyRent: string;
   sellingPrice: string;
@@ -119,10 +122,10 @@ interface Property {
     category: 'basic' | 'kitchen' | 'bedroom' | 'living' | 'appliances' | 'other' | 'semifurnished' | 'storage' | 'office' | 'infrastructure' | 'safety' | 'machinery' | 'utilities';
   }[];
   ownerUID: string;
-  
+
   // Tenants array
   tenants?: any[];
-  
+
   // Status and timestamps
   isActive: boolean;
   isRented: boolean;
@@ -134,6 +137,8 @@ interface Property {
 const EditProperty = () => {
   const { propertyId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isRenewalMode = location.state?.mode === 'renewal';
   const [loading, setLoading] = useState(true);
   const [property, setProperty] = useState<Property | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
@@ -155,14 +160,14 @@ const EditProperty = () => {
       carpetArea: "",
       plotArea: "",
       constructedArea: "",
-      
+
       // Tenant Information
       tenantName: "",
       personName: "",
       mobileNumber: "",
       primaryNo: "",
       ultNo: "",
-      
+
       // Pricing Details
       monthlyRent: "",
       sellingPrice: "",
@@ -205,14 +210,20 @@ const EditProperty = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         const propertyData = data.property;
-        
+
         setProperty(propertyData);
         setUploadedImages(propertyData.images || []);
-        
+
         // Populate form with existing data
+        let activeTenant = null;
+        if (propertyData.tenants && propertyData.tenants.length > 0) {
+          // Assuming the last tenant in the list is the active one
+          activeTenant = propertyData.tenants[propertyData.tenants.length - 1];
+        }
+
         const formData = {
           propertyTitle: propertyData.title || "",
           propertyType: propertyData.propertyType || "",
@@ -224,17 +235,20 @@ const EditProperty = () => {
           carpetArea: propertyData.carpetArea || "",
           plotArea: propertyData.plotArea || "",
           constructedArea: propertyData.constructedArea || "",
-          
-          // Tenant Information
-          tenantName: propertyData.tenantName || "",
+
+          // Tenant Information - Prefer active tenant data, fallback to property top-level
+          tenantName: activeTenant?.firstName ? `${activeTenant.firstName} ${activeTenant.lastName}`.trim() : (propertyData.tenantName || ""),
+          tenantEmail: activeTenant?.email || propertyData.tenantEmail || "",
           personName: propertyData.personName || "",
-          mobileNumber: propertyData.mobileNumber || "",
+          mobileNumber: activeTenant?.phone || propertyData.mobileNumber || "",
+          emergencyContact: activeTenant?.emergencyContact || propertyData.emergencyContact || "",
           primaryNo: propertyData.primaryNo || "",
           ultNo: propertyData.ultNo || "",
-          
-          // Pricing Details
-          monthlyRent: propertyData.monthlyRent || "",
+
+          // Pricing Details - Prefer active tenant data for lease details
+          monthlyRent: activeTenant?.monthlyRent || propertyData.monthlyRent || "",
           sellingPrice: propertyData.sellingPrice || "",
+          paymentDueDate: activeTenant?.paymentDueDate || propertyData.paymentDueDate || "",
           monthlyRent1stYear: propertyData.monthlyRent1stYear || "",
           monthlyRent2ndYear: propertyData.monthlyRent2ndYear || "",
           monthlyRent3rdYear: propertyData.monthlyRent3rdYear || "",
@@ -243,11 +257,11 @@ const EditProperty = () => {
           rentToDate1: propertyData.rentToDate1 || "",
           rentFromDate2: propertyData.rentFromDate2 || "",
           rentToDate2: propertyData.rentToDate2 || "",
-          securityDeposit: propertyData.securityDeposit || "",
+          securityDeposit: activeTenant?.securityDeposit || propertyData.securityDeposit || "",
           agreementPeriod: propertyData.agreementPeriod || "",
-          agreementStartDate: propertyData.agreementStartDate || "",
-          agreementEndDate: propertyData.agreementEndDate || "",
-          noticePeriod: propertyData.noticePeriod || "",
+          agreementStartDate: activeTenant?.leaseStartDate || propertyData.agreementStartDate || "",
+          agreementEndDate: activeTenant?.leaseEndDate || propertyData.agreementEndDate || "",
+          noticePeriod: activeTenant?.noticePeriod || propertyData.noticePeriod || "",
           lockInPeriod: propertyData.lockInPeriod || "",
           unitCondition: propertyData.unitCondition || "",
           maintenanceToBePaidBy: propertyData.maintenanceToBePaidBy || "",
@@ -260,7 +274,7 @@ const EditProperty = () => {
         // Normalize furnished checklist - handle both old string[] format and new object format
         const normalizeFurnishedChecklist = (checklist: any) => {
           if (!checklist || !Array.isArray(checklist)) return [];
-          
+
           return checklist.map((item: any) => {
             // If it's already in the new format (object with id, name, etc.)
             if (typeof item === 'object' && item !== null && item.name) {
@@ -283,11 +297,11 @@ const EditProperty = () => {
             return item;
           });
         };
-        
+
         // Set the furnished checklist state
         setFurnishedChecklist(normalizeFurnishedChecklist(propertyData.furnishedChecklist));
-        
-        
+
+
         form.reset(formData);
       } else {
         toast({
@@ -339,26 +353,26 @@ const EditProperty = () => {
           try {
             // Upload to Cloudflare R2
             const uploadedUrl = await uploadBase64Image(base64Image, 'properties', `edit-${propertyId}`);
-            
+
             setUploadedImages(prev => {
               const newImages = [...prev, uploadedUrl];
               form.setValue('images', newImages);
               return newImages;
             });
-            
+
             toast({
               title: "Image uploaded",
               description: "Image uploaded successfully to cloud storage.",
             });
           } catch (uploadError) {
-            
+
             // Fallback to base64 if R2 upload fails
             setUploadedImages(prev => {
               const newImages = [...prev, base64Image];
               form.setValue('images', newImages);
               return newImages;
             });
-            
+
             toast({
               title: "Image saved locally",
               description: "Cloud upload failed, image will be uploaded when saving.",
@@ -366,7 +380,7 @@ const EditProperty = () => {
             });
           }
         } catch (error) {
-          
+
           toast({
             title: "Upload failed",
             description: "Failed to read the image file.",
@@ -405,7 +419,7 @@ const EditProperty = () => {
       case "commercial":
         return [
           { value: "office", label: "Office" },
-          { value: "shop", label: "Shop"},
+          { value: "shop", label: "Shop" },
         ];
       case "industrial":
         return [
@@ -443,7 +457,7 @@ const EditProperty = () => {
         });
         return;
       }
-      
+
       if (data.listingType === "sell" && (!data.sellingPrice || data.sellingPrice.trim() === "")) {
         toast({
           title: "Missing Selling Price",
@@ -468,15 +482,43 @@ const EditProperty = () => {
 
       // Prepare update data - map propertyTitle to title for backend consistency
       const { propertyTitle, ...restData } = data;
+
+      // Update the active tenant in the tenants array if it exists
+      let updatedTenants = property?.tenants || [];
+      if (updatedTenants.length > 0 && data.listingType === "rent") {
+        // Assume last tenant is active
+        const lastIndex = updatedTenants.length - 1;
+        const activeTenant = { ...updatedTenants[lastIndex] };
+
+        // Update tenant fields
+        const nameParts = (data.tenantName || "").split(" ");
+        activeTenant.firstName = nameParts[0] || activeTenant.firstName;
+        activeTenant.lastName = nameParts.slice(1).join(" ") || activeTenant.lastName;
+        activeTenant.email = data.tenantEmail || activeTenant.email;
+        activeTenant.phone = data.mobileNumber || activeTenant.phone;
+        activeTenant.emergencyContact = data.emergencyContact || activeTenant.emergencyContact;
+
+        // Update lease fields
+        activeTenant.monthlyRent = data.monthlyRent || activeTenant.monthlyRent;
+        activeTenant.securityDeposit = data.securityDeposit || activeTenant.securityDeposit;
+        activeTenant.paymentDueDate = data.paymentDueDate || activeTenant.paymentDueDate;
+        activeTenant.leaseStartDate = data.agreementStartDate || activeTenant.leaseStartDate;
+        activeTenant.leaseEndDate = data.agreementEndDate || activeTenant.leaseEndDate;
+        activeTenant.noticePeriod = data.noticePeriod || activeTenant.noticePeriod;
+
+        updatedTenants[lastIndex] = activeTenant;
+      }
+
       const updateData = {
         ...restData,
         title: propertyTitle, // Backend expects 'title' field
         images: uploadedImages, // Ensure images from state are included
         furnishedChecklist: checkedFurnishedItems, // Only include checked items
         ownerUID: currentUser.uid,
+        tenants: updatedTenants, // Sync top-level changes to tenants array
       };
 
-       // Debug log
+      // Debug log
 
       // Send update request to backend
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
@@ -488,18 +530,18 @@ const EditProperty = () => {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         toast({
           title: "Property Updated!",
           description: `${data.propertyTitle} has been successfully updated.`,
         });
-        
+
         // Refresh the property data to show updated values
         if (propertyId) {
           await fetchPropertyDetails(propertyId);
         }
-        
+
         // Optional: navigate back or stay on the page
         // navigate("/manage-property");
       } else {
@@ -521,31 +563,30 @@ const EditProperty = () => {
 
   const isPropertyEditable = () => {
     if (!property) return false;
-    
+
     // Check if property is already rented or sold
     const hasActiveTenant = property.tenantName && property.tenantName.trim() !== "";
     const hasTenantsInArray = property.tenants && property.tenants.length > 0;
     const hasActiveAgreement = property.agreementStartDate && property.agreementEndDate;
     const isCurrentlyRented = property.isRented || hasActiveTenant || hasTenantsInArray || hasActiveAgreement;
     const isCurrentlySold = property.isSold;
-    
-    return !isCurrentlyRented && !isCurrentlySold;
+
+    // Allow editing for rented properties, but not sold ones
+    return !isCurrentlySold;
   };
 
   const getPropertyStatusMessage = () => {
     if (!property) return "";
-    
+
     const hasActiveTenant = property.tenantName && property.tenantName.trim() !== "";
     const hasTenantsInArray = property.tenants && property.tenants.length > 0;
     const isCurrentlyRented = property.isRented || hasActiveTenant || hasTenantsInArray;
     const isCurrentlySold = property.isSold;
-    
+
     if (isCurrentlySold) {
       return "This property has been sold and cannot be edited.";
     }
-    if (isCurrentlyRented) {
-      return "This property is currently rented and cannot be edited.";
-    }
+    // Rented properties can now be edited
     return "";
   };
 
@@ -587,13 +628,13 @@ const EditProperty = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Manage Properties
           </Button>
-          
+
           <div className="flex items-center gap-4 mb-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
               <Building2 className="h-8 w-8 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Edit your property details</h1>
+              <h1 className="text-3xl font-bold">{isRenewalMode ? "Renew Agreement" : "Edit your property details"}</h1>
               <p className="text-lg text-muted-foreground">
                 {property.title}
                 <span className="ml-2 px-2 py-1 text-sm bg-primary/10 text-primary rounded-md capitalize">
@@ -613,8 +654,8 @@ const EditProperty = () => {
           <CardHeader>
             <CardTitle>Property Details</CardTitle>
             <CardDescription>
-              {isPropertyEditable() 
-                ? "Update the form below to modify your property listing." 
+              {isPropertyEditable()
+                ? "Update the form below to modify your property listing."
                 : getPropertyStatusMessage()
               }
             </CardDescription>
@@ -627,13 +668,13 @@ const EditProperty = () => {
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                
+
                 {/* Basic Property Information */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-6 border rounded-lg">
                   <div className="lg:col-span-4">
                     <h3 className="text-lg font-semibold mb-6">Property Details</h3>
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="propertyTitle"
@@ -641,10 +682,10 @@ const EditProperty = () => {
                       <FormItem>
                         <FormLabel>Property Name</FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Enter property name here" 
+                          <Input
+                            placeholder="Enter property name here"
                             disabled={!isPropertyEditable()}
-                            {...field} 
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -700,38 +741,240 @@ const EditProperty = () => {
                   />
                 </div>
 
-                {/* Pricing Information */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 border rounded-lg">
-                  <div className="lg:col-span-2">
-                    <h3 className="text-lg font-semibold mb-6">
-                      Pricing Information
-                      {form.watch("listingType") && (
-                        <span className="ml-2 text-sm font-normal text-gray-600">
-                          ({form.watch("listingType") === "rent" ? "Rental Details" : "Sale Details"})
-                        </span>
-                      )}
-                    </h3>
-                  </div>
+                {/* Tenant Information - Only for Rented Properties */}
+                {form.watch("listingType") === "rent" && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 border rounded-lg">
+                    <div className="lg:col-span-2">
+                      <h3 className="text-lg font-semibold mb-6">Tenant Information</h3>
+                    </div>
 
-                  {form.watch("listingType") === "rent" && (
                     <FormField
                       control={form.control}
-                      name="monthlyRent"
+                      name="tenantName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Monthly Rent (₹) *</FormLabel>
+                          <FormLabel>Tenant Name</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Enter monthly rent amount (e.g., 25000)" 
-                              type="number"
+                            <Input
+                              placeholder="Enter tenant name"
                               disabled={!isPropertyEditable()}
-                              {...field} 
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+
+                    <FormField
+                      control={form.control}
+                      name="tenantEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Tenant Email</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter tenant email"
+                              type="email"
+                              disabled={!isPropertyEditable()}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="mobileNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter phone number"
+                              disabled={!isPropertyEditable()}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="emergencyContact"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Emergency Contact</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter emergency contact"
+                              disabled={!isPropertyEditable()}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Pricing & Lease Information */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 border rounded-lg">
+                  <div className="lg:col-span-3">
+                    <h3 className="text-lg font-semibold mb-6">
+                      {form.watch("listingType") === "rent" ? "Lease & Pricing Details" : "Pricing Details"}
+                    </h3>
+                  </div>
+
+                  {form.watch("listingType") === "rent" && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="monthlyRent"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Monthly Rent (₹) *</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g., 25000"
+                                type="number"
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="securityDeposit"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Security Deposit (₹)</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g., 100000"
+                                type="number"
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="paymentDueDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Payment Due Day</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!isPropertyEditable()}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select day" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {[...Array(31)].map((_, i) => (
+                                  <SelectItem key={i + 1} value={(i + 1).toString()}>
+                                    {i + 1}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="agreementStartDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Lease Start Date</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="agreementEndDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Lease End Date</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="noticePeriod"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Notice Period</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!isPropertyEditable()}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select notice period" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="1 Month">1 Month</SelectItem>
+                                <SelectItem value="2 Months">2 Months</SelectItem>
+                                <SelectItem value="3 Months">3 Months</SelectItem>
+                                <SelectItem value="6 Months">6 Months</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="lockInPeriod"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Lock-in Period (Months)</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g., 6"
+                                type="number"
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
                   )}
 
                   {form.watch("listingType") === "sell" && (
@@ -739,14 +982,14 @@ const EditProperty = () => {
                       control={form.control}
                       name="sellingPrice"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="lg:col-span-3">
                           <FormLabel>Selling Price (₹) *</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="Enter selling price (e.g., 5000000)" 
+                            <Input
+                              placeholder="Enter selling price (e.g., 5000000)"
                               type="number"
                               disabled={!isPropertyEditable()}
-                              {...field} 
+                              {...field}
                             />
                           </FormControl>
                           <FormMessage />
@@ -761,7 +1004,7 @@ const EditProperty = () => {
                   <div className="lg:col-span-2">
                     <h3 className="text-lg font-semibold mb-6">Unit Condition & Maintenance</h3>
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="unitCondition"
@@ -792,9 +1035,9 @@ const EditProperty = () => {
                     render={() => (
                       <FormItem>
                         <FormLabel>Furnished Items Checklist</FormLabel>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
+                        <Button
+                          type="button"
+                          variant="outline"
                           onClick={() => setShowFurnishedModal(true)}
                           className="w-full"
                           disabled={!isPropertyEditable()}
@@ -845,7 +1088,7 @@ const EditProperty = () => {
                   <div>
                     <h3 className="text-lg font-semibold mb-6">Property Images</h3>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div>
                       <input
@@ -867,10 +1110,10 @@ const EditProperty = () => {
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             Uploading...
                           </>
-                        ) : !isPropertyEditable() 
-                          ? 'Property cannot be edited' 
-                          : uploadedImages.length >= 6 
-                            ? 'Maximum 6 images uploaded' 
+                        ) : !isPropertyEditable()
+                          ? 'Property cannot be edited'
+                          : uploadedImages.length >= 6
+                            ? 'Maximum 6 images uploaded'
                             : 'Upload Images (Max 6)'
                         }
                       </Button>
@@ -908,7 +1151,7 @@ const EditProperty = () => {
                   <div>
                     <h3 className="text-lg font-semibold mb-6">Additional Comments</h3>
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="specificComments"
@@ -916,10 +1159,10 @@ const EditProperty = () => {
                       <FormItem>
                         <FormLabel>Specific Comments</FormLabel>
                         <FormControl>
-                          <Textarea 
+                          <Textarea
                             placeholder="Add any specific comments or notes about the property..."
                             disabled={!isPropertyEditable()}
-                            {...field} 
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -946,9 +1189,9 @@ const EditProperty = () => {
 
                 {/* Submit Button */}
                 <div className="flex justify-end space-x-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+                  <Button
+                    type="button"
+                    variant="outline"
                     onClick={() => navigate("/manage-property")}
                   >
                     {isPropertyEditable() ? "Cancel" : "Back to Properties"}
@@ -964,7 +1207,7 @@ const EditProperty = () => {
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Furnished Checklist Modal */}
       <FurnishedChecklistModal
         isOpen={showFurnishedModal}

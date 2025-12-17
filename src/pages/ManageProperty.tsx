@@ -656,8 +656,8 @@ const ManageProperty = () => {
               variant={activeView === 'owned' ? 'default' : 'outline'}
               size="sm"
               className={`flex-1 sm:flex-none px-6 py-2 rounded-lg transition-all ${activeView === 'owned'
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'border-2 border-muted hover:bg-muted/50'
+                ? 'bg-primary text-primary-foreground shadow-md'
+                : 'border-2 border-muted hover:bg-muted/50'
                 }`}
               onClick={() => setActiveView('owned')}
             >
@@ -668,8 +668,8 @@ const ManageProperty = () => {
               variant={activeView === 'tenant' ? 'default' : 'outline'}
               size="sm"
               className={`flex-1 sm:flex-none px-6 py-2 rounded-lg transition-all ${activeView === 'tenant'
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'border-2 border-muted hover:bg-muted/50'
+                ? 'bg-primary text-primary-foreground shadow-md'
+                : 'border-2 border-muted hover:bg-muted/50'
                 }`}
               onClick={() => setActiveView('tenant')}
             >
@@ -923,9 +923,9 @@ const ManageProperty = () => {
                                             <Paperclip className="h-4 w-4 mr-2" />
                                             Attach Documents
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => navigate(`/renew-agreement/${property.id}`)}>
+                                          <DropdownMenuItem onClick={() => navigate(`/edit-property/${property.id}`, { state: { mode: 'renewal' } })}>
                                             <RefreshCw className="h-4 w-4 mr-2" />
-                                             Go for Renewal
+                                            Go for Renewal
                                           </DropdownMenuItem>
                                           <DropdownMenuItem
                                             onClick={() => navigate(`/terminate-agreement/${property.id}`)}
