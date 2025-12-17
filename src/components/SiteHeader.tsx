@@ -15,37 +15,41 @@ const SiteHeader = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
+  const [userEmail, setUserEmail] = useState<string>("");
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       // Skip user API call on admin page (unprotected route, no user needed)
       if (firebaseUser && location.pathname !== "/admin") {
-        getUserPhone(firebaseUser.uid);
+        getUserData(firebaseUser.uid);
       } else {
         setUserPhone("");
+        setUserEmail("");
       }
     });
     return () => unsubscribe();
   }, [location.pathname]);
 
-  const getUserPhone = async (uid: string) => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/users/${uid}`, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  const getUserData = async (uid: string) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/users/${uid}`, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-    if (response.status === 200) {
-      const data = response.data;
-      if (data.user && data.user.phoneNumber) {
-        setUserPhone(data.user.phoneNumber);
+      if (response.status === 200) {
+        const data = response.data;
+        if (data.user) {
+          if (data.user.phoneNumber) setUserPhone(data.user.phoneNumber);
+          if (data.user.email) setUserEmail(data.user.email);
+        }
       }
+    } catch (error) {
+
     }
-  } catch (error) {
-    
-  }
-};
+  };
 
   // Handle click outside to close dropdown
   useEffect(() => {
@@ -76,7 +80,7 @@ const SiteHeader = () => {
           <span className="h-6 w-6 rounded-md bg-gradient-primary shadow-glow"></span>
           <span>Propbank</span>
         </Link>
-  
+
         <div className="flex items-center gap-2">
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
@@ -90,14 +94,14 @@ const SiteHeader = () => {
               <div className="flex flex-col gap-6 pt-6 pb-6 min-h-full">
                 {user && (
                   <div className="flex items-start gap-4 p-4 bg-accent/30 rounded-xl border border-accent/50">
-                    <img src={user.photoURL || "https://ui-avatars.com/api/?name=User"} alt="Profile" 
-                      className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0"/>
+                    <img src={user.photoURL || "https://ui-avatars.com/api/?name=User"} alt="Profile"
+                      className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0" />
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="font-semibold text-sm text-gray-900 truncate">
                         {user.displayName || "No Name"}
                       </div>
                       <div className="text-[10px] text-muted-foreground break-all leading-tight">
-                        {user.email}
+                        {user.email || userEmail}
                       </div>
                       {userPhone && (
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2">
@@ -108,7 +112,7 @@ const SiteHeader = () => {
                     </div>
                   </div>
                 )}
-                
+
                 <nav className="flex flex-col gap-2">
                   {/* Manage Property */}
                   <NavLink to="/manage-property" onClick={() => setIsOpen(false)}
@@ -145,8 +149,8 @@ const SiteHeader = () => {
                   </NavLink>
 
                   {/* Contact Us */}
-                  <a 
-                    href="mailto:connectpropbank@gmail.com" 
+                  <a
+                    href="mailto:connectpropbank@gmail.com"
                     className="px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 hover:bg-accent hover:text-accent-foreground"
                     onClick={() => setIsOpen(false)}
                   >
@@ -159,8 +163,8 @@ const SiteHeader = () => {
                       <Button variant="ghost" onClick={handleLogout}
                         className="w-full justify-start gap-3 px-3 py-3 text-red-600 hover:text-red-700 hover:bg-red-50">
                         <LogOut className="h-5 w-5" /> Logout
-                      </Button>) 
-                      : 
+                      </Button>)
+                      :
                       (
                         <Button variant="ghost" asChild className="w-full justify-start gap-3 px-3 py-3">
                           <Link to="/auth" onClick={() => setIsOpen(false)}>

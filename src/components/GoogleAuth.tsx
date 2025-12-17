@@ -29,11 +29,44 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
           setShowPhoneInput(true);
         } else {
           setUserLoggedIn(true);
+          // Sync basic user data (email, name, photo) to ensure backend is up to date
+          syncUserData(firebaseUser);
         }
       }
     });
     return () => unsubscribe();
   }, []);
+
+  // Function to sync basic user data (email, name, photo) without requiring phone/role
+  const syncUserData = async (firebaseUser: User) => {
+    try {
+      console.log("Debug: Syncing User Data. Firebase User:", firebaseUser);
+      console.log("Debug: User Email:", firebaseUser.email);
+      console.log("Debug: Provider Data:", firebaseUser.providerData);
+
+      const email = firebaseUser.email || firebaseUser.providerData[0]?.email || "";
+      console.log("Debug: Extracted Email:", email);
+
+      const name = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || "User";
+
+      // Only send fields that we want to update/ensure exist
+      const updateData = {
+        email: email,
+        name: name,
+        photoURL: firebaseUser.photoURL,
+      };
+
+      await fetch(`${API_BASE_URL}/users/${firebaseUser.uid}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      });
+    } catch (error) {
+      console.error("Error syncing user data:", error);
+    }
+  };
 
   useEffect(() => {
     setUserLoggedIn(!!user && !showPhoneInput);
@@ -127,7 +160,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
     try {
       const userData = {
         uid: firebaseUser.uid,
-        email: firebaseUser.email || "",
+        email: firebaseUser.email || firebaseUser.providerData[0]?.email || "",
         name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || "User",
         photoURL: firebaseUser.photoURL,
         phoneNumber: phone,
