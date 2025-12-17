@@ -1294,10 +1294,20 @@ const AddPropertyForm = () => {
                       name="noticePeriod"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Notice Period / Early Termination Notice (in Months)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Specify notice period in months" {...field} />
-                          </FormControl>
+                          <FormLabel>Notice Period / Early Termination Notice <span className="text-red-500">*</span></FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select notice period" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="1 Month">1 Month</SelectItem>
+                              <SelectItem value="2 Months">2 Months</SelectItem>
+                              <SelectItem value="3 Months">3 Months</SelectItem>
+                              <SelectItem value="6 Months">6 Months</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}

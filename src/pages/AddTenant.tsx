@@ -54,6 +54,7 @@ interface TenantData {
   paymentDueDate: string;
   escalationPercentage: string;
   escalationAmount: string;
+  noticePeriod: string;
   notes: string;
   searchError?: string; // Error message if user not found
   searchingUser?: boolean; // Loading state for user search
@@ -91,6 +92,7 @@ const AddTenant = () => {
       paymentDueDate: '',
       escalationPercentage: '',
       escalationAmount: '',
+      noticePeriod: '',
       notes: '',
       searchError: undefined,
       searchingUser: false
@@ -107,15 +109,15 @@ const AddTenant = () => {
   useEffect(() => {
     const fetchPropertyData = async () => {
       if (!propertyId) return;
-      
+
       try {
         const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
         const data = await response.json();
-        
+
         if (data.success) {
           const property = data.property;
           setPropertyTitle(property.title);
-          
+
           if (property.tenants && property.tenants.length > 0) {
             setExistingTenants(property.tenants.map((tenant: any) => ({
               id: tenant.id,
@@ -142,7 +144,7 @@ const AddTenant = () => {
           }
         }
       } catch (error) {
-        
+
       }
     };
 
@@ -152,8 +154,8 @@ const AddTenant = () => {
   const searchUserByPhone = async (tenantId: string, phoneNumber: string) => {
     if (!phoneNumber || phoneNumber.trim().length < 10) {
       // Clear user info if phone is too short
-      setTenants(prev => prev.map(tenant => 
-        tenant.id === tenantId 
+      setTenants(prev => prev.map(tenant =>
+        tenant.id === tenantId
           ? { ...tenant, userInfo: null, userUID: undefined, searchError: undefined, searchingUser: false }
           : tenant
       ));
@@ -161,8 +163,8 @@ const AddTenant = () => {
     }
 
     // Set searching state
-    setTenants(prev => prev.map(tenant => 
-      tenant.id === tenantId 
+    setTenants(prev => prev.map(tenant =>
+      tenant.id === tenantId
         ? { ...tenant, searchingUser: true, searchError: undefined }
         : tenant
     ));
@@ -178,25 +180,25 @@ const AddTenant = () => {
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
 
-        setTenants(prev => prev.map(tenant => 
-          tenant.id === tenantId 
+        setTenants(prev => prev.map(tenant =>
+          tenant.id === tenantId
             ? {
-                ...tenant,
-                firstName: firstName,
-                lastName: lastName,
-                email: user.email || tenant.email,
-                phone: phoneNumber,
-                userUID: user.uid,
-                userInfo: {
-                  uid: user.uid,
-                  name: user.name,
-                  email: user.email,
-                  photoURL: user.photoURL || '',
-                  phoneNumber: user.phoneNumber
-                },
-                searchingUser: false,
-                searchError: undefined
-              }
+              ...tenant,
+              firstName: firstName,
+              lastName: lastName,
+              email: user.email || tenant.email,
+              phone: phoneNumber,
+              userUID: user.uid,
+              userInfo: {
+                uid: user.uid,
+                name: user.name,
+                email: user.email,
+                photoURL: user.photoURL || '',
+                phoneNumber: user.phoneNumber
+              },
+              searchingUser: false,
+              searchError: undefined
+            }
             : tenant
         ));
 
@@ -206,15 +208,15 @@ const AddTenant = () => {
         });
       } else {
         // User not found
-        setTenants(prev => prev.map(tenant => 
-          tenant.id === tenantId 
+        setTenants(prev => prev.map(tenant =>
+          tenant.id === tenantId
             ? {
-                ...tenant,
-                userInfo: null,
-                userUID: undefined,
-                searchingUser: false,
-                searchError: data.message || "User is not found. Please ask to sign up with our platform to continue."
-              }
+              ...tenant,
+              userInfo: null,
+              userUID: undefined,
+              searchingUser: false,
+              searchError: data.message || "User is not found. Please ask to sign up with our platform to continue."
+            }
             : tenant
         ));
 
@@ -225,14 +227,14 @@ const AddTenant = () => {
         });
       }
     } catch (error) {
-      
-      setTenants(prev => prev.map(tenant => 
-        tenant.id === tenantId 
+
+      setTenants(prev => prev.map(tenant =>
+        tenant.id === tenantId
           ? {
-              ...tenant,
-              searchingUser: false,
-              searchError: "Failed to search user. Please try again."
-            }
+            ...tenant,
+            searchingUser: false,
+            searchError: "Failed to search user. Please try again."
+          }
           : tenant
       ));
     }
@@ -242,27 +244,27 @@ const AddTenant = () => {
     setTenants(prev => prev.map(tenant => {
       if (tenant.id === tenantId) {
         const updated = { ...tenant, [field]: value };
-        
+
         // If phone number changed, search for user (debounced)
         if (field === 'phone') {
           // Clear previous user info when phone changes
           updated.userInfo = null;
           updated.userUID = undefined;
           updated.searchError = undefined;
-          
+
           // Clear previous timeout
           if (tenant.searchTimeoutId) {
             clearTimeout(tenant.searchTimeoutId);
           }
-          
+
           // Debounce the search
           const timeoutId = setTimeout(() => {
             searchUserByPhone(tenantId, value);
           }, 1000); // Wait 1 second after user stops typing
-          
+
           updated.searchTimeoutId = timeoutId;
         }
-        
+
         return updated;
       }
       return tenant;
@@ -337,6 +339,7 @@ const AddTenant = () => {
       paymentDueDate: '',
       escalationPercentage: '',
       escalationAmount: '',
+      noticePeriod: '',
       notes: '',
       searchError: undefined,
       searchingUser: false
@@ -413,13 +416,13 @@ const AddTenant = () => {
     try {
       const propertyResponse = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
       const propertyData = await propertyResponse.json();
-      
+
       if (!propertyData.success) {
         throw new Error("Failed to get property data");
       }
 
       const property = propertyData.property;
-      
+
       // Prepare tenant data for property update
       const newTenantInfos = tenants.map(({ id, userInfo, searchError, searchingUser, searchTimeoutId, ...tenant }) => ({
         id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // Generate unique ID
@@ -442,6 +445,7 @@ const AddTenant = () => {
         paymentDueDate: tenant.paymentDueDate,
         escalationPercentage: tenant.escalationPercentage,
         escalationAmount: tenant.escalationAmount,
+        noticePeriod: tenant.noticePeriod,
         notes: tenant.notes,
         isActive: true
         // Let backend handle createdAt and updatedAt timestamps
@@ -464,7 +468,7 @@ const AddTenant = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         toast({
           title: "Success",
@@ -484,7 +488,7 @@ const AddTenant = () => {
       }
 
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to add tenants. Please try again.",
@@ -506,7 +510,7 @@ const AddTenant = () => {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Manage Properties
           </Button>
-          
+
           <div className="flex items-center gap-4 mb-4">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
               <UserPlus className="h-8 w-8 text-primary-foreground" />
@@ -528,7 +532,7 @@ const AddTenant = () => {
               <User className="h-5 w-5" />
               <h2 className="text-2xl font-bold">Current Tenants ({existingTenants.length})</h2>
             </div>
-            
+
             {/* Property Occupied Notice */}
             <div className="mb-4 p-4 border border-orange-200 bg-orange-50 rounded-lg">
               <div className="flex items-center">
@@ -542,7 +546,7 @@ const AddTenant = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="grid gap-4">
               {existingTenants.map((tenant, index) => (
                 <Card key={tenant.id} className="border-2 border-blue-200 bg-blue-50/50">
@@ -643,363 +647,380 @@ const AddTenant = () => {
 
         {/* Only show Add Tenant form if there are no existing tenants */}
         {existingTenants.length === 0 && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold">
-                {existingTenants.length > 0 ? 'Add New Tenants' : 'Tenant Information'}
-              </h2>
-              <p className="text-muted-foreground">
-                {existingTenants.length > 0 
-                  ? 'Add additional tenants to this property'
-                  : 'Enter tenant details for this property'
-                }
-              </p>
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold">
+                  {existingTenants.length > 0 ? 'Add New Tenants' : 'Tenant Information'}
+                </h2>
+                <p className="text-muted-foreground">
+                  {existingTenants.length > 0
+                    ? 'Add additional tenants to this property'
+                    : 'Enter tenant details for this property'
+                  }
+                </p>
+              </div>
+              <Button onClick={addTenant} variant="outline">
+                <Plus className="h-4 w-4 mr-2" />
+                {existingTenants.length > 0 ? 'Add Another Tenant' : 'Add New Tenant'}
+              </Button>
             </div>
-            <Button onClick={addTenant} variant="outline">
-              <Plus className="h-4 w-4 mr-2" />
-              {existingTenants.length > 0 ? 'Add Another Tenant' : 'Add New Tenant'}
-            </Button>
-          </div>
 
-          {tenants.map((tenant, index) => (
-            <Card key={tenant.id} className="border-2">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Tenant {index + 1}
-                  </CardTitle>
-                  <CardDescription>
-                    Enter tenant details below
-                  </CardDescription>
-                </div>
-                {tenants.length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeTenant(tenant.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Personal Information */}
-                <div>
-                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <User className="h-4 w-4" />
-                    Personal Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor={`firstName-${tenant.id}`}>First Name *</Label>
-                      <Input
-                        id={`firstName-${tenant.id}`}
-                        value={tenant.firstName}
-                        onChange={(e) => handleInputChange(tenant.id, 'firstName', e.target.value)}
-                        placeholder="Enter first name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`lastName-${tenant.id}`}>Last Name *</Label>
-                      <Input
-                        id={`lastName-${tenant.id}`}
-                        value={tenant.lastName}
-                        onChange={(e) => handleInputChange(tenant.id, 'lastName', e.target.value)}
-                        placeholder="Enter last name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`email-${tenant.id}`}>Email *</Label>
-                      <Input
-                        id={`email-${tenant.id}`}
-                        type="email"
-                        value={tenant.email}
-                        onChange={(e) => handleInputChange(tenant.id, 'email', e.target.value)}
-                        placeholder="tenant@example.com"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`phone-${tenant.id}`}>Phone *</Label>
-                      <div className="relative">
-                        <Input
-                          id={`phone-${tenant.id}`}
-                          value={tenant.phone}
-                          onChange={(e) => handleInputChange(tenant.id, 'phone', e.target.value)}
-                          placeholder="+1 (555) 123-4567"
-                          className={tenant.searchError ? "border-red-500" : tenant.userInfo ? "border-green-500" : ""}
-                        />
-                        {tenant.searchingUser && (
-                          <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                        )}
-                        {!tenant.searchingUser && tenant.userInfo && (
-                          <CheckCircle2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" />
-                        )}
-                        {!tenant.searchingUser && tenant.searchError && (
-                          <XCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
-                        )}
-                      </div>
-                      {/* User Info Display */}
-                      {tenant.userInfo && !tenant.searchingUser && (
-                        <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            {tenant.userInfo.photoURL && (
-                              <img 
-                                src={tenant.userInfo.photoURL} 
-                                alt={tenant.userInfo.name}
-                                className="w-10 h-10 rounded-full object-cover"
-                              />
-                            )}
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-green-900">{tenant.userInfo.name}</p>
-                              <p className="text-xs text-green-700">{tenant.userInfo.email}</p>
-                              <p className="text-xs text-green-600 mt-1">✓ Verified platform user</p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {/* Error Display */}
-                      {tenant.searchError && !tenant.searchingUser && (
-                        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                          <p className="text-sm text-red-900">{tenant.searchError}</p>
-                        </div>
-                      )}
-                    </div>
-                    <div className="md:col-span-2">
-                      <Label htmlFor={`emergencyContact-${tenant.id}`}>Emergency Contact</Label>
-                      <Input
-                        id={`emergencyContact-${tenant.id}`}
-                        value={tenant.emergencyContact}
-                        onChange={(e) => handleInputChange(tenant.id, 'emergencyContact', e.target.value)}
-                        placeholder="Emergency contact name and phone"
-                      />
-                    </div>
-
-                    {/* Marital Status Checkbox */}
-                    <div className="md:col-span-2 flex items-center space-x-2 pt-2">
-                      <Checkbox
-                        id={`isMarried-${tenant.id}`}
-                        checked={tenant.isMarried}
-                        onCheckedChange={(checked) => handleMaritalStatusChange(tenant.id, checked as boolean)}
-                      />
-                      <Label 
-                        htmlFor={`isMarried-${tenant.id}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        Is the tenant married?
-                      </Label>
-                    </div>
+            {tenants.map((tenant, index) => (
+              <Card key={tenant.id} className="border-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Tenant {index + 1}
+                    </CardTitle>
+                    <CardDescription>
+                      Enter tenant details below
+                    </CardDescription>
                   </div>
-                </div>
-
-                {/* Spouse Information - Show only if married */}
-                {tenant.isMarried && (
-                  <div className="border rounded-lg p-4 bg-blue-50/50">
+                  {tenants.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeTenant(tenant.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Personal Information */}
+                  <div>
                     <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                       <User className="h-4 w-4" />
-                      Spouse Information
+                      Personal Information
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor={`spouseFirstName-${tenant.id}`}>Spouse First Name *</Label>
+                        <Label htmlFor={`firstName-${tenant.id}`}>First Name *</Label>
                         <Input
-                          id={`spouseFirstName-${tenant.id}`}
-                          value={tenant.spouse?.firstName || ''}
-                          onChange={(e) => handleSpouseChange(tenant.id, 'firstName', e.target.value)}
-                          placeholder="Enter spouse first name"
+                          id={`firstName-${tenant.id}`}
+                          value={tenant.firstName}
+                          onChange={(e) => handleInputChange(tenant.id, 'firstName', e.target.value)}
+                          placeholder="Enter first name"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`spouseLastName-${tenant.id}`}>Spouse Last Name *</Label>
+                        <Label htmlFor={`lastName-${tenant.id}`}>Last Name *</Label>
                         <Input
-                          id={`spouseLastName-${tenant.id}`}
-                          value={tenant.spouse?.lastName || ''}
-                          onChange={(e) => handleSpouseChange(tenant.id, 'lastName', e.target.value)}
-                          placeholder="Enter spouse last name"
+                          id={`lastName-${tenant.id}`}
+                          value={tenant.lastName}
+                          onChange={(e) => handleInputChange(tenant.id, 'lastName', e.target.value)}
+                          placeholder="Enter last name"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`spouseEmail-${tenant.id}`}>Spouse Email</Label>
+                        <Label htmlFor={`email-${tenant.id}`}>Email *</Label>
                         <Input
-                          id={`spouseEmail-${tenant.id}`}
+                          id={`email-${tenant.id}`}
                           type="email"
-                          value={tenant.spouse?.email || ''}
-                          onChange={(e) => handleSpouseChange(tenant.id, 'email', e.target.value)}
-                          placeholder="spouse@example.com"
+                          value={tenant.email}
+                          onChange={(e) => handleInputChange(tenant.id, 'email', e.target.value)}
+                          placeholder="tenant@example.com"
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`spousePhone-${tenant.id}`}>Spouse Phone *</Label>
+                        <Label htmlFor={`phone-${tenant.id}`}>Phone *</Label>
+                        <div className="relative">
+                          <Input
+                            id={`phone-${tenant.id}`}
+                            value={tenant.phone}
+                            onChange={(e) => handleInputChange(tenant.id, 'phone', e.target.value)}
+                            placeholder="+1 (555) 123-4567"
+                            className={tenant.searchError ? "border-red-500" : tenant.userInfo ? "border-green-500" : ""}
+                          />
+                          {tenant.searchingUser && (
+                            <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                          {!tenant.searchingUser && tenant.userInfo && (
+                            <CheckCircle2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" />
+                          )}
+                          {!tenant.searchingUser && tenant.searchError && (
+                            <XCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+                          )}
+                        </div>
+                        {/* User Info Display */}
+                        {tenant.userInfo && !tenant.searchingUser && (
+                          <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              {tenant.userInfo.photoURL && (
+                                <img
+                                  src={tenant.userInfo.photoURL}
+                                  alt={tenant.userInfo.name}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              )}
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-green-900">{tenant.userInfo.name}</p>
+                                <p className="text-xs text-green-700">{tenant.userInfo.email}</p>
+                                <p className="text-xs text-green-600 mt-1">✓ Verified platform user</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {/* Error Display */}
+                        {tenant.searchError && !tenant.searchingUser && (
+                          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-sm text-red-900">{tenant.searchError}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="md:col-span-2">
+                        <Label htmlFor={`emergencyContact-${tenant.id}`}>Emergency Contact</Label>
                         <Input
-                          id={`spousePhone-${tenant.id}`}
-                          value={tenant.spouse?.phone || ''}
-                          onChange={(e) => handleSpouseChange(tenant.id, 'phone', e.target.value)}
-                          placeholder="+1 (555) 123-4567"
+                          id={`emergencyContact-${tenant.id}`}
+                          value={tenant.emergencyContact}
+                          onChange={(e) => handleInputChange(tenant.id, 'emergencyContact', e.target.value)}
+                          placeholder="Emergency contact name and phone"
+                        />
+                      </div>
+
+                      {/* Marital Status Checkbox */}
+                      <div className="md:col-span-2 flex items-center space-x-2 pt-2">
+                        <Checkbox
+                          id={`isMarried-${tenant.id}`}
+                          checked={tenant.isMarried}
+                          onCheckedChange={(checked) => handleMaritalStatusChange(tenant.id, checked as boolean)}
+                        />
+                        <Label
+                          htmlFor={`isMarried-${tenant.id}`}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        >
+                          Is the tenant married?
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Spouse Information - Show only if married */}
+                  {tenant.isMarried && (
+                    <div className="border rounded-lg p-4 bg-blue-50/50">
+                      <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Spouse Information
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor={`spouseFirstName-${tenant.id}`}>Spouse First Name *</Label>
+                          <Input
+                            id={`spouseFirstName-${tenant.id}`}
+                            value={tenant.spouse?.firstName || ''}
+                            onChange={(e) => handleSpouseChange(tenant.id, 'firstName', e.target.value)}
+                            placeholder="Enter spouse first name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`spouseLastName-${tenant.id}`}>Spouse Last Name *</Label>
+                          <Input
+                            id={`spouseLastName-${tenant.id}`}
+                            value={tenant.spouse?.lastName || ''}
+                            onChange={(e) => handleSpouseChange(tenant.id, 'lastName', e.target.value)}
+                            placeholder="Enter spouse last name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`spouseEmail-${tenant.id}`}>Spouse Email</Label>
+                          <Input
+                            id={`spouseEmail-${tenant.id}`}
+                            type="email"
+                            value={tenant.spouse?.email || ''}
+                            onChange={(e) => handleSpouseChange(tenant.id, 'email', e.target.value)}
+                            placeholder="spouse@example.com"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`spousePhone-${tenant.id}`}>Spouse Phone *</Label>
+                          <Input
+                            id={`spousePhone-${tenant.id}`}
+                            value={tenant.spouse?.phone || ''}
+                            onChange={(e) => handleSpouseChange(tenant.id, 'phone', e.target.value)}
+                            placeholder="+1 (555) 123-4567"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor={`spouseEmploymentStatus-${tenant.id}`}>Spouse Employment Status</Label>
+                          <Select
+                            value={tenant.spouse?.employmentStatus || ''}
+                            onValueChange={(value) => handleSpouseChange(tenant.id, 'employmentStatus', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="employed">Employed</SelectItem>
+                              <SelectItem value="self-employed">Self-Employed</SelectItem>
+                              <SelectItem value="unemployed">Unemployed</SelectItem>
+                              <SelectItem value="student">Student</SelectItem>
+                              <SelectItem value="retired">Retired</SelectItem>
+                              <SelectItem value="homemaker">Homemaker</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor={`spouseEmployer-${tenant.id}`}>Spouse Employer/Company</Label>
+                          <Input
+                            id={`spouseEmployer-${tenant.id}`}
+                            value={tenant.spouse?.employer || ''}
+                            onChange={(e) => handleSpouseChange(tenant.id, 'employer', e.target.value)}
+                            placeholder="Company name"
+                          />
+                        </div>
+                        <div className="md:col-span-2">
+                          <Label htmlFor={`spouseNotes-${tenant.id}`}>Spouse Additional Notes</Label>
+                          <Textarea
+                            id={`spouseNotes-${tenant.id}`}
+                            value={tenant.spouse?.notes || ''}
+                            onChange={(e) => handleSpouseChange(tenant.id, 'notes', e.target.value)}
+                            placeholder="Any additional notes about the spouse"
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Lease Information */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Lease Information
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor={`leaseStartDate-${tenant.id}`}>Lease Start Date</Label>
+                        <Input
+                          id={`leaseStartDate-${tenant.id}`}
+                          type="date"
+                          value={tenant.leaseStartDate}
+                          onChange={(e) => handleInputChange(tenant.id, 'leaseStartDate', e.target.value)}
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`spouseEmploymentStatus-${tenant.id}`}>Spouse Employment Status</Label>
-                        <Select 
-                          value={tenant.spouse?.employmentStatus || ''} 
-                          onValueChange={(value) => handleSpouseChange(tenant.id, 'employmentStatus', value)}
+                        <Label htmlFor={`leaseEndDate-${tenant.id}`}>Lease End Date</Label>
+                        <Input
+                          id={`leaseEndDate-${tenant.id}`}
+                          type="date"
+                          value={tenant.leaseEndDate}
+                          onChange={(e) => handleInputChange(tenant.id, 'leaseEndDate', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`monthlyRent-${tenant.id}`}>Monthly Rent</Label>
+                        <Input
+                          id={`monthlyRent-${tenant.id}`}
+                          value={tenant.monthlyRent}
+                          onChange={(e) => handleInputChange(tenant.id, 'monthlyRent', e.target.value)}
+                          placeholder="2500"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`securityDeposit-${tenant.id}`}>Security Deposit</Label>
+                        <Input
+                          id={`securityDeposit-${tenant.id}`}
+                          value={tenant.securityDeposit}
+                          onChange={(e) => handleInputChange(tenant.id, 'securityDeposit', e.target.value)}
+                          placeholder="5000"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`paymentDueDate-${tenant.id}`}>Payment Due Date (Day of Month)</Label>
+                        <Input
+                          id={`paymentDueDate-${tenant.id}`}
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={tenant.paymentDueDate}
+                          onChange={(e) => handleInputChange(tenant.id, 'paymentDueDate', e.target.value)}
+                          placeholder="e.g., 5 (for 5th of each month)"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`noticePeriod-${tenant.id}`}>Notice Period *</Label>
+                        <Select
+                          value={tenant.noticePeriod}
+                          onValueChange={(value) => handleInputChange(tenant.id, 'noticePeriod', value)}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
+                            <SelectValue placeholder="Select notice period" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="employed">Employed</SelectItem>
-                            <SelectItem value="self-employed">Self-Employed</SelectItem>
-                            <SelectItem value="unemployed">Unemployed</SelectItem>
-                            <SelectItem value="student">Student</SelectItem>
-                            <SelectItem value="retired">Retired</SelectItem>
-                            <SelectItem value="homemaker">Homemaker</SelectItem>
+                            <SelectItem value="1 Month">1 Month</SelectItem>
+                            <SelectItem value="2 Months">2 Months</SelectItem>
+                            <SelectItem value="3 Months">3 Months</SelectItem>
+                            <SelectItem value="6 Months">6 Months</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Background Information */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Background Information
+                    </h4>
+                    <div className="space-y-4">
                       <div>
-                        <Label htmlFor={`spouseEmployer-${tenant.id}`}>Spouse Employer/Company</Label>
-                        <Input
-                          id={`spouseEmployer-${tenant.id}`}
-                          value={tenant.spouse?.employer || ''}
-                          onChange={(e) => handleSpouseChange(tenant.id, 'employer', e.target.value)}
-                          placeholder="Company name"
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label htmlFor={`spouseNotes-${tenant.id}`}>Spouse Additional Notes</Label>
+                        <Label htmlFor={`previousAddress-${tenant.id}`}>Previous Address</Label>
                         <Textarea
-                          id={`spouseNotes-${tenant.id}`}
-                          value={tenant.spouse?.notes || ''}
-                          onChange={(e) => handleSpouseChange(tenant.id, 'notes', e.target.value)}
-                          placeholder="Any additional notes about the spouse"
+                          id={`previousAddress-${tenant.id}`}
+                          value={tenant.previousAddress}
+                          onChange={(e) => handleInputChange(tenant.id, 'previousAddress', e.target.value)}
+                          placeholder="Enter previous address"
                           rows={2}
                         />
                       </div>
-                    </div>
-                  </div>
-                )}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor={`employmentStatus-${tenant.id}`}>Employment Status</Label>
+                          <Select value={tenant.employmentStatus} onValueChange={(value) => handleInputChange(tenant.id, 'employmentStatus', value)}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="employed">Employed</SelectItem>
+                              <SelectItem value="self-employed">Self-Employed</SelectItem>
+                              <SelectItem value="unemployed">Unemployed</SelectItem>
+                              <SelectItem value="student">Student</SelectItem>
+                              <SelectItem value="retired">Retired</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
 
-                {/* Lease Information */}
-                <div>
-                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <FileText className="h-4 w-4" />
-                    Lease Information
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor={`leaseStartDate-${tenant.id}`}>Lease Start Date</Label>
-                      <Input
-                        id={`leaseStartDate-${tenant.id}`}
-                        type="date"
-                        value={tenant.leaseStartDate}
-                        onChange={(e) => handleInputChange(tenant.id, 'leaseStartDate', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`leaseEndDate-${tenant.id}`}>Lease End Date</Label>
-                      <Input
-                        id={`leaseEndDate-${tenant.id}`}
-                        type="date"
-                        value={tenant.leaseEndDate}
-                        onChange={(e) => handleInputChange(tenant.id, 'leaseEndDate', e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`monthlyRent-${tenant.id}`}>Monthly Rent</Label>
-                      <Input
-                        id={`monthlyRent-${tenant.id}`}
-                        value={tenant.monthlyRent}
-                        onChange={(e) => handleInputChange(tenant.id, 'monthlyRent', e.target.value)}
-                        placeholder="2500"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`securityDeposit-${tenant.id}`}>Security Deposit</Label>
-                      <Input
-                        id={`securityDeposit-${tenant.id}`}
-                        value={tenant.securityDeposit}
-                        onChange={(e) => handleInputChange(tenant.id, 'securityDeposit', e.target.value)}
-                        placeholder="5000"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`paymentDueDate-${tenant.id}`}>Payment Due Date (Day of Month)</Label>
-                      <Input
-                        id={`paymentDueDate-${tenant.id}`}
-                        type="number"
-                        min="1"
-                        max="31"
-                        value={tenant.paymentDueDate}
-                        onChange={(e) => handleInputChange(tenant.id, 'paymentDueDate', e.target.value)}
-                        placeholder="e.g., 5 (for 5th of each month)"
-                      />
-                    </div>
-                  </div>
-                </div>
+                        <div>
+                          <Label htmlFor={`employer-${tenant.id}`}>Employer/Company</Label>
+                          <Input id={`employer-${tenant.id}`} value={tenant.employer} placeholder="Company name"
+                            onChange={(e) => handleInputChange(tenant.id, 'employer', e.target.value)} />
+                        </div>
 
-                {/* Background Information */}
-                <div>
-                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    Background Information
-                  </h4>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor={`previousAddress-${tenant.id}`}>Previous Address</Label>
-                      <Textarea
-                        id={`previousAddress-${tenant.id}`}
-                        value={tenant.previousAddress}
-                        onChange={(e) => handleInputChange(tenant.id, 'previousAddress', e.target.value)}
-                        placeholder="Enter previous address"
-                        rows={2}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor={`employmentStatus-${tenant.id}`}>Employment Status</Label>
-                        <Select value={tenant.employmentStatus} onValueChange={(value) => handleInputChange(tenant.id, 'employmentStatus', value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="employed">Employed</SelectItem>
-                            <SelectItem value="self-employed">Self-Employed</SelectItem>
-                            <SelectItem value="unemployed">Unemployed</SelectItem>
-                            <SelectItem value="student">Student</SelectItem>
-                            <SelectItem value="retired">Retired</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
 
                       <div>
-                        <Label htmlFor={`employer-${tenant.id}`}>Employer/Company</Label>
-                        <Input id={`employer-${tenant.id}`}  value={tenant.employer} placeholder="Company name"
-                          onChange={(e) => handleInputChange(tenant.id, 'employer', e.target.value)}/>
+                        <Label htmlFor={`notes-${tenant.id}`}>Additional Notes</Label>
+                        <Textarea id={`notes-${tenant.id}`} value={tenant.notes} rows={3} placeholder="Any additional notes about the tenant"
+                          onChange={(e) => handleInputChange(tenant.id, 'notes', e.target.value)} />
                       </div>
 
                     </div>
-
-                    <div>
-                      <Label htmlFor={`notes-${tenant.id}`}>Additional Notes</Label>
-                      <Textarea id={`notes-${tenant.id}`} value={tenant.notes}  rows={3} placeholder="Any additional notes about the tenant"
-                        onChange={(e) => handleInputChange(tenant.id, 'notes', e.target.value)} />
-                    </div>
-
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          
-          <div className="flex justify-end">
-            <Button onClick={handleSubmit} size="lg" className="px-8">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Tenant{tenants.length > 1 ? 's' : ''}
-            </Button>
+                </CardContent>
+              </Card>
+            ))}
+
+            <div className="flex justify-end">
+              <Button onClick={handleSubmit} size="lg" className="px-8">
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add Tenant{tenants.length > 1 ? 's' : ''}
+              </Button>
+            </div>
           </div>
-        </div>
         )}
       </div>
     </main>
