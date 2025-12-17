@@ -921,11 +921,11 @@ const ManageProperty = () => {
                                           <DropdownMenuSeparator />
                                           <DropdownMenuItem onClick={() => navigate(`/attach-documents/${property.id}`)}>
                                             <Paperclip className="h-4 w-4 mr-2" />
-                                            2. Attach Documents
+                                            Attach Documents
                                           </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => navigate(`/renew-agreement/${property.id}`)}>
                                             <RefreshCw className="h-4 w-4 mr-2" />
-                                            3. Go for Renewal
+                                             Go for Renewal
                                           </DropdownMenuItem>
                                           <DropdownMenuItem
                                             onClick={() => navigate(`/terminate-agreement/${property.id}`)}

@@ -41,14 +41,14 @@ const AttachDocuments = () => {
   const { propertyId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [property, setProperty] = useState<any>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
-  
+
   // Form state
   const [documentName, setDocumentName] = useState<string>("");
   const [documentType, setDocumentType] = useState<string>("");
@@ -100,7 +100,7 @@ const AttachDocuments = () => {
           }
         }
       } catch (error) {
-        
+
       } finally {
         setLoading(false);
       }
@@ -140,7 +140,7 @@ const AttachDocuments = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
-      
+
       setFileUrl(result);
     };
     reader.onerror = () => {
@@ -180,7 +180,7 @@ const AttachDocuments = () => {
       // Check file size before sending (base64 is ~33% larger than original)
       const base64Size = fileUrl.length;
       const estimatedOriginalSize = base64Size * 0.75; // Approximate original size
-      
+
       if (estimatedOriginalSize > 5 * 1024 * 1024) { // 5MB limit
         toast({
           title: "File Too Large",
@@ -208,11 +208,11 @@ const AttachDocuments = () => {
         body: JSON.stringify(requestBody),
       });
 
-      
+
 
       if (!response.ok) {
         const errorText = await response.text();
-        
+
         let errorMessage = `Server error: ${response.status} ${response.statusText}`;
         try {
           const errorData = JSON.parse(errorText);
@@ -225,13 +225,13 @@ const AttachDocuments = () => {
       }
 
       const responseText = await response.text();
-      
-      
+
+
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (parseError) {
-        
+
         throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
       }
 
@@ -254,22 +254,21 @@ const AttachDocuments = () => {
           const documentsResponse = await fetch(`${API_BASE_URL}/documents/property/${propertyId}`);
           if (documentsResponse.ok) {
             const documentsData = await documentsResponse.json();
-            if (documentsData.success && documentsData.documents) {
-              setDocuments(documentsData.documents);
-              
+            if (documentsData.success) {
+              setDocuments(documentsData.documents || []);
+            } else {
+
             }
-          } else {
-            
           }
         } catch (refreshError) {
-          
+
           // Still show success since document was uploaded
         }
       } else {
         throw new Error(data.message || 'Failed to upload document');
       }
     } catch (error) {
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload document. Please try again later.';
       toast({
         title: "Error",
@@ -302,15 +301,15 @@ const AttachDocuments = () => {
         const documentsResponse = await fetch(`${API_BASE_URL}/documents/property/${propertyId}`);
         if (documentsResponse.ok) {
           const documentsData = await documentsResponse.json();
-          if (documentsData.success && documentsData.documents) {
-            setDocuments(documentsData.documents);
+          if (documentsData.success) {
+            setDocuments(documentsData.documents || []);
           }
         }
       } else {
         throw new Error(data.message || 'Failed to delete document');
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to delete document. Please try again later.",
@@ -350,7 +349,7 @@ const AttachDocuments = () => {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  2. Attach Documents
+                  Attach Documents
                 </CardTitle>
                 <CardDescription className="mt-2">
                   {property && `Property: ${property.title || property.id}`}
