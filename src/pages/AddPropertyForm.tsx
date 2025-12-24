@@ -456,6 +456,8 @@ const AddPropertyForm = () => {
       // Debug log
       // Debug log
 
+      console.log("Submitting property data:", propertyData);
+
       // Send to backend API
       const response = await fetch(`${API_BASE_URL}/properties`, {
         method: 'POST',
@@ -575,7 +577,14 @@ const AddPropertyForm = () => {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                console.error("Form validation errors:", errors);
+                toast({
+                  title: "Form Validation Failed",
+                  description: "Please check the form for errors. See console for details.",
+                  variant: "destructive",
+                });
+              })} className="space-y-8">
 
                 {/* Basic Property Information */}
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-4 border rounded-lg">
