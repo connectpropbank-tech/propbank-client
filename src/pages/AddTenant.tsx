@@ -1,6 +1,5 @@
-
 import { Helmet } from "react-helmet-async";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Trash2, Plus, GripVertical, UserPlus, Phone, Mail, MapPin, Briefcase, FileText, User, Users, AlertCircle, Loader2, ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +70,9 @@ interface TenantData {
 const AddTenant = () => {
   const { propertyId } = useParams<{ propertyId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const readOnly = searchParams.get('mode') === 'view';
   const { toast } = useToast();
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [existingTenants, setExistingTenants] = useState<TenantData[]>([]);
@@ -119,7 +121,7 @@ const AddTenant = () => {
       if (!propertyId) return;
 
       try {
-        const response = await fetch(`${API_BASE_URL} /properties/${propertyId} `);
+        const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
         const data = await response.json();
 
         if (data.success) {
@@ -147,7 +149,8 @@ const AddTenant = () => {
               paymentDueDate: tenant.paymentDueDate || '',
               escalationPercentage: tenant.escalationPercentage || '',
               escalationAmount: tenant.escalationAmount || '',
-              notes: tenant.notes
+              notes: tenant.notes,
+              rentSchedule: tenant.rentSchedule || []
             })));
           }
         }
@@ -178,7 +181,7 @@ const AddTenant = () => {
     ));
 
     try {
-      const response = await fetch(`${API_BASE_URL} /users/search ? phone = ${encodeURIComponent(phoneNumber)} `);
+      const response = await fetch(`${API_BASE_URL}/users/search?phone=${encodeURIComponent(phoneNumber)}`);
       const data = await response.json();
 
       if (data.success && data.user) {
@@ -477,7 +480,7 @@ const AddTenant = () => {
     }
 
     try {
-      const propertyResponse = await fetch(`${API_BASE_URL} /properties/${propertyId} `);
+      const propertyResponse = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
       const propertyData = await propertyResponse.json();
 
       if (!propertyData.success) {
@@ -520,14 +523,17 @@ const AddTenant = () => {
       const updatedTenants = [...existingTenants, ...newTenantInfos];
 
       // Update property with new tenants using property update API
-      const response = await fetch(`${API_BASE_URL} /properties/${propertyId} `, {
+      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          ...property, // Include all existing property data
-          tenants: updatedTenants // Add the new tenants
+          // Send specific fields only to avoid overwriting OwnerUID or timestamps
+          tenants: updatedTenants,
+          rentalStatus: 'rented', // Ensure status is updated
+          listingType: 'rent',    // Ensure listing type is correct
+          status: property.status || 'active', // Preserve status or default to active
         }),
       });
 
@@ -564,8 +570,8 @@ const AddTenant = () => {
   return (
     <main className="container mx-auto py-8 px-4 pb-20">
       <Helmet>
-        <title>{existingTenants.length > 0 ? 'Tenant Details' : 'Add Tenant'} — Property Management</title>
-        <meta name="description" content={existingTenants.length > 0 ? "View tenant details for rental property" : "Add tenant details for rental property"} />
+        <title>{readOnly || existingTenants.length > 0 ? 'Tenant Details' : 'Add Tenant'} — Property Management</title>
+        <meta name="description" content={readOnly || existingTenants.length > 0 ? "View tenant details for rental property" : "Add tenant details for rental property"} />
       </Helmet>
 
       <div className="max-w-4xl mx-auto">
@@ -581,7 +587,7 @@ const AddTenant = () => {
             </div>
             <div>
               <h1 className="text-3xl font-bold">
-                {existingTenants.length > 0 ? 'Tenant Details' : 'Add Tenants'}
+                {readOnly || existingTenants.length > 0 ? 'Tenant Details' : 'Add Tenants'}
               </h1>
               <p className="text-lg text-muted-foreground">
                 {propertyTitle ? `${propertyTitle} - ` : ''}Property ID: {propertyId}
@@ -597,19 +603,21 @@ const AddTenant = () => {
               <h2 className="text-2xl font-bold">Current Tenants ({existingTenants.length})</h2>
             </div>
 
-            {/* Property Occupied Notice */}
-            <div className="mb-4 p-4 border border-orange-200 bg-orange-50 rounded-lg">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <span className="text-orange-600">🏠</span>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-orange-800">
-                    This property is currently occupied. You cannot add or edit tenants while the property has active tenants.
-                  </p>
+            {/* Property Occupied Notice - hide in read-only mode */}
+            {!readOnly && (
+              <div className="mb-4 p-4 border border-orange-200 bg-orange-50 rounded-lg">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <span className="text-orange-600">🏠</span>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-orange-800">
+                      This property is currently occupied. You cannot add or edit tenants while the property has active tenants.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="grid gap-4">
               {existingTenants.map((tenant, index) => (
@@ -626,48 +634,41 @@ const AddTenant = () => {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Email</label>
-                        <p>{tenant.email}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Phone</label>
-                        <p>{tenant.phone}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Monthly Rent</label>
-                        <p className="font-semibold">₹{Number(tenant.monthlyRent).toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Lease Start</label>
-                        <p>{tenant.leaseStartDate ? new Date(tenant.leaseStartDate).toLocaleDateString() : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Lease End</label>
-                        <p>{tenant.leaseEndDate ? new Date(tenant.leaseEndDate).toLocaleDateString() : 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Employment</label>
-                        <p className="capitalize">{tenant.employmentStatus}</p>
+                  <CardContent className="space-y-6">
+                    {/* Personal Information */}
+                    <div>
+                      <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Personal Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Email</label>
+                          <p>{tenant.email}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Phone</label>
+                          <p>{tenant.phone}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Tenant Name</label>
+                          <p>{tenant.firstName} {tenant.lastName}</p>
+                        </div>
                       </div>
                     </div>
-                    {tenant.employer && (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Employer</label>
-                        <p className="text-sm">{tenant.employer}</p>
-                      </div>
-                    )}
+
+                    {/* Emergency Contact */}
                     {tenant.emergencyContact && (
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground">Emergency Contact</label>
-                        <p className="text-sm">{tenant.emergencyContact}</p>
+                        <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Emergency Contact</h3>
+                        <div className="text-sm">
+                          <label className="text-xs font-medium text-muted-foreground">Contact Number/Details</label>
+                          <p>{tenant.emergencyContact}</p>
+                        </div>
                       </div>
                     )}
+
+                    {/* Spouse Information */}
                     {tenant.isMarried && tenant.spouse && (
-                      <div className="md:col-span-3 border-t pt-4 mt-4">
-                        <label className="text-xs font-medium text-muted-foreground mb-2 block">Spouse Information</label>
+                      <div>
+                        <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Spouse Information</h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           <div>
                             <label className="text-xs font-medium text-muted-foreground">Spouse Name</label>
@@ -681,27 +682,108 @@ const AddTenant = () => {
                             <label className="text-xs font-medium text-muted-foreground">Spouse Phone</label>
                             <p>{tenant.spouse.phone}</p>
                           </div>
-                          {tenant.spouse.employmentStatus && (
-                            <div>
-                              <label className="text-xs font-medium text-muted-foreground">Employment Status</label>
-                              <p className="capitalize">{tenant.spouse.employmentStatus}</p>
-                            </div>
-                          )}
-                          {tenant.spouse.employer && (
-                            <div>
-                              <label className="text-xs font-medium text-muted-foreground">Employer</label>
-                              <p className="text-sm">{tenant.spouse.employer}</p>
-                            </div>
-                          )}
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Spouse Employment</label>
+                            <p className="capitalize">{tenant.spouse.employmentStatus || 'N/A'}</p>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">Spouse Employer</label>
+                            <p>{tenant.spouse.employer || 'N/A'}</p>
+                          </div>
+                          <div className="md:col-span-3">
+                            <label className="text-xs font-medium text-muted-foreground">Spouse Notes</label>
+                            <p>{tenant.spouse.notes || 'N/A'}</p>
+                          </div>
                         </div>
                       </div>
                     )}
-                    {tenant.notes && (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Notes</label>
-                        <p className="text-sm">{tenant.notes}</p>
+
+                    {/* Lease Information */}
+                    <div>
+                      <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Lease Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Lease Start</label>
+                          <p>{tenant.leaseStartDate ? new Date(tenant.leaseStartDate).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Lease End</label>
+                          <p>{tenant.leaseEndDate ? new Date(tenant.leaseEndDate).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Monthly Rent</label>
+                          <p className="font-semibold">₹{Number(tenant.monthlyRent).toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Security Deposit</label>
+                          <p>{tenant.securityDeposit ? `₹${Number(tenant.securityDeposit).toLocaleString()}` : 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Payment Due Date</label>
+                          <p>{tenant.paymentDueDate ? `Day ${tenant.paymentDueDate} of month` : 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Notice Period</label>
+                          <p>{tenant.noticePeriod || 'N/A'}</p>
+                        </div>
+                        {/* Rent Schedule Table */}
+                        {tenant.rentSchedule && tenant.rentSchedule.length > 0 && (
+                          <div className="md:col-span-3 mt-2">
+                            <label className="text-xs font-medium text-muted-foreground mb-1 block">Rent Schedule</label>
+                            <div className="border rounded-md overflow-hidden w-full md:w-2/3">
+                              <table className="w-full text-sm">
+                                <thead className="bg-gray-100">
+                                  <tr>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Year</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Amount</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">From</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">To</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                  {tenant.rentSchedule.map((item, i) => (
+                                    <tr key={i} className="bg-white">
+                                      <td className="px-3 py-2">{item.year}</td>
+                                      <td className="px-3 py-2">₹{Number(item.amount).toLocaleString()}</td>
+                                      <td className="px-3 py-2">{item.fromDate ? new Date(item.fromDate).toLocaleDateString() : '-'}</td>
+                                      <td className="px-3 py-2">{item.toDate ? new Date(item.toDate).toLocaleDateString() : '-'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </div>
+
+                    {/* Background Information */}
+                    <div>
+                      <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Background Information</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="md:col-span-3">
+                          <label className="text-xs font-medium text-muted-foreground">Previous Address</label>
+                          <p>{tenant.previousAddress || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Employment Status</label>
+                          <p className="capitalize">{tenant.employmentStatus || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Employer/Company</label>
+                          <p>{tenant.employer || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Monthly Income</label>
+                          <p>{tenant.monthlyIncome ? `₹${Number(tenant.monthlyIncome).toLocaleString()}` : 'N/A'}</p>
+                        </div>
+                        <div className="md:col-span-3">
+                          <label className="text-xs font-medium text-muted-foreground">Additional Notes</label>
+                          <p>{tenant.notes || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+
                   </CardContent>
                 </Card>
               ))}
@@ -709,8 +791,8 @@ const AddTenant = () => {
           </div>
         )}
 
-        {/* Only show Add Tenant form if there are no existing tenants */}
-        {existingTenants.length === 0 && (
+        {/* Only show Add Tenant form if there are no existing tenants AND not in read-only mode */}
+        {existingTenants.length === 0 && !readOnly && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1159,7 +1241,7 @@ const AddTenant = () => {
           </div>
         )}
       </div>
-    </main>
+    </main >
   );
 };
 

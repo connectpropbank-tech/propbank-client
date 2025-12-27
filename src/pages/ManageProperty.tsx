@@ -3,7 +3,7 @@ import { Building2, Plus, Edit3, MessageSquare, MoreVertical, Users, UserPlus, E
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { auth } from "../firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
 import {
@@ -107,6 +107,36 @@ interface Property {
   userRole?: string; // 'owner' or 'tenant' - indicates the current user's relationship to the property
 }
 
+// Helper component to display tenant name from property details only
+const TenantNameDisplay = ({ tenant }: { tenant: TenantInfo }) => {
+  const [fetchedName, setFetchedName] = useState<string>("");
+
+  const displayName = `${tenant.firstName || ""} ${tenant.lastName || ""}`.trim();
+
+  // We rely on tenant.firstName/lastName being populated.
+  // We avoid fetching via API to ensure offline capability and speed.
+  // If name is missing, fallback to phone or legacy handling if needed.
+
+  if (displayName) {
+    return <span>{displayName}</span>;
+  }
+
+  // Fallback to phone if name is missing
+  if (tenant.phone) {
+    return <span>{tenant.phone}</span>;
+  }
+
+  if (fetchedName) {
+    return <span>{fetchedName} ({tenant.phone})</span>;
+  }
+
+  if (tenant.phone) {
+    return <span>{tenant.phone}</span>;
+  }
+
+  return <span>{tenant.email || "Unknown Tenant"}</span>;
+};
+
 const ManageProperty = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -174,7 +204,32 @@ const ManageProperty = () => {
       }
 
       // Fetch properties where user is a tenant
-      const userEmail = currentUser.email;
+      let userEmail = currentUser.email || "";
+
+      // Logic to get email: Auth Object -> Cookie -> Backend API
+      if (!userEmail) {
+        // Try getting from cookies first
+        const match = document.cookie.match(new RegExp('(^| )userEmail=([^;]+)'));
+        if (match) {
+          userEmail = match[2];
+        }
+      }
+
+      // If email is still missing (e.g. phone login and no cookie yet), fetch from backend user profile
+      if (!userEmail) {
+        try {
+          const userProfileResponse = await fetch(`${API_BASE_URL}/users/${currentUser.uid}`);
+          if (userProfileResponse.ok) {
+            const userProfile = await userProfileResponse.json();
+            if (userProfile.email) {
+              userEmail = userProfile.email;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch user profile for email lookup", e);
+        }
+      }
+
       const tenantResponse = await fetch(`${API_BASE_URL}/properties/tenant/?userEmail=${userEmail}`, {
         method: 'GET',
         headers: {
@@ -186,7 +241,6 @@ const ManageProperty = () => {
       if (tenantResponse.ok) {
         const tenantData = await tenantResponse.json();
         if (tenantData.success) {
-
           // Filter to only show active properties where user is tenant but NOT the owner
           tenant = (tenantData.properties || [])
             .filter((p: Property) => {
@@ -196,7 +250,6 @@ const ManageProperty = () => {
               return isActive && notOwnedByUser;
             })
             .map((p: Property) => ({ ...p, userRole: 'tenant' }));
-
         }
       }
 
@@ -273,6 +326,23 @@ const ManageProperty = () => {
   };
 
   const hasActiveFilters = searchQuery.trim() || selectedPropertyType || selectedListingType;
+
+  // Sort properties by latest timestamp
+  const sortedOwnedProperties = useMemo(() => {
+    return [...filteredOwnedProperties].sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return dateB - dateA; // Descending order
+    });
+  }, [filteredOwnedProperties]);
+
+  const sortedTenantProperties = useMemo(() => {
+    return [...filteredTenantProperties].sort((a, b) => {
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return dateB - dateA; // Descending order
+    });
+  }, [filteredTenantProperties]);
 
   const totalProperties = ownedProperties.length + tenantProperties.length;
   const totalFilteredProperties = filteredOwnedProperties.length + filteredTenantProperties.length;
@@ -442,9 +512,13 @@ const ManageProperty = () => {
     }
   };
 
-  const handleAddTenant = (propertyId: string) => {
-    // Navigate to add tenant page
-    navigate(`/add-tenant/${propertyId}`);
+  const handleAddTenant = (propertyId: string, readOnly = false) => {
+    // Navigate to add tenant page, passing view mode if readOnly is true
+    if (readOnly) {
+      navigate(`/add-tenant/${propertyId}?mode=view`);
+    } else {
+      navigate(`/add-tenant/${propertyId}`);
+    }
   };
 
   const handleAddBuyer = (propertyId: string) => {
@@ -816,8 +890,8 @@ const ManageProperty = () => {
                       /* Owned Properties Section */
                       <div className="space-y-4">
 
-                        {filteredOwnedProperties.length > 0 ? (
-                          filteredOwnedProperties.map((property, index) => (
+                        {sortedOwnedProperties.length > 0 ? (
+                          sortedOwnedProperties.map((property, index) => (
                             <Card key={property.id} className="hover:shadow-lg transition-shadow overflow-hidden">
                               <div className="flex flex-col sm:flex-row">
                                 {/* Property Image Thumbnail - Always show with fallback */}
@@ -858,7 +932,12 @@ const ManageProperty = () => {
                                           {/* Show active tenants on a separate line if property is rented out */}
                                           {property.tenants && property.tenants.length > 0 && (
                                             <p className="text-sm text-purple-600 font-medium mt-1">
-                                              Active Tenants: {property.tenants.map(t => t.firstName).join(", ")}
+                                              Active Tenants: {property.tenants.map((t, i) => (
+                                                <span key={t.id || i}>
+                                                  {i > 0 && ", "}
+                                                  <TenantNameDisplay tenant={t} />
+                                                </span>
+                                              ))}
                                             </p>
                                           )}
                                         </div>
@@ -881,7 +960,7 @@ const ManageProperty = () => {
                                           </DropdownMenuItem>
                                           <DropdownMenuSeparator />
                                           {property.listingType === 'rent' && (
-                                            <DropdownMenuItem onClick={() => handleAddTenant(property.id)}>
+                                            <DropdownMenuItem onClick={() => handleAddTenant(property.id, property.tenants && property.tenants.length > 0)}>
                                               {property.tenants && property.tenants.length > 0 ? (
                                                 <>
                                                   <Eye className="h-4 w-4 mr-2" />
@@ -1071,8 +1150,8 @@ const ManageProperty = () => {
                       /* Tenant Properties Section */
                       <div className="space-y-4">
 
-                        {filteredTenantProperties.length > 0 ? (
-                          filteredTenantProperties.map((property, index) => (
+                        {sortedTenantProperties.length > 0 ? (
+                          sortedTenantProperties.map((property, index) => (
                             <Card key={property.id} className="hover:shadow-lg transition-shadow overflow-hidden">
                               <div className="flex flex-col sm:flex-row">
                                 {/* Property Image Thumbnail - Always show with fallback */}

@@ -14,8 +14,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { auth } from "../firebase";
 import { User as FirebaseUser } from "firebase/auth";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { API_BASE_URL } from "../utils/config";
+import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { FurnishedChecklistModal } from "@/components/FurnishedChecklistModal";
 import { uploadBase64Image } from "../services/uploadService";
 
@@ -24,7 +25,7 @@ const formSchema = z.object({
   propertyTitle: z.string().min(1, "Property title is required"),
   propertyType: z.string().min(1, "Property type is required"),
   configuration: z.string().min(1, "Configuration is required"),
-  listingType: z.string().min(1, "Listing type is required"), // Sell or Rent
+  listingType: z.string().min(1, "Listing type is required"),
 
   // Unit Details (conditional based on property type)
   unitNumber: z.string().optional(),
@@ -37,27 +38,30 @@ const formSchema = z.object({
   constructedArea: z.string().optional(),
 
   // Tenant Information (conditional - required when property is rented)
-  tenantName: z.string().optional(),
+  tenantFirstName: z.string().optional(),
+  tenantLastName: z.string().optional(),
   tenantEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
-  personName: z.string().optional(),
   mobileNumber: z.string().optional(),
   primaryNo: z.string().optional(),
   ultNo: z.string().optional(),
-  emergencyContact: z.string().optional(),
+  tenantEmergencyContact: z.string().optional(),
 
   // Tenant Employment Details
-  employmentStatus: z.string().optional(),
-  employer: z.string().optional(),
+  tenantEmploymentStatus: z.string().optional(),
+  tenantEmployer: z.string().optional(),
+  tenantMonthlyIncome: z.string().optional(),
 
   // Tenant Spouse Information
-  isMarried: z.boolean().optional(),
-  spouseFirstName: z.string().optional(),
-  spouseLastName: z.string().optional(),
-  spouseEmail: z.string().optional(),
-  spousePhone: z.string().optional(),
-  spouseEmploymentStatus: z.string().optional(),
-  spouseEmployer: z.string().optional(),
-  spouseNotes: z.string().optional(),
+  tenantIsMarried: z.boolean().optional(),
+  tenantSpouse: z.object({
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    email: z.string().optional(),
+    phone: z.string().optional(),
+    employmentStatus: z.string().optional(),
+    employer: z.string().optional(),
+    notes: z.string().optional(),
+  }).optional(),
 
   // Pricing Details (conditional based on listing type)
   monthlyRent: z.string().optional(), // For rent
@@ -120,6 +124,14 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+interface UserInfo {
+  uid: string;
+  name: string;
+  email: string;
+  photoURL: string;
+  phoneNumber: string;
+}
+
 const getOrdinalSuffix = (i: number) => {
   const j = i % 10,
     k = i % 100;
@@ -147,6 +159,81 @@ const AddPropertyForm = () => {
   const [furnishedChecklist, setFurnishedChecklist] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isInternalUploading, setIsInternalUploading] = useState(false);
+
+  // User Search State
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [searchingUser, setSearchingUser] = useState(false);
+  const [searchError, setSearchError] = useState<string | undefined>(undefined);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const searchUserByPhone = async (phoneNumber: string) => {
+    if (!phoneNumber || phoneNumber.trim().length < 10) {
+      setUserInfo(null);
+      setSearchError(undefined);
+      setSearchingUser(false);
+      return;
+    }
+
+    setSearchingUser(true);
+    setSearchError(undefined);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/search?phone=${encodeURIComponent(phoneNumber)}`);
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        const user = data.user;
+        setUserInfo({
+          uid: user.uid,
+          name: user.name,
+          email: user.email,
+          photoURL: user.photoURL || '',
+          phoneNumber: user.phoneNumber
+        });
+
+        // Auto-fill form
+        const nameParts = user.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        form.setValue('tenantFirstName', firstName);
+        form.setValue('tenantLastName', lastName);
+        if (user.email) form.setValue('tenantEmail', user.email);
+
+        toast({
+          title: "User Found",
+          description: `Found user: ${user.name}`,
+        });
+      } else {
+        setUserInfo(null);
+        setSearchError(data.message || "User is not found. Please ask to sign up with our platform to continue.");
+        toast({
+          title: "User Not Found",
+          description: data.message || "User is not found. Please ask to sign up with our platform to continue.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      setUserInfo(null);
+      setSearchError("Failed to search user. Please try again.");
+    } finally {
+      setSearchingUser(false);
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, field: any) => {
+    const value = e.target.value;
+    field.onChange(e); // Update form state
+
+    // Debounce search
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      searchUserByPhone(value);
+    }, 1000);
+  };
 
   // Image handling functions
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,23 +392,31 @@ const AddPropertyForm = () => {
       plotArea: "",
       constructedArea: "",
       // Tenant Information
-      tenantName: "",
+      // Tenant Information
+      tenantFirstName: "",
+      tenantLastName: "",
       tenantEmail: "",
-      personName: "",
       mobileNumber: "",
       primaryNo: "",
       ultNo: "",
-      emergencyContact: "",
-      employmentStatus: "",
-      employer: "",
-      isMarried: false,
-      spouseFirstName: "",
-      spouseLastName: "",
-      spouseEmail: "",
-      spousePhone: "",
-      spouseEmploymentStatus: "",
-      spouseEmployer: "",
-      spouseNotes: "",
+      tenantEmergencyContact: "",
+
+      // Employment
+      tenantEmploymentStatus: "",
+      tenantEmployer: "",
+      tenantMonthlyIncome: "",
+
+      // Spouse
+      tenantIsMarried: false,
+      tenantSpouse: {
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        employmentStatus: "",
+        employer: "",
+        notes: "",
+      },
       // Pricing
       monthlyRent: "",
       sellingPrice: "",
@@ -384,10 +479,19 @@ const AddPropertyForm = () => {
 
       // Validate tenant details for rented properties
       if (data.listingType === "rent" && data.rentalStatus === "rented") {
-        if (!data.tenantName || data.tenantName.trim() === "") {
+        if (!data.tenantFirstName || data.tenantFirstName.trim() === "") {
           toast({
             title: "Missing Tenant Information",
-            description: "Please enter the tenant name for rented properties.",
+            description: "Please enter the tenant's first name for rented properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data.tenantLastName || data.tenantLastName.trim() === "") {
+          toast({
+            title: "Missing Tenant Information",
+            description: "Please enter the tenant's last name for rented properties.",
             variant: "destructive",
           });
           return;
@@ -429,6 +533,15 @@ const AddPropertyForm = () => {
           });
           return;
         }
+
+        if (!data.paymentDueDate || data.paymentDueDate.trim() === "") {
+          toast({
+            title: "Missing Payment Due Date",
+            description: "Please enter the payment due date for rented properties.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // Get current user
@@ -448,14 +561,16 @@ const AddPropertyForm = () => {
       // Prepare property data for backend API
       const propertyData = {
         ...data,
+        // Explicitly map tenant names to ensure they are sent
+        tenantFirstName: data.tenantFirstName,
+        tenantLastName: data.tenantLastName,
+        // Add legacy tenantName for compatibility
+        tenantName: `${data.tenantFirstName} ${data.tenantLastName}`.trim(),
+
         images: uploadedImages, // Ensure images from state are included
         furnishedChecklist: checkedFurnishedItems, // Only include checked items
         ownerUID: currentUser.uid,
       };
-
-      // Debug log
-      // Debug log
-
       console.log("Submitting property data:", propertyData);
 
       // Send to backend API
@@ -787,19 +902,37 @@ const AddPropertyForm = () => {
                       </p>
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name="tenantName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tenant Name <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter tenant full name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="md:col-span-1">
+                      <FormField
+                        control={form.control}
+                        name="tenantFirstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First Name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Tenant First Name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <FormField
+                        control={form.control}
+                        name="tenantLastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Tenant Last Name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
                     <FormField
                       control={form.control}
@@ -815,43 +948,73 @@ const AddPropertyForm = () => {
                       )}
                     />
 
+
+
                     <FormField
                       control={form.control}
-                      name="personName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Person Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter contact person name" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField control={form.control} name="mobileNumber"
+                      name="mobileNumber"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Mobile Number <span className="text-red-500">*</span></FormLabel>
                           <FormControl>
-                            <Input placeholder="Enter mobile number" {...field} />
+                            <div className="relative">
+                              <Input
+                                placeholder="Enter mobile number"
+                                {...field}
+                                onChange={(e) => handlePhoneChange(e, field)}
+                              />
+                              {searchingUser && (
+                                <div className="absolute right-3 top-2.5">
+                                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+
+                          {/* User Found Card */}
+                          {userInfo && (
+                            <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md flex items-start gap-3">
+                              <div className="mt-0.5">
+                                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              </div>
+                              <div className="text-sm">
+                                <p className="font-medium text-green-800">User Found: {userInfo.name}</p>
+                                <p className="text-green-700">{userInfo.email}</p>
+                                <p className="text-green-600 text-xs mt-1">Details auto-filled</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* User Not Found Message */}
+                          {searchError && !searchingUser && field.value && field.value.length >= 10 && (
+                            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-3">
+                              <div className="mt-0.5">
+                                <XCircle className="h-5 w-5 text-red-600" />
+                              </div>
+                              <div className="text-sm">
+                                <p className="font-medium text-red-800">User Not Found</p>
+                                <p className="text-red-700">{searchError}</p>
+                              </div>
+                            </div>
+                          )}
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField control={form.control} name="tenantEmergencyContact"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Emergency Contact</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Name and Phone" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    <FormField control={form.control} name="emergencyContact"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Emergency Contact</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Emergency contact name and phone" {...field} value={field.value || ""} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+
 
                     {/* Employment Details Section */}
                     <div className="lg:col-span-3 mt-6 pt-4 border-t">
@@ -863,7 +1026,7 @@ const AddPropertyForm = () => {
 
                     <FormField
                       control={form.control}
-                      name="employmentStatus"
+                      name="tenantEmploymentStatus"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Employment Status</FormLabel>
@@ -886,7 +1049,7 @@ const AddPropertyForm = () => {
                       )}
                     />
 
-                    <FormField control={form.control} name="employer"
+                    <FormField control={form.control} name="tenantEmployer"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Employer/Company</FormLabel>
@@ -898,11 +1061,23 @@ const AddPropertyForm = () => {
                       )}
                     />
 
+                    <FormField control={form.control} name="tenantMonthlyIncome"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Monthly Income</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Monthly Income" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     {/* Spouse Information Section */}
                     <div className="lg:col-span-3 mt-6 pt-4 border-t">
                       <FormField
                         control={form.control}
-                        name="isMarried"
+                        name="tenantIsMarried"
                         render={({ field }) => (
                           <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                             <FormControl>
@@ -920,7 +1095,7 @@ const AddPropertyForm = () => {
                     </div>
 
                     {/* Spouse Details - Only show when isMarried is true */}
-                    {form.watch("isMarried") && (
+                    {form.watch("tenantIsMarried") && (
                       <>
                         <div className="lg:col-span-3 p-4 bg-slate-50 rounded-lg border">
                           <h4 className="text-md font-medium mb-4 text-gray-700 flex items-center gap-2">
@@ -928,7 +1103,7 @@ const AddPropertyForm = () => {
                             Spouse Information
                           </h4>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="spouseFirstName"
+                            <FormField control={form.control} name="tenantSpouse.firstName"
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Spouse First Name <span className="text-red-500">*</span></FormLabel>
@@ -940,7 +1115,7 @@ const AddPropertyForm = () => {
                               )}
                             />
 
-                            <FormField control={form.control} name="spouseLastName"
+                            <FormField control={form.control} name="tenantSpouse.lastName"
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Spouse Last Name <span className="text-red-500">*</span></FormLabel>
@@ -952,7 +1127,7 @@ const AddPropertyForm = () => {
                               )}
                             />
 
-                            <FormField control={form.control} name="spouseEmail"
+                            <FormField control={form.control} name="tenantSpouse.email"
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Spouse Email</FormLabel>
@@ -964,7 +1139,7 @@ const AddPropertyForm = () => {
                               )}
                             />
 
-                            <FormField control={form.control} name="spousePhone"
+                            <FormField control={form.control} name="tenantSpouse.phone"
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Spouse Phone <span className="text-red-500">*</span></FormLabel>
@@ -978,7 +1153,7 @@ const AddPropertyForm = () => {
 
                             <FormField
                               control={form.control}
-                              name="spouseEmploymentStatus"
+                              name="tenantSpouse.employmentStatus"
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Spouse Employment Status</FormLabel>
@@ -1002,7 +1177,7 @@ const AddPropertyForm = () => {
                               )}
                             />
 
-                            <FormField control={form.control} name="spouseEmployer"
+                            <FormField control={form.control} name="tenantSpouse.employer"
                               render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>Spouse Employer/Company</FormLabel>
@@ -1015,7 +1190,7 @@ const AddPropertyForm = () => {
                             />
 
                             <div className="md:col-span-2">
-                              <FormField control={form.control} name="spouseNotes"
+                              <FormField control={form.control} name="tenantSpouse.notes"
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel>Spouse Additional Notes</FormLabel>
@@ -1036,6 +1211,29 @@ const AddPropertyForm = () => {
                     <div className="lg:col-span-3 mt-6 pt-4 border-t">
                       <h4 className="text-md font-medium mb-4 text-gray-700">Agreement Details</h4>
                     </div>
+
+                    <FormField
+                      control={form.control}
+                      name="paymentDueDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Payment Due Date (Day of Month) <span className="text-red-500">*</span></FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="31"
+                              placeholder="e.g., 5 (for 5th of each month)"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Day of the month when rent is due
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
                     <FormField
                       control={form.control}

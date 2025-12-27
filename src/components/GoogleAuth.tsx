@@ -49,7 +49,10 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
 
       const name = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || "User";
 
-      // Only send fields that we want to update/ensure exist
+      // Store in cookies
+      document.cookie = `userEmail=${email}; path=/; max-age=86400; SameSite=Strict`; // 1 day
+      document.cookie = `userName=${name}; path=/; max-age=86400; SameSite=Strict`;
+
       const updateData = {
         email: email,
         name: name,
@@ -139,6 +142,10 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
           data.user.role &&
           data.user.role.trim() !== "";
 
+        if (hasCompleteData) {
+          document.cookie = `userPhone=${data.user.phoneNumber}; path=/; max-age=86400; SameSite=Strict`;
+        }
+
         // console.log("User registration check:", {
         //   hasUser: !!data.user,
         //   hasPhone: !!(data.user?.phoneNumber),
@@ -225,6 +232,8 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
           const isRegistrationComplete = await checkUserPhoneNumber(user.uid);
 
           if (isRegistrationComplete) {
+            // Store phone in cookie
+            document.cookie = `userPhone=${phoneNumber}; path=/; max-age=86400; SameSite=Strict`;
             setShowPhoneInput(false);
             setUserLoggedIn(true);
 

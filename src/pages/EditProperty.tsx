@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, Building2, CheckSquare, Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, CheckCircle2, CheckSquare, Loader2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -18,6 +18,14 @@ import { API_BASE_URL } from "../utils/config";
 import { FurnishedChecklistModal } from "@/components/FurnishedChecklistModal";
 import { uploadBase64Image } from "@/services/uploadService";
 
+interface UserInfo {
+  uid: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  photoURL?: string;
+}
+
 const formSchema = z.object({
   propertyTitle: z.string().min(1, "Property title is required"),
   propertyType: z.string().min(1, "Property type is required"),
@@ -31,7 +39,8 @@ const formSchema = z.object({
   constructedArea: z.string().optional(),
 
   // Tenant Information
-  tenantName: z.string().optional(),
+  tenantFirstName: z.string().optional(),
+  tenantLastName: z.string().optional(),
   tenantEmail: z.string().optional(),
   personName: z.string().optional(),
   mobileNumber: z.string().optional(),
@@ -147,6 +156,81 @@ const EditProperty = () => {
   const [furnishedChecklist, setFurnishedChecklist] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
+  // User Search State
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [searchingUser, setSearchingUser] = useState(false);
+  const [searchError, setSearchError] = useState<string | undefined>(undefined);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const searchUserByPhone = async (phoneNumber: string) => {
+    if (!phoneNumber || phoneNumber.trim().length < 10) {
+      setUserInfo(null);
+      setSearchError(undefined);
+      setSearchingUser(false);
+      return;
+    }
+
+    setSearchingUser(true);
+    setSearchError(undefined);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/search?phone=${encodeURIComponent(phoneNumber)}`);
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        const user = data.user;
+        setUserInfo({
+          uid: user.uid,
+          name: user.name,
+          email: user.email,
+          photoURL: user.photoURL || '',
+          phoneNumber: user.phoneNumber
+        });
+
+        // Auto-fill form
+        const nameParts = user.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        form.setValue('tenantFirstName', firstName);
+        form.setValue('tenantLastName', lastName);
+        if (user.email) form.setValue('tenantEmail', user.email);
+
+        toast({
+          title: "User Found",
+          description: `Found user: ${user.name}`,
+        });
+      } else {
+        setUserInfo(null);
+        setSearchError(data.message || "User is not found. Please ask to sign up with our platform to continue.");
+        toast({
+          title: "User Not Found",
+          description: data.message || "User is not found. Please ask to sign up with our platform to continue.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      setUserInfo(null);
+      setSearchError("Failed to search user. Please try again.");
+    } finally {
+      setSearchingUser(false);
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>, field: any) => {
+    const value = e.target.value;
+    field.onChange(e); // Update form state
+
+    // Debounce search
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      searchUserByPhone(value);
+    }, 1000);
+  };
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -161,8 +245,11 @@ const EditProperty = () => {
       plotArea: "",
       constructedArea: "",
 
+
+
       // Tenant Information
-      tenantName: "",
+      tenantFirstName: "",
+      tenantLastName: "",
       personName: "",
       mobileNumber: "",
       primaryNo: "",
@@ -237,7 +324,8 @@ const EditProperty = () => {
           constructedArea: propertyData.constructedArea || "",
 
           // Tenant Information - Prefer active tenant data, fallback to property top-level
-          tenantName: activeTenant?.firstName ? `${activeTenant.firstName} ${activeTenant.lastName}`.trim() : (propertyData.tenantName || ""),
+          tenantFirstName: activeTenant?.firstName || (propertyData.tenantName ? propertyData.tenantName.split(' ')[0] : ""),
+          tenantLastName: activeTenant?.lastName || (propertyData.tenantName ? propertyData.tenantName.split(' ').slice(1).join(' ') : ""),
           tenantEmail: activeTenant?.email || propertyData.tenantEmail || "",
           personName: propertyData.personName || "",
           mobileNumber: activeTenant?.phone || propertyData.mobileNumber || "",
@@ -320,6 +408,19 @@ const EditProperty = () => {
       setLoading(false);
     }
   };
+
+  // Auto-fetch user details when property is loaded and has a phone number
+  useEffect(() => {
+    if (property && property.mobileNumber && property.mobileNumber.length >= 10) {
+      searchUserByPhone(property.mobileNumber);
+    } else if (property && property.tenants && property.tenants.length > 0) {
+      // Check active tenant phone
+      const activeTenant = property.tenants[property.tenants.length - 1];
+      if (activeTenant && activeTenant.phone && activeTenant.phone.length >= 10) {
+        searchUserByPhone(activeTenant.phone);
+      }
+    }
+  }, [property]);
 
   // Image handling functions
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -485,33 +586,57 @@ const EditProperty = () => {
 
       // Update the active tenant in the tenants array if it exists
       let updatedTenants = property?.tenants || [];
-      if (updatedTenants.length > 0 && data.listingType === "rent") {
-        // Assume last tenant is active
-        const lastIndex = updatedTenants.length - 1;
-        const activeTenant = { ...updatedTenants[lastIndex] };
 
-        // Update tenant fields
-        const nameParts = (data.tenantName || "").split(" ");
-        activeTenant.firstName = nameParts[0] || activeTenant.firstName;
-        activeTenant.lastName = nameParts.slice(1).join(" ") || activeTenant.lastName;
-        activeTenant.email = data.tenantEmail || activeTenant.email;
-        activeTenant.phone = data.mobileNumber || activeTenant.phone;
-        activeTenant.emergencyContact = data.emergencyContact || activeTenant.emergencyContact;
+      if (data.listingType === "rent") {
+        if (updatedTenants.length === 0) {
+          // Create new active tenant if none exists
+          const newTenant = {
+            id: Date.now().toString(),
+            firstName: data.tenantFirstName || "",
+            lastName: data.tenantLastName || "",
+            email: data.tenantEmail || "",
+            phone: data.mobileNumber || "",
+            emergencyContact: data.emergencyContact || "",
+            leaseStartDate: data.agreementStartDate || "",
+            leaseEndDate: data.agreementEndDate || "",
+            monthlyRent: data.monthlyRent || "",
+            paymentDueDate: data.paymentDueDate || "",
+            securityDeposit: data.securityDeposit || "",
+            noticePeriod: data.noticePeriod || "",
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          updatedTenants = [newTenant];
+        } else {
+          // Update existing active tenant
+          const lastIndex = updatedTenants.length - 1;
+          const activeTenant = { ...updatedTenants[lastIndex] };
 
-        // Update lease fields
-        activeTenant.monthlyRent = data.monthlyRent || activeTenant.monthlyRent;
-        activeTenant.securityDeposit = data.securityDeposit || activeTenant.securityDeposit;
-        activeTenant.paymentDueDate = data.paymentDueDate || activeTenant.paymentDueDate;
-        activeTenant.leaseStartDate = data.agreementStartDate || activeTenant.leaseStartDate;
-        activeTenant.leaseEndDate = data.agreementEndDate || activeTenant.leaseEndDate;
-        activeTenant.noticePeriod = data.noticePeriod || activeTenant.noticePeriod;
+          // Update tenant fields
+          activeTenant.firstName = data.tenantFirstName || activeTenant.firstName;
+          activeTenant.lastName = data.tenantLastName || activeTenant.lastName;
+          activeTenant.email = data.tenantEmail || activeTenant.email;
+          activeTenant.phone = data.mobileNumber || activeTenant.phone;
+          activeTenant.emergencyContact = data.emergencyContact || activeTenant.emergencyContact;
 
-        updatedTenants[lastIndex] = activeTenant;
+          // Update lease fields
+          activeTenant.monthlyRent = data.monthlyRent || activeTenant.monthlyRent;
+          activeTenant.securityDeposit = data.securityDeposit || activeTenant.securityDeposit;
+          activeTenant.paymentDueDate = data.paymentDueDate || activeTenant.paymentDueDate;
+          activeTenant.leaseStartDate = data.agreementStartDate || activeTenant.leaseStartDate;
+          activeTenant.leaseEndDate = data.agreementEndDate || activeTenant.leaseEndDate;
+          activeTenant.noticePeriod = data.noticePeriod || activeTenant.noticePeriod;
+
+          updatedTenants[lastIndex] = activeTenant;
+        }
       }
 
       const updateData = {
         ...restData,
         title: propertyTitle, // Backend expects 'title' field
+        tenantName: `${data.tenantFirstName || ""} ${data.tenantLastName || ""}`.trim(), // Determine legacy name
+        personName: `${data.tenantFirstName || ""} ${data.tenantLastName || ""}`.trim(), // Also set personName just in case
         images: uploadedImages, // Ensure images from state are included
         furnishedChecklist: checkedFurnishedItems, // Only include checked items
         ownerUID: currentUser.uid,
@@ -571,8 +696,8 @@ const EditProperty = () => {
     const isCurrentlyRented = property.isRented || hasActiveTenant || hasTenantsInArray || hasActiveAgreement;
     const isCurrentlySold = property.isSold;
 
-    // Allow editing for rented properties, but not sold ones
-    return !isCurrentlySold;
+    // Disallow editing for both rented and sold properties
+    return !isCurrentlySold && !isCurrentlyRented;
   };
 
   const getPropertyStatusMessage = () => {
@@ -586,7 +711,9 @@ const EditProperty = () => {
     if (isCurrentlySold) {
       return "This property has been sold and cannot be edited.";
     }
-    // Rented properties can now be edited
+    if (isCurrentlyRented) {
+      return "This property is currently rented and cannot be edited.";
+    }
     return "";
   };
 
@@ -748,78 +875,131 @@ const EditProperty = () => {
                       <h3 className="text-lg font-semibold mb-6">Tenant Information</h3>
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name="tenantName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tenant Name</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter tenant name"
-                              disabled={!isPropertyEditable()}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="lg:col-span-2">
+                      <FormField
+                        control={form.control}
+                        name="mobileNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input
+                                  placeholder="Enter mobile number to search user"
+                                  disabled={!isPropertyEditable()}
+                                  {...field}
+                                  onChange={(e) => handlePhoneChange(e, field)}
+                                />
+                                {searchingUser && (
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name="tenantEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tenant Email</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter tenant email"
-                              type="email"
-                              disabled={!isPropertyEditable()}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                      {/* User Search Feedback */}
+                      {userInfo && (
+                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-md flex items-start gap-3">
+                          <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-green-800">User Found</p>
+                            <p className="text-xs text-green-700">{userInfo.name} ({userInfo.email})</p>
+                          </div>
+                        </div>
                       )}
-                    />
 
-                    <FormField
-                      control={form.control}
-                      name="mobileNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter phone number"
-                              disabled={!isPropertyEditable()}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                      {searchError && (
+                        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md flex items-start gap-3">
+                          <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
+                          <div>
+                            <p className="text-sm font-medium text-red-800">User Not Found</p>
+                            <p className="text-xs text-red-700">{searchError}</p>
+                          </div>
+                        </div>
                       )}
-                    />
+                    </div>
 
-                    <FormField
-                      control={form.control}
-                      name="emergencyContact"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Emergency Contact</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter emergency contact"
-                              disabled={!isPropertyEditable()}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:col-span-2">
+                      <FormField
+                        control={form.control}
+                        name="tenantFirstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First Name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter first name"
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="tenantLastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter last name"
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:col-span-2">
+                      <FormField
+                        control={form.control}
+                        name="tenantEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tenant Email</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter tenant email"
+                                type="email"
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="emergencyContact"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Emergency Contact</FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="Enter emergency contact"
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -1218,7 +1398,7 @@ const EditProperty = () => {
         }}
         initialChecklist={furnishedChecklist}
       />
-    </main>
+    </main >
   );
 };
 
