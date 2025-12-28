@@ -37,15 +37,15 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
         if (!hasPhone) {
           // Check if we have pre-filled data from the login form
           if (phoneRef.current && roleRef.current) {
-            const saved = await saveUserToBackend(firebaseUser, phoneRef.current, roleRef.current);
-            if (saved) {
-              // Verify again to be sure
-              const confirmed = await checkUserPhoneNumber(firebaseUser.uid);
-              if (confirmed) {
-                setUserLoggedIn(true);
-                syncUserData(firebaseUser);
-                return;
-              }
+            const savedUser = await saveUserToBackend(firebaseUser, phoneRef.current, roleRef.current);
+            if (savedUser) {
+              // Trust the successful save directly - skip redundant network check
+              // Set cookie manually
+              document.cookie = `userPhone=${savedUser.phoneNumber}; path=/; max-age=86400; SameSite=Strict`;
+
+              setUserLoggedIn(true);
+              syncUserData(firebaseUser);
+              return;
             }
           }
           // If no pre-filled data or save failed, show manual input modal
@@ -200,6 +200,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
         role: role,
       };
 
+
       // First try to update existing user
       let response = await fetch(`${API_BASE_URL}/users/${firebaseUser.uid}`, {
         method: 'PUT',
@@ -213,16 +214,17 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
       const data = await response.json();
 
       if (data.success || response.ok) {
-        return true;
+        // Return the user data if available (or construct it from input if simpler)
+        return data.user || userData;
       } else {
         console.error("Failed to save user:", data);
         alert("Failed to save user data. Please try again.");
-        return false;
+        return null;
       }
     } catch (error) {
       console.error("Error saving user:", error);
       alert("Error connecting to server. Please check your connection.");
-      return false;
+      return null;
     }
   };
 
