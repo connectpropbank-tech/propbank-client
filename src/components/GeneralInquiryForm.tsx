@@ -17,9 +17,9 @@ interface GeneralInquiryFormProps {
 const GeneralInquiryForm = ({ onSuccess }: GeneralInquiryFormProps) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const [formData, setFormData] = useState({
-    listingType: "", // buy or rent
+    listingType: "", // buy, rent, or sell
     propertyType: "", // residential, commercial, industrial
     name: "",
     email: "",
@@ -35,10 +35,10 @@ const GeneralInquiryForm = ({ onSuccess }: GeneralInquiryFormProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validation
     if (!formData.listingType) {
-      toast({ title: "Error", description: "Please select Buy or Rent", variant: "destructive" });
+      toast({ title: "Error", description: "Please select Buy, Rent or Sell", variant: "destructive" });
       return;
     }
     if (!formData.propertyType) {
@@ -66,12 +66,12 @@ const GeneralInquiryForm = ({ onSuccess }: GeneralInquiryFormProps) => {
 
     try {
       const currentUser = auth.currentUser;
-      
+
       // Prepare notification payload for admin
       const notificationPayload = {
         type: "general_inquiry",
         title: "New General Inquiry",
-        message: `${formData.name} is interested in ${formData.listingType === 'buy' ? 'buying' : 'renting'} a ${formData.propertyType} property.${formData.requestVisit ? ` Requested visit on ${formData.visitDate} at ${formData.visitTime}.` : ''}`,
+        message: `${formData.name} is interested in ${formData.listingType === 'buy' ? 'buying' : formData.listingType === 'sell' ? 'selling' : 'renting'} a ${formData.propertyType} property.${formData.requestVisit ? ` Requested visit on ${formData.visitDate} at ${formData.visitTime}.` : ''}`,
         // Inquiry details
         inquiryType: formData.listingType,
         propertyType: formData.propertyType,
@@ -109,7 +109,7 @@ const GeneralInquiryForm = ({ onSuccess }: GeneralInquiryFormProps) => {
           title: "Inquiry Submitted!",
           description: "We will contact you soon regarding your inquiry.",
         });
-        
+
         // Reset form
         setFormData({
           listingType: "",
@@ -121,13 +121,13 @@ const GeneralInquiryForm = ({ onSuccess }: GeneralInquiryFormProps) => {
           visitDate: "",
           visitTime: "",
         });
-        
+
         onSuccess?.();
       } else {
         throw new Error(data.message || "Failed to submit inquiry");
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to submit inquiry. Please try again.",
@@ -167,6 +167,15 @@ const GeneralInquiryForm = ({ onSuccess }: GeneralInquiryFormProps) => {
                 onClick={() => handleInputChange("listingType", "rent")}
               >
                 Rent
+              </Button>
+              <Button
+                type="button"
+                variant={formData.listingType === "sell" ? "default" : "outline"}
+                size="sm"
+                className="flex-1"
+                onClick={() => handleInputChange("listingType", "sell")}
+              >
+                Sell
               </Button>
             </div>
           </div>
@@ -294,9 +303,9 @@ const GeneralInquiryForm = ({ onSuccess }: GeneralInquiryFormProps) => {
           )}
 
           {/* Submit Button */}
-          <Button 
-            type="submit" 
-            className="w-full mt-4" 
+          <Button
+            type="submit"
+            className="w-full mt-4"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
