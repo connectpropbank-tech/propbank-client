@@ -174,9 +174,9 @@ const AdminPortal = () => {
       const response = await fetch(`${API_BASE_URL}/users`);
       if (response.ok) {
         const data = await response.json();
-        // Filter for agents
-        const agentUsers = data.data?.filter((u: Agent) => u.role === "agent") || [];
-        setAgents(agentUsers);
+        // Show all users (agents and individuals)
+        const allUsers = data.data || [];
+        setAgents(allUsers);
       }
     } catch (error) {
 
@@ -1296,8 +1296,8 @@ const AdminPortal = () => {
         <TabsContent value="agents" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Agents</CardTitle>
-              <CardDescription>Manage agents in the system</CardDescription>
+              <CardTitle>Users</CardTitle>
+              <CardDescription>All registered users (individuals &amp; agents)</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -1309,7 +1309,7 @@ const AdminPortal = () => {
               ) : agents.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No agents found</p>
+                  <p>No users found</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1326,9 +1326,14 @@ const AdminPortal = () => {
                               )}
                             </div>
                           </div>
-                          <Badge variant={agent.isActive ? "default" : "secondary"}>
-                            {agent.isActive ? "Active" : "Inactive"}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="capitalize text-xs">
+                              {agent.role || "individual"}
+                            </Badge>
+                            <Badge variant={agent.isActive ? "default" : "secondary"}>
+                              {agent.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
