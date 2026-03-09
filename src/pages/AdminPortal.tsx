@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Users, AlertCircle, Archive, CheckCircle2, Phone, Mail, User as UserIcon, X, Upload, ImageIcon } from "lucide-react";
+import { Building2, Users, AlertCircle, Archive, CheckCircle2, Phone, Mail, User as UserIcon, X, Upload, ImageIcon, MessageSquare, Save, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { uploadBase64Image } from "@/services/uploadService";
 
@@ -44,6 +44,7 @@ interface AdminNotification {
   isRead: boolean;
   resolvedAt?: string; // Timestamp when marked as resolved
   priority: string;
+  adminRemarks?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -86,7 +87,7 @@ const AdminPortal = () => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Site settings state
   const [siteSettings, setSiteSettings] = useState<SiteSettings>({
     quote: "Manage your properties and plan visits with ease",
@@ -119,7 +120,7 @@ const AdminPortal = () => {
         await fetchSiteSettings();
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to load data. Please try again.",
@@ -137,19 +138,19 @@ const AdminPortal = () => {
         const data = await response.json();
         // Filter for all notification types that are unread (isRead: false)
         // Double-check isRead is false as a safety measure
-        const serviceRequests = Array.isArray(data) 
-          ? data.filter((n: AdminNotification) => 
-              (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry") && n.isRead === false
-            )
+        const serviceRequests = Array.isArray(data)
+          ? data.filter((n: AdminNotification) =>
+            (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry") && n.isRead === false
+          )
           : [];
-        
+
         setNotifications(serviceRequests);
       } else {
-        
+
         setNotifications([]);
       }
     } catch (error) {
-      
+
       setNotifications([]);
     }
   };
@@ -164,7 +165,7 @@ const AdminPortal = () => {
         setProperties(props);
       }
     } catch (error) {
-      
+
     }
   };
 
@@ -178,7 +179,7 @@ const AdminPortal = () => {
         setAgents(agentUsers);
       }
     } catch (error) {
-      
+
     }
   };
 
@@ -188,17 +189,17 @@ const AdminPortal = () => {
       if (response.ok) {
         const data = await response.json();
         // Filter for read/completed notifications
-        const archived = Array.isArray(data) 
+        const archived = Array.isArray(data)
           ? data.filter((n: AdminNotification) => n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry"))
           : [];
         // Sort by timestamp, newest first
-        archived.sort((a: AdminNotification, b: AdminNotification) => 
+        archived.sort((a: AdminNotification, b: AdminNotification) =>
           new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
         setNotifications(archived);
       }
     } catch (error) {
-      
+
     }
   };
 
@@ -221,7 +222,7 @@ const AdminPortal = () => {
         }
       }
     } catch (error) {
-      
+
     }
   };
 
@@ -230,28 +231,28 @@ const AdminPortal = () => {
     setSavingSettings(true);
     try {
       let finalBannerImages = [...(siteSettings.bannerImages || [])];
-      
+
       // Upload all pending banner images in one batch
       if (pendingBannerImages.length > 0) {
         setUploadingBanner(true);
         const uploadedUrls: string[] = [];
-        
+
         // Upload all images
         for (let i = 0; i < pendingBannerImages.length; i++) {
           const url = await uploadBase64Image(pendingBannerImages[i], 'banners', `banner-${Date.now()}-${i}`);
           uploadedUrls.push(url);
         }
-        
+
         finalBannerImages = [...finalBannerImages, ...uploadedUrls];
         setUploadingBanner(false);
       }
-      
+
       // Prepare settings with uploaded banner images
       const settingsToSave = {
         ...siteSettings,
         bannerImages: finalBannerImages,
       };
-      
+
       const response = await fetch(`${API_BASE_URL}/admin/site-settings`, {
         method: "PUT",
         headers: {
@@ -265,10 +266,10 @@ const AdminPortal = () => {
         setSiteSettings(settingsToSave);
         // Clear pending images after successful save
         setPendingBannerImages([]);
-        
+
         toast({
           title: "Settings Updated",
-          description: pendingBannerImages.length > 0 
+          description: pendingBannerImages.length > 0
             ? `Site settings updated. ${pendingBannerImages.length} banner image(s) uploaded.`
             : "Site settings have been updated successfully.",
         });
@@ -276,7 +277,7 @@ const AdminPortal = () => {
         throw new Error("Failed to update settings");
       }
     } catch (error) {
-      
+
       setUploadingBanner(false);
       toast({
         title: "Error",
@@ -295,29 +296,29 @@ const AdminPortal = () => {
 
     try {
       const newBase64Images: string[] = [];
-      
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const reader = new FileReader();
-        
+
         const base64 = await new Promise<string>((resolve, reject) => {
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
-        
+
         newBase64Images.push(base64);
       }
-      
+
       // Store as pending images (will be uploaded on save)
       setPendingBannerImages(prev => [...prev, ...newBase64Images]);
-      
+
       toast({
         title: "Images Added",
         description: `${newBase64Images.length} image(s) added. Click Save Settings to upload and apply.`,
       });
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to read image files. Please try again.",
@@ -355,15 +356,15 @@ const AdminPortal = () => {
       if (response.ok) {
         toast({
           title: "Success",
-          description: checked 
-            ? "Request marked as complete and moved to archive" 
+          description: checked
+            ? "Request marked as complete and moved to archive"
             : "Request marked as incomplete"
         });
-        
+
         // Update local state immediately for better UX
-        setNotifications(prev => 
-          prev.map(n => 
-            n.id === notificationId 
+        setNotifications(prev =>
+          prev.map(n =>
+            n.id === notificationId
               ? { ...n, isRead: checked }
               : n
           ).filter(n => {
@@ -375,7 +376,7 @@ const AdminPortal = () => {
             return true;
           })
         );
-        
+
         // If we're in archive tab, also refresh to show the newly completed item
         if (activeTab === "archive") {
           await fetchArchivedNotifications();
@@ -384,10 +385,49 @@ const AdminPortal = () => {
         throw new Error("Failed to mark as complete");
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to mark request as complete. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleSaveRemarks = async (notificationId: string, remarks: string) => {
+    setUpdating(notificationId);
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/notifications/${notificationId}/remarks`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ remarks }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Admin remarks updated successfully",
+        });
+
+        // Update local state
+        setNotifications(prev =>
+          prev.map(n =>
+            n.id === notificationId
+              ? { ...n, adminRemarks: remarks }
+              : n
+          )
+        );
+      } else {
+        throw new Error("Failed to update remarks");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update remarks. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -465,7 +505,7 @@ const AdminPortal = () => {
                               )}
                               {(notification.type === "agreement_termination" || notification.type === "agreement_renewal") && (
                                 <p className="text-sm text-muted-foreground mt-1">
-                                  {notification.type === "agreement_termination" 
+                                  {notification.type === "agreement_termination"
                                     ? "An agreement has been terminated. See details below."
                                     : "An agreement renewal request has been submitted. See details below."}
                                 </p>
@@ -506,17 +546,17 @@ const AdminPortal = () => {
                                 </p>
                               )}
                             </div>
-                            
+
                             {/* For Property Enquiry: Show User, Owner, and Property details in separate sections */}
                             {notification.type === "property_enquiry" ? (() => {
                               // Parse user details from message for backwards compatibility with old notifications
                               let parsedUserName = notification.userName;
                               let parsedUserEmail = notification.userEmail;
                               let parsedUserPhone = notification.userPhone;
-                              
+
                               // If structured fields are missing or empty, try to parse from message for backwards compatibility
                               const message = notification.message || '';
-                              
+
                               // Parse user name
                               if (!parsedUserName || parsedUserName.trim() === '') {
                                 // Try format 1: "User {name} is interested"
@@ -524,158 +564,158 @@ const AdminPortal = () => {
                                 if (nameMatch) {
                                   parsedUserName = nameMatch[1]?.trim();
                                 }
-                                
+
                                 // Try format 2: "- Name: {name}"
                                 if (!parsedUserName || parsedUserName.trim() === '') {
                                   nameMatch = message.match(/Name:\s*([^\n\-]+)/i);
                                   if (nameMatch) parsedUserName = nameMatch[1]?.trim();
                                 }
                               }
-                              
+
                               // Parse user email
                               if (!parsedUserEmail || parsedUserEmail.trim() === '') {
                                 // Extract email from message - handle both formats: "Email: {email}" or "- Email: {email}"
                                 const emailMatch = message.match(/Email:\s*([^\n\-]+)/i);
                                 if (emailMatch) parsedUserEmail = emailMatch[1]?.trim();
                               }
-                              
+
                               // Parse user phone
                               if (!parsedUserPhone || parsedUserPhone.trim() === '') {
                                 // Extract phone from message - handle both formats: "Phone: {phone}" or "- Phone: {phone}"
                                 const phoneMatch = message.match(/Phone:\s*([^\n\-]+)/i);
                                 if (phoneMatch) parsedUserPhone = phoneMatch[1]?.trim();
                               }
-                              
+
                               return (
-                              <div className="space-y-4 mt-4">
-                                {/* User Details Section (Person who enquired) */}
-                                <div className="border rounded-lg p-4 bg-blue-50/50">
-                                  <h4 className="font-semibold text-sm mb-3 text-blue-900">User Details (Person Who Enquired)</h4>
-                                  {(parsedUserName || parsedUserEmail || parsedUserPhone) ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                      {parsedUserName && (
-                                        <div className="flex items-center gap-2">
-                                          <UserIcon className="h-4 w-4 text-muted-foreground" />
-                                          <span className="text-sm font-medium">{parsedUserName}</span>
-                                        </div>
-                                      )}
-                                      {parsedUserEmail && (
-                                        <div className="flex items-center gap-2">
-                                          <Mail className="h-4 w-4 text-muted-foreground" />
-                                          <a 
-                                            href={`mailto:${parsedUserEmail}`}
-                                            className="text-sm text-blue-600 hover:underline"
-                                          >
-                                            {parsedUserEmail}
-                                          </a>
-                                        </div>
-                                      )}
-                                      {parsedUserPhone && (
-                                        <div className="flex items-center gap-2">
-                                          <Phone className="h-4 w-4 text-muted-foreground" />
-                                          <a 
-                                            href={`tel:${parsedUserPhone}`}
-                                            className="text-sm text-blue-600 hover:underline"
-                                          >
-                                            {parsedUserPhone}
-                                          </a>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="text-sm text-muted-foreground">
-                                      User details not available.
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Owner Details Section */}
-                                <div className="border rounded-lg p-4 bg-green-50/50">
-                                  <h4 className="font-semibold text-sm mb-3 text-green-900">Owner Details</h4>
-                                  {(notification.ownerName || notification.ownerEmail || notification.ownerPhone) ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                      {notification.ownerName && (
-                                        <div className="flex items-center gap-2">
-                                          <UserIcon className="h-4 w-4 text-muted-foreground" />
-                                          <span className="text-sm font-medium">{notification.ownerName}</span>
-                                        </div>
-                                      )}
-                                      {notification.ownerEmail && (
-                                        <div className="flex items-center gap-2">
-                                          <Mail className="h-4 w-4 text-muted-foreground" />
-                                          <a 
-                                            href={`mailto:${notification.ownerEmail}`}
-                                            className="text-sm text-blue-600 hover:underline"
-                                          >
-                                            {notification.ownerEmail}
-                                          </a>
-                                        </div>
-                                      )}
-                                      {notification.ownerPhone && (
-                                        <div className="flex items-center gap-2">
-                                          <Phone className="h-4 w-4 text-muted-foreground" />
-                                          <a 
-                                            href={`tel:${notification.ownerPhone}`}
-                                            className="text-sm text-blue-600 hover:underline"
-                                          >
-                                            {notification.ownerPhone}
-                                          </a>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="text-sm text-muted-foreground">
-                                      Owner details not available.
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Property Details Section - Always show if propertyId exists */}
-                                {notification.propertyId && (
-                                  <div className="border rounded-lg p-4 bg-purple-50/50">
-                                    <h4 className="font-semibold text-sm mb-3 text-purple-900">Property Details</h4>
-                                    <div className="space-y-2">
-                                      <div className="flex items-start gap-2">
-                                        <span className="text-sm font-medium text-muted-foreground">Property ID:</span>
-                                        <span className="text-sm font-mono">{notification.propertyId}</span>
+                                <div className="space-y-4 mt-4">
+                                  {/* User Details Section (Person who enquired) */}
+                                  <div className="border rounded-lg p-4 bg-blue-50/50">
+                                    <h4 className="font-semibold text-sm mb-3 text-blue-900">User Details (Person Who Enquired)</h4>
+                                    {(parsedUserName || parsedUserEmail || parsedUserPhone) ? (
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {parsedUserName && (
+                                          <div className="flex items-center gap-2">
+                                            <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                            <span className="text-sm font-medium">{parsedUserName}</span>
+                                          </div>
+                                        )}
+                                        {parsedUserEmail && (
+                                          <div className="flex items-center gap-2">
+                                            <Mail className="h-4 w-4 text-muted-foreground" />
+                                            <a
+                                              href={`mailto:${parsedUserEmail}`}
+                                              className="text-sm text-blue-600 hover:underline"
+                                            >
+                                              {parsedUserEmail}
+                                            </a>
+                                          </div>
+                                        )}
+                                        {parsedUserPhone && (
+                                          <div className="flex items-center gap-2">
+                                            <Phone className="h-4 w-4 text-muted-foreground" />
+                                            <a
+                                              href={`tel:${parsedUserPhone}`}
+                                              className="text-sm text-blue-600 hover:underline"
+                                            >
+                                              {parsedUserPhone}
+                                            </a>
+                                          </div>
+                                        )}
                                       </div>
-                                      {notification.propertyTitle ? (
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-sm font-medium text-muted-foreground">Property Name:</span>
-                                          <span className="text-sm">{notification.propertyTitle}</span>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-sm font-medium text-muted-foreground">Property Name:</span>
-                                          <span className="text-sm text-muted-foreground italic">Not available</span>
-                                        </div>
-                                      )}
-                                      {notification.propertyAddress ? (
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-sm font-medium text-muted-foreground">Address:</span>
-                                          <span className="text-sm">{notification.propertyAddress}</span>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-sm font-medium text-muted-foreground">Address:</span>
-                                          <span className="text-sm text-muted-foreground italic">Not available</span>
-                                        </div>
-                                      )}
-                                      {notification.propertyListingType ? (
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-sm font-medium text-muted-foreground">Listing Type:</span>
-                                          <span className="text-sm capitalize">{notification.propertyListingType}</span>
-                                        </div>
-                                      ) : (
-                                        <div className="flex items-start gap-2">
-                                          <span className="text-sm font-medium text-muted-foreground">Listing Type:</span>
-                                          <span className="text-sm text-muted-foreground italic">Not available</span>
-                                        </div>
-                                      )}
-                                    </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">
+                                        User details not available.
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
+
+                                  {/* Owner Details Section */}
+                                  <div className="border rounded-lg p-4 bg-green-50/50">
+                                    <h4 className="font-semibold text-sm mb-3 text-green-900">Owner Details</h4>
+                                    {(notification.ownerName || notification.ownerEmail || notification.ownerPhone) ? (
+                                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {notification.ownerName && (
+                                          <div className="flex items-center gap-2">
+                                            <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                            <span className="text-sm font-medium">{notification.ownerName}</span>
+                                          </div>
+                                        )}
+                                        {notification.ownerEmail && (
+                                          <div className="flex items-center gap-2">
+                                            <Mail className="h-4 w-4 text-muted-foreground" />
+                                            <a
+                                              href={`mailto:${notification.ownerEmail}`}
+                                              className="text-sm text-blue-600 hover:underline"
+                                            >
+                                              {notification.ownerEmail}
+                                            </a>
+                                          </div>
+                                        )}
+                                        {notification.ownerPhone && (
+                                          <div className="flex items-center gap-2">
+                                            <Phone className="h-4 w-4 text-muted-foreground" />
+                                            <a
+                                              href={`tel:${notification.ownerPhone}`}
+                                              className="text-sm text-blue-600 hover:underline"
+                                            >
+                                              {notification.ownerPhone}
+                                            </a>
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="text-sm text-muted-foreground">
+                                        Owner details not available.
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Property Details Section - Always show if propertyId exists */}
+                                  {notification.propertyId && (
+                                    <div className="border rounded-lg p-4 bg-purple-50/50">
+                                      <h4 className="font-semibold text-sm mb-3 text-purple-900">Property Details</h4>
+                                      <div className="space-y-2">
+                                        <div className="flex items-start gap-2">
+                                          <span className="text-sm font-medium text-muted-foreground">Property ID:</span>
+                                          <span className="text-sm font-mono">{notification.propertyId}</span>
+                                        </div>
+                                        {notification.propertyTitle ? (
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Property Name:</span>
+                                            <span className="text-sm">{notification.propertyTitle}</span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Property Name:</span>
+                                            <span className="text-sm text-muted-foreground italic">Not available</span>
+                                          </div>
+                                        )}
+                                        {notification.propertyAddress ? (
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Address:</span>
+                                            <span className="text-sm">{notification.propertyAddress}</span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Address:</span>
+                                            <span className="text-sm text-muted-foreground italic">Not available</span>
+                                          </div>
+                                        )}
+                                        {notification.propertyListingType ? (
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Listing Type:</span>
+                                            <span className="text-sm capitalize">{notification.propertyListingType}</span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-start gap-2">
+                                            <span className="text-sm font-medium text-muted-foreground">Listing Type:</span>
+                                            <span className="text-sm text-muted-foreground italic">Not available</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
                               );
                             })() : notification.type === "review" ? (
                               /* For Review: Show reviewer and property details */
@@ -690,7 +730,7 @@ const AdminPortal = () => {
                                   {notification.userEmail && (
                                     <div className="flex items-center gap-2">
                                       <Mail className="h-4 w-4 text-muted-foreground" />
-                                      <a 
+                                      <a
                                         href={`mailto:${notification.userEmail}`}
                                         className="text-sm text-blue-600 hover:underline"
                                       >
@@ -701,7 +741,7 @@ const AdminPortal = () => {
                                   {notification.userPhone && (
                                     <div className="flex items-center gap-2">
                                       <Phone className="h-4 w-4 text-muted-foreground" />
-                                      <a 
+                                      <a
                                         href={`tel:${notification.userPhone}`}
                                         className="text-sm text-blue-600 hover:underline"
                                       >
@@ -739,7 +779,7 @@ const AdminPortal = () => {
                                   {notification.userEmail ? (
                                     <div className="flex items-center gap-2">
                                       <Mail className="h-4 w-4 text-muted-foreground" />
-                                      <a 
+                                      <a
                                         href={`mailto:${notification.userEmail}`}
                                         className="text-sm text-blue-600 hover:underline"
                                       >
@@ -752,7 +792,7 @@ const AdminPortal = () => {
                                   {notification.userPhone ? (
                                     <div className="flex items-center gap-2">
                                       <Phone className="h-4 w-4 text-muted-foreground" />
-                                      <a 
+                                      <a
                                         href={`tel:${notification.userPhone}`}
                                         className="text-sm text-blue-600 hover:underline"
                                       >
@@ -790,7 +830,7 @@ const AdminPortal = () => {
                                   {notification.userEmail && (
                                     <div className="flex items-center gap-2">
                                       <Mail className="h-4 w-4 text-muted-foreground" />
-                                      <a 
+                                      <a
                                         href={`mailto:${notification.userEmail}`}
                                         className="text-sm text-blue-600 hover:underline"
                                       >
@@ -801,7 +841,7 @@ const AdminPortal = () => {
                                   {notification.userPhone && (
                                     <div className="flex items-center gap-2">
                                       <Phone className="h-4 w-4 text-muted-foreground" />
-                                      <a 
+                                      <a
                                         href={`tel:${notification.userPhone}`}
                                         className="text-sm text-blue-600 hover:underline"
                                       >
@@ -864,7 +904,7 @@ const AdminPortal = () => {
                                     {notification.userEmail ? (
                                       <div className="flex items-center gap-2">
                                         <Mail className="h-4 w-4 text-muted-foreground" />
-                                        <a 
+                                        <a
                                           href={`mailto:${notification.userEmail}`}
                                           className="text-sm text-blue-600 hover:underline"
                                         >
@@ -877,7 +917,7 @@ const AdminPortal = () => {
                                     {notification.userPhone ? (
                                       <div className="flex items-center gap-2">
                                         <Phone className="h-4 w-4 text-muted-foreground" />
-                                        <a 
+                                        <a
                                           href={`tel:${notification.userPhone}`}
                                           className="text-sm text-blue-600 hover:underline"
                                         >
@@ -910,15 +950,49 @@ const AdminPortal = () => {
                                       <div>
                                         <span className="text-xs text-muted-foreground">Attached Image:</span>
                                         <div className="mt-2">
-                                          <img 
-                                            src={notification.serviceImage} 
-                                            alt="Service request image" 
+                                          <img
+                                            src={notification.serviceImage}
+                                            alt="Service request image"
                                             className="max-w-full h-auto max-h-64 rounded-lg border border-gray-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
                                             onClick={() => window.open(notification.serviceImage, '_blank')}
                                           />
                                         </div>
                                       </div>
                                     )}
+                                  </div>
+                                </div>
+
+                                {/* Admin Remarks Section */}
+                                <div className="mt-4 pt-4 border-t border-gray-100">
+                                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-blue-600" />
+                                    Admin Remarks (Visible to Tenant)
+                                  </h4>
+                                  <div className="space-y-3">
+                                    <textarea
+                                      className="w-full min-h-[100px] p-3 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-y"
+                                      placeholder="Add your remarks or solution here..."
+                                      defaultValue={notification.adminRemarks || ""}
+                                      id={`remarks-${notification.id}`}
+                                    />
+                                    <div className="flex justify-end">
+                                      <Button
+                                        size="sm"
+                                        disabled={updating === notification.id}
+                                        onClick={() => {
+                                          const el = document.getElementById(`remarks-${notification.id}`) as HTMLTextAreaElement;
+                                          handleSaveRemarks(notification.id, el.value);
+                                        }}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                      >
+                                        {updating === notification.id ? (
+                                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                        ) : (
+                                          <Save className="h-4 w-4 mr-2" />
+                                        )}
+                                        Save Remarks
+                                      </Button>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -931,7 +1005,7 @@ const AdminPortal = () => {
                                     <p className="text-sm font-medium text-yellow-800">📝 {notification.message}</p>
                                   </div>
                                 )}
-                                
+
                                 {/* Inquiry Details */}
                                 <div>
                                   <h4 className="text-sm font-semibold mb-3">Inquiry Details:</h4>
@@ -952,7 +1026,7 @@ const AdminPortal = () => {
                                     )}
                                   </div>
                                 </div>
-                                
+
                                 {/* User Details */}
                                 <div>
                                   <h4 className="text-sm font-semibold mb-3">Contact Details:</h4>
@@ -968,7 +1042,7 @@ const AdminPortal = () => {
                                     {notification.userEmail ? (
                                       <div className="flex items-center gap-2">
                                         <Mail className="h-4 w-4 text-muted-foreground" />
-                                        <a 
+                                        <a
                                           href={`mailto:${notification.userEmail}`}
                                           className="text-sm text-blue-600 hover:underline"
                                         >
@@ -981,7 +1055,7 @@ const AdminPortal = () => {
                                     {notification.userPhone ? (
                                       <div className="flex items-center gap-2">
                                         <Phone className="h-4 w-4 text-muted-foreground" />
-                                        <a 
+                                        <a
                                           href={`tel:${notification.userPhone}`}
                                           className="text-sm text-blue-600 hover:underline"
                                         >
@@ -1000,7 +1074,7 @@ const AdminPortal = () => {
                                 {/* Status Banner */}
                                 <div className={`p-3 rounded-lg border ${notification.type === "agreement_termination" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
                                   <p className={`text-sm font-semibold ${notification.type === "agreement_termination" ? "text-red-700" : "text-green-700"}`}>
-                                    {notification.type === "agreement_termination" 
+                                    {notification.type === "agreement_termination"
                                       ? "🔴 Agreement Terminated - Property is now available for rent"
                                       : "🟢 Agreement Renewal Request Submitted"}
                                   </p>
@@ -1100,11 +1174,11 @@ const AdminPortal = () => {
                                   <UserIcon className="h-4 w-4 text-muted-foreground" />
                                   <span className="text-sm font-medium">{notification.ownerName}</span>
                                 </div>
-                                
+
                                 {notification.ownerEmail && (
                                   <div className="flex items-center gap-2">
                                     <Mail className="h-4 w-4 text-muted-foreground" />
-                                    <a 
+                                    <a
                                       href={`mailto:${notification.ownerEmail}`}
                                       className="text-sm text-blue-600 hover:underline"
                                     >
@@ -1112,11 +1186,11 @@ const AdminPortal = () => {
                                     </a>
                                   </div>
                                 )}
-                                
+
                                 {notification.ownerPhone && (
                                   <div className="flex items-center gap-2">
                                     <Phone className="h-4 w-4 text-muted-foreground" />
-                                    <a 
+                                    <a
                                       href={`tel:${notification.ownerPhone}`}
                                       className="text-sm text-blue-600 hover:underline"
                                     >
@@ -1422,7 +1496,7 @@ const AdminPortal = () => {
                     <Checkbox
                       id="announcement-active"
                       checked={siteSettings.isAnnouncementActive || false}
-                      onCheckedChange={(checked) => 
+                      onCheckedChange={(checked) =>
                         setSiteSettings({ ...siteSettings, isAnnouncementActive: checked === true })
                       }
                     />
@@ -1444,7 +1518,7 @@ const AdminPortal = () => {
                         Upload multiple images to display as a rotating carousel. If no banner images are uploaded, the default hero image will be shown.
                       </p>
                     </div>
-                    
+
                     {/* Upload Button */}
                     <div className="flex items-center gap-4 flex-wrap">
                       <label className="cursor-pointer">
@@ -1539,16 +1613,16 @@ const AdminPortal = () => {
 
                   {/* Save Button */}
                   <div className="pt-4 border-t">
-                    <Button 
-                      onClick={handleUpdateSiteSettings} 
+                    <Button
+                      onClick={handleUpdateSiteSettings}
                       disabled={savingSettings || uploadingBanner}
                       className="w-full sm:w-auto"
                     >
                       {savingSettings ? (
                         uploadingBanner ? "Uploading images..." : "Saving..."
                       ) : (
-                        pendingBannerImages.length > 0 
-                          ? `Save Settings & Upload ${pendingBannerImages.length} Image(s)` 
+                        pendingBannerImages.length > 0
+                          ? `Save Settings & Upload ${pendingBannerImages.length} Image(s)`
                           : "Save Settings"
                       )}
                     </Button>

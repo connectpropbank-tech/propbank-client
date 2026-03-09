@@ -46,6 +46,7 @@ interface RaisedRequest {
   isRead: boolean;
   resolvedAt?: string; // Timestamp when marked as resolved
   priority?: string;
+  adminRemarks?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -475,7 +476,7 @@ const PropertyDetails = () => {
         <div className="absolute inset-0 container mx-auto px-4 flex flex-col justify-end pb-8 md:pb-12">
           <div className="max-w-4xl space-y-4">
             <div className="flex flex-wrap items-center gap-3">
-              <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 text-sm font-medium">
+              <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-0 px-3 py-1 text-sm font-medium capitalize">
                 {property.propertyType}
               </Badge>
               <Badge variant="outline" className="text-white border-white/30 bg-white/10 backdrop-blur-sm px-3 py-1">
@@ -1246,6 +1247,13 @@ const PropertyDetails = () => {
                               <div className="mt-3 pt-3 border-t">
                                 <label className="text-xs font-medium text-muted-foreground">Message</label>
                                 <p className="text-sm">{request.message}</p>
+                              </div>
+                            )}
+
+                            {request.adminRemarks && (
+                              <div className="mt-3 pt-3 border-t bg-blue-50/50 p-2 rounded">
+                                <label className="text-xs font-medium text-blue-800">Admin Remarks</label>
+                                <p className="text-sm text-blue-900 font-medium italic">"{request.adminRemarks}"</p>
                               </div>
                             )}
 
