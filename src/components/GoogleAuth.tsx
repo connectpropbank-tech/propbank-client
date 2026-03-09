@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { signInWithGoogle, signOutUser, auth } from "../firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { Button } from "@/components/ui/button";
@@ -18,43 +18,40 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   const [userRole, setUserRole] = useState<string>("");
   const [showPhoneInput, setShowPhoneInput] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  // Refs to access latest state inside auth callback
-  const phoneRef = useRef(phoneNumber);
-  const roleRef = useRef(userRole);
-
-  // Keep refs in sync with state
-  useEffect(() => { phoneRef.current = phoneNumber; }, [phoneNumber]);
-  useEffect(() => { roleRef.current = userRole; }, [userRole]);
+  const [isCheckingUser, setIsCheckingUser] = useState<boolean>(false);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
-      if (firebaseUser) {
-        // Check if user already has phone number in backend
-        const hasPhone = await checkUserPhoneNumber(firebaseUser.uid);
 
-        if (!hasPhone) {
-          // Check if we have pre-filled data from the login form
-          if (phoneRef.current && roleRef.current) {
-            const savedUser = await saveUserToBackend(firebaseUser, phoneRef.current, roleRef.current);
-            if (savedUser) {
-              // Trust the successful save directly - skip redundant network check
-              // Set cookie manually
-              document.cookie = `userPhone=${savedUser.phoneNumber}; path=/; max-age=86400; SameSite=Strict`;
+      if (!firebaseUser) {
+        // User signed out — reset everything
+        setUserLoggedIn(false);
+        setShowPhoneInput(false);
+        return;
+      }
 
-              setUserLoggedIn(true);
-              syncUserData(firebaseUser);
-              return;
-            }
-          }
-          // If no pre-filled data or save failed, show manual input modal
-          setShowPhoneInput(true);
-        } else {
+      setIsCheckingUser(true);
+
+      try {
+        // Step 1: Check if user already exists in our backend with phone + role
+        const hasCompleteProfile = await checkUserPhoneNumber(firebaseUser.uid);
+
+        if (hasCompleteProfile) {
+          // Returning user with complete registration — log in directly
+          setShowPhoneInput(false);
           setUserLoggedIn(true);
-          // Sync basic user data (email, name, photo) to ensure backend is up to date
           syncUserData(firebaseUser);
+        } else {
+          // New user OR user without phone/role — show registration form
+          // Sign them out of Firebase so they must go through registration first.
+          // We keep user state so we know their name/email for the form.
+          setShowPhoneInput(true);
+          setUserLoggedIn(false);
         }
+      } finally {
+        setIsCheckingUser(false);
       }
     });
     return () => unsubscribe();
@@ -63,17 +60,11 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   // Function to sync basic user data (email, name, photo) without requiring phone/role
   const syncUserData = async (firebaseUser: User) => {
     try {
-      console.log("Debug: Syncing User Data. Firebase User:", firebaseUser);
-      console.log("Debug: User Email:", firebaseUser.email);
-      console.log("Debug: Provider Data:", firebaseUser.providerData);
-
       const email = firebaseUser.email || firebaseUser.providerData[0]?.email || "";
-      console.log("Debug: Extracted Email:", email);
-
       const name = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || "User";
 
       // Store in cookies
-      document.cookie = `userEmail=${email}; path=/; max-age=86400; SameSite=Strict`; // 1 day
+      document.cookie = `userEmail=${email}; path=/; max-age=86400; SameSite=Strict`;
       document.cookie = `userName=${name}; path=/; max-age=86400; SameSite=Strict`;
 
       const updateData = {
@@ -82,21 +73,19 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
         photoURL: firebaseUser.photoURL,
       };
 
+      const token = localStorage.getItem('authToken');
+      const headers: any = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       await fetch(`${API_BASE_URL}/users/${firebaseUser.uid}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: JSON.stringify(updateData)
       });
     } catch (error) {
       console.error("Error syncing user data:", error);
     }
   };
-
-  useEffect(() => {
-    setUserLoggedIn(!!user && !showPhoneInput);
-  }, [user, showPhoneInput]);
 
   // Block navigation when registration is incomplete
   useEffect(() => {
@@ -117,24 +106,18 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
 
       // Block keyboard shortcuts for navigation
       const handleKeyDown = (e: KeyboardEvent) => {
-        // Block Alt+Left/Right (browser back/forward)
         if (e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
           e.preventDefault();
         }
-        // Block Ctrl/Cmd+W (close tab)
         if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
           e.preventDefault();
         }
       };
 
-      // Push a state to prevent back navigation
       window.history.pushState(null, '', window.location.href);
-
       window.addEventListener('popstate', handlePopState);
       window.addEventListener('beforeunload', handleBeforeUnload);
       document.addEventListener('keydown', handleKeyDown);
-
-      // Disable body scroll when modal is open
       document.body.style.overflow = 'hidden';
 
       return () => {
@@ -146,49 +129,63 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
     }
   }, [showPhoneInput, user]);
 
-  // Function to check if user has completed registration (phone number AND role)
-  const checkUserPhoneNumber = async (uid: string) => {
+  // Check if user has a complete registration (phone AND role both set in backend)
+  const checkUserPhoneNumber = async (uid: string): Promise<boolean> => {
     try {
+      // First attempt a login to get a token (works only if user exists)
+      let token = localStorage.getItem('authToken');
+
+      if (!token) {
+        try {
+          const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid })
+          });
+          const loginData = await loginRes.json();
+          if (loginData.success && loginData.token) {
+            token = loginData.token;
+            localStorage.setItem('authToken', loginData.token);
+          }
+        } catch (e) {
+          // User likely doesn't exist yet — that's fine
+        }
+      }
+
+      const headers: any = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(`${API_BASE_URL}/users/${uid}`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
 
       if (response.ok) {
         const data = await response.json();
-        // Both phone number and role must be present for complete registration
-        const hasCompleteData = data.user &&
+        const hasCompleteData =
+          data.user &&
           data.user.phoneNumber &&
           data.user.phoneNumber.trim() !== "" &&
           data.user.role &&
           data.user.role.trim() !== "";
 
         if (hasCompleteData) {
+          // Pre-fill local state so it shows in the logged-in view
           document.cookie = `userPhone=${data.user.phoneNumber}; path=/; max-age=86400; SameSite=Strict`;
-          // Prefill local state so it shows in the UI
           setPhoneNumber(data.user.phoneNumber);
           setUserRole(data.user.role);
         }
 
-        // console.log("User registration check:", {
-        //   hasUser: !!data.user,
-        //   hasPhone: !!(data.user?.phoneNumber),
-        //   hasRole: !!(data.user?.role),
-        //   isComplete: hasCompleteData
-        // });
-
-        return hasCompleteData;
+        return !!hasCompleteData;
       }
       return false;
     } catch (error) {
-
+      console.error("Error checking user profile:", error);
       return false;
     }
   };
 
-  // Function to save user data to backend (creates new user or updates existing)
+  // Save a new user to the backend (only called for first-time registrations)
   const saveUserToBackend = async (firebaseUser: User, phone: string, role: string) => {
     try {
       const userData = {
@@ -200,36 +197,42 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
         role: role,
       };
 
-
-      // First try to update existing user
-      let response = await fetch(`${API_BASE_URL}/users/${firebaseUser.uid}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch(`${API_BASE_URL}/auth/user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
       });
-
 
       const data = await response.json();
 
       if (data.success || response.ok) {
-        // Return the user data if available (or construct it from input if simpler)
-        return data.user || userData;
+        // Login to get the JWT token
+        try {
+          const loginRes = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uid: firebaseUser.uid })
+          });
+          const loginData = await loginRes.json();
+          if (loginData.success && loginData.token) {
+            localStorage.setItem('authToken', loginData.token);
+          }
+        } catch (e) {
+          console.error("Auto-login failed after registration", e);
+        }
+
+        return { success: true, user: data.user || userData };
       } else {
         console.error("Failed to save user:", data);
-        alert("Failed to save user data. Please try again.");
-        return null;
+        return { success: false, message: data.message || "Failed to save user data. Please try again." };
       }
     } catch (error) {
       console.error("Error saving user:", error);
-      alert("Error connecting to server. Please check your connection.");
-      return null;
+      return { success: false, message: "Error connecting to server. Please check your connection." };
     }
   };
 
   const handlePhoneSubmit = async () => {
-    // Prevent double submission
     if (isSubmitting) return;
 
     if (!phoneNumber.trim()) {
@@ -249,33 +252,26 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
 
     if (user) {
       setIsSubmitting(true);
-
       try {
+        setRegistrationError(null);
+        const result = await saveUserToBackend(user, phoneNumber, userRole);
 
-        const saveSuccess = await saveUserToBackend(user, phoneNumber, userRole);
-
-        if (saveSuccess) {
-          // Double-check that the data was actually saved by re-checking registration
-
+        if (result && result.success) {
+          // Re-verify that data was actually saved
           const isRegistrationComplete = await checkUserPhoneNumber(user.uid);
 
           if (isRegistrationComplete) {
-            // Store phone in cookie
             document.cookie = `userPhone=${phoneNumber}; path=/; max-age=86400; SameSite=Strict`;
             setShowPhoneInput(false);
             setUserLoggedIn(true);
-
           } else {
-            alert("Registration verification failed. Your data may not have been saved properly. Please try again.");
+            setRegistrationError("Registration verification failed. Your data may not have been saved properly. Please try again.");
           }
         } else {
-          // Keep the form open if save failed
-
-          alert("Failed to save your registration data. Please check your connection and try again.");
+          setRegistrationError(result?.message || "Failed to save your registration data. Please try again.");
         }
       } catch (error) {
-
-        alert("An unexpected error occurred during registration. Please try again.");
+        setRegistrationError("An unexpected error occurred during registration. Please try again.");
       } finally {
         setIsSubmitting(false);
       }
@@ -285,7 +281,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   const handleSignIn = async () => {
     try {
       await signInWithGoogle();
-      // user state will update via onAuthStateChanged
+      // onAuthStateChanged will handle the rest
     } catch (error: any) {
       alert(error.message);
     }
@@ -296,25 +292,42 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
       await signOutUser();
       setUser(null);
       setUserLoggedIn(false);
-
+      setPhoneNumber("");
+      setUserRole("");
+      setShowPhoneInput(false);
+      localStorage.removeItem('authToken');
+      document.cookie = `userPhone=; path=/; max-age=0; SameSite=Strict`;
+      window.location.reload();
     } catch (error: any) {
-
       alert(error.message);
     }
   };
+
+  // ─── LOADING STATE (checking backend after Google sign-in) ───────────────────
+  if (isCheckingUser) {
+    return (
+      <div className="flex flex-col items-center gap-4">
+        <Card className="w-full max-w-md mx-auto">
+          <CardContent className="pt-10 pb-10 text-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-4" />
+            <p className="text-gray-600 text-sm">Verifying your account...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center gap-4">
       {!userLoggedIn ? (
         showPhoneInput && user ? (
-          /* Full-screen blocking overlay for mandatory registration */
+          /* ─── REGISTRATION FORM (new users only) ─────────────────────────── */
           <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
             {/* Prevent any clicks from passing through */}
             <div
               className="absolute inset-0"
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => {
-                // Block Escape key
                 if (e.key === 'Escape') {
                   e.preventDefault();
                   e.stopPropagation();
@@ -345,7 +358,10 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                   <Label htmlFor="role" className="text-sm font-medium text-gray-700">
                     Select Your Role <span className="text-red-500">*</span>
                   </Label>
-                  <Select onValueChange={setUserRole} value={userRole}>
+                  <Select onValueChange={(val) => {
+                    setUserRole(val);
+                    setRegistrationError(null);
+                  }} value={userRole}>
                     <SelectTrigger className={`w-full mt-1 ${!userRole ? 'border-red-300 focus:border-red-500' : 'border-green-300'}`}>
                       <SelectValue placeholder="Choose your role" />
                     </SelectTrigger>
@@ -378,7 +394,10 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                     type="tel"
                     placeholder="Enter your 10-digit phone number"
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => {
+                      setPhoneNumber(e.target.value.replace(/\D/g, ''));
+                      setRegistrationError(null);
+                    }}
                     className={`mt-1 ${phoneNumber.length === 10 ? 'border-green-300' : phoneNumber.length > 0 ? 'border-red-300' : ''}`}
                     maxLength={10}
                   />
@@ -391,12 +410,21 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                 </div>
 
                 {/* Validation summary */}
-                <div className={`p-3 rounded-lg ${(!phoneNumber || !userRole || phoneNumber.length !== 10) ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
-                  <p className={`text-xs font-medium ${(!phoneNumber || !userRole || phoneNumber.length !== 10) ? 'text-red-700' : 'text-green-700'}`}>
-                    {(!phoneNumber || !userRole || phoneNumber.length !== 10)
-                      ? '⚠️ Please complete all required fields to continue'
-                      : '✅ All fields completed. You can now register!'}
-                  </p>
+                <div className={`p-3 rounded-lg ${registrationError ? 'bg-red-50 border border-red-200' : (!phoneNumber || !userRole || phoneNumber.length !== 10) ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                  {registrationError ? (
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                      <p className="text-xs font-semibold text-red-700">
+                        {registrationError}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className={`text-xs font-medium ${(!phoneNumber || !userRole || phoneNumber.length !== 10) ? 'text-red-700' : 'text-green-700'}`}>
+                      {(!phoneNumber || !userRole || phoneNumber.length !== 10)
+                        ? '⚠️ Please complete all required fields to continue'
+                        : '✅ All fields completed. You can now register!'}
+                    </p>
+                  )}
                 </div>
 
                 <Button
@@ -421,6 +449,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
             </Card>
           </div>
         ) : (
+          /* ─── SIGN-IN VIEW (Google button only) ─────────────────────────── */
           <Card className="w-full max-w-md mx-auto">
             <CardContent className="pt-6">
               <div className="text-center mb-6">
@@ -432,74 +461,28 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                 </p>
               </div>
 
-              <div className="space-y-4">
-                {/* Pre-Login Role Selection */}
-                <div>
-                  <Label htmlFor="main-role" className="text-sm font-medium text-gray-700">
-                    Select Your Role <span className="text-red-500">*</span>
-                  </Label>
-                  <Select onValueChange={setUserRole} value={userRole}>
-                    <SelectTrigger id="main-role" className={`w-full mt-1 ${!userRole ? 'border-gray-300' : 'border-green-300'}`}>
-                      <SelectValue placeholder="Choose your role" />
-                    </SelectTrigger>
-                    <SelectContent className="z-[10000]">
-                      <SelectItem value="individual">
-                        <div className="flex flex-col text-left">
-                          <span className="text-sm font-medium">Individual</span>
-                          <span className="text-xs text-gray-500">Property owner, buyer, or tenant</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="agent">
-                        <div className="flex flex-col text-left">
-                          <span className="text-sm font-medium">Real Estate Agent</span>
-                          <span className="text-xs text-gray-500">Professional property agent or broker</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Pre-Login Phone Input */}
-                <div>
-                  <Label htmlFor="main-phone" className="text-sm font-medium text-gray-700">
-                    Phone Number <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="main-phone"
-                    type="tel"
-                    placeholder="Enter your 10-digit phone number"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                    className={`mt-1 ${phoneNumber.length === 10 ? 'border-green-300' : 'border-gray-300'}`}
-                    maxLength={10}
-                  />
-                </div>
-
-                <div className="pt-2">
-                  <Button
-                    onClick={handleSignIn}
-                    disabled={!phoneNumber || !userRole || phoneNumber.length !== 10}
-                    className="w-full bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 flex items-center justify-center gap-3 py-3"
-                  >
-                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                    </svg>
-                    Sign In with Google
-                  </Button>
-                  {(!phoneNumber || !userRole) && (
-                    <p className="text-xs text-center text-gray-500 mt-2">
-                      Please enter your details to sign in
-                    </p>
-                  )}
-                </div>
+              <div className="pt-2">
+                <Button
+                  onClick={handleSignIn}
+                  className="w-full bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 flex items-center justify-center gap-3 py-3"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                  </svg>
+                  Sign In with Google
+                </Button>
+                <p className="text-xs text-center text-gray-500 mt-3">
+                  New users will be asked to complete registration after sign in
+                </p>
               </div>
             </CardContent>
           </Card>
         )
       ) : (
+        /* ─── LOGGED-IN VIEW ─────────────────────────────────────────────── */
         <Card className="w-full max-w-md mx-auto">
           <CardContent className="pt-6 pb-6 text-center">
             <div className="space-y-2 mb-6">
