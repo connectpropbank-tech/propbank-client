@@ -632,15 +632,27 @@ const EditProperty = () => {
         }
       }
 
+      // Destructure out system/status fields that must NOT be overwritten on edit.
+      // Sending isActive=false would cause the property to disappear from active listing queries.
+      const {
+        isActive: _isActive,
+        isRented: _isRented,
+        isSold: _isSold,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
+        tenants: _tenants,
+        ...safeRestData
+      } = restData as any;
+
       const updateData = {
-        ...restData,
+        ...safeRestData,
         title: propertyTitle, // Backend expects 'title' field
-        tenantName: `${data.tenantFirstName || ""} ${data.tenantLastName || ""}`.trim(), // Determine legacy name
-        personName: `${data.tenantFirstName || ""} ${data.tenantLastName || ""}`.trim(), // Also set personName just in case
-        images: uploadedImages, // Ensure images from state are included
-        furnishedChecklist: checkedFurnishedItems, // Only include checked items
-        ownerUID: currentUser.uid,
-        tenants: updatedTenants, // Sync top-level changes to tenants array
+        tenantName: `${data.tenantFirstName || ""} ${data.tenantLastName || ""}`.trim(),
+        personName: `${data.tenantFirstName || ""} ${data.tenantLastName || ""}`.trim(),
+        images: uploadedImages,
+        furnishedChecklist: checkedFurnishedItems,
+        ownerUID: property?.ownerUID || currentUser.uid,
+        tenants: updatedTenants,
       };
 
       // Debug log
