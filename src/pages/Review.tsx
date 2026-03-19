@@ -16,13 +16,13 @@ const Review = () => {
   const { propertyId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [property, setProperty] = useState<any>(null);
   const [reviewerType, setReviewerType] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
-  
+
   // Tenant part (reviewing owner)
   const [tenantPart, setTenantPart] = useState({
     ownerUnderstandable: "",
@@ -81,7 +81,7 @@ const Review = () => {
           }
         }
       } catch (error) {
-        
+
       } finally {
         setLoading(false);
       }
@@ -153,7 +153,7 @@ const Review = () => {
         throw new Error(data.message || 'Failed to submit review');
       }
     } catch (error) {
-      
+
       toast({
         title: "Error",
         description: "Failed to submit review. Please try again later.",
@@ -214,126 +214,150 @@ const Review = () => {
                 </Select>
               </div>
 
-              {/* Tenant Part - Reviewing Owner */}
-              <div className="space-y-4 border rounded-lg p-4">
-                <h3 className="font-semibold text-lg">A. Tenant Part (Reviewing Owner)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>A. Owner Understandable</Label>
-                    <Textarea
-                      placeholder="Rate/comment on owner's understanding..."
-                      value={tenantPart.ownerUnderstandable}
-                      onChange={(e) => handleTenantPartChange("ownerUnderstandable", e.target.value)}
-                      rows={3}
-                    />
+              <div className="pt-4">
+                {reviewerType === "tenant" && (
+                  <div className="space-y-4 border rounded-lg p-6 bg-blue-50/30 border-blue-100">
+                    <h3 className="font-semibold text-xl text-blue-900 flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-sm">A</div>
+                      Reviewing Owner
+                    </h3>
+                    <p className="text-sm text-blue-700/70 mb-4">Please share your experience with the property owner.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-blue-900 font-medium">1. Owner Understandable</Label>
+                        <Textarea
+                          placeholder="How understanding was the owner during your stay?"
+                          value={tenantPart.ownerUnderstandable}
+                          onChange={(e) => handleTenantPartChange("ownerUnderstandable", e.target.value)}
+                          rows={3}
+                          className="bg-white border-blue-200 focus-visible:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-blue-900 font-medium">2. Soft Nature</Label>
+                        <Textarea
+                          placeholder="Comment on the owner's behavior and nature."
+                          value={tenantPart.softNature}
+                          onChange={(e) => handleTenantPartChange("softNature", e.target.value)}
+                          rows={3}
+                          className="bg-white border-blue-200 focus-visible:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-blue-900 font-medium">3. Owner Transparent</Label>
+                        <Textarea
+                          placeholder="How transparent was the owner about property issues/terms?"
+                          value={tenantPart.ownerTransparent}
+                          onChange={(e) => handleTenantPartChange("ownerTransparent", e.target.value)}
+                          rows={3}
+                          className="bg-white border-blue-200 focus-visible:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-blue-900 font-medium">4. Problem Solver</Label>
+                        <Textarea
+                          placeholder="Did the owner help resolve issues promptly?"
+                          value={tenantPart.problemSolver}
+                          onChange={(e) => handleTenantPartChange("problemSolver", e.target.value)}
+                          rows={3}
+                          className="bg-white border-blue-200 focus-visible:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-blue-900 font-medium">5. Easy on Refund Money</Label>
+                        <Textarea
+                          placeholder="How smooth was the security deposit/refund process?"
+                          value={tenantPart.easyOnRefundMoney}
+                          onChange={(e) => handleTenantPartChange("easyOnRefundMoney", e.target.value)}
+                          rows={3}
+                          className="bg-white border-blue-200 focus-visible:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-blue-900 font-medium">6. Overall Experience</Label>
+                        <Textarea
+                          placeholder="Your overall recommendation or feedback."
+                          value={tenantPart.overallExperience}
+                          onChange={(e) => handleTenantPartChange("overallExperience", e.target.value)}
+                          rows={3}
+                          className="bg-white border-blue-200 focus-visible:ring-blue-500"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>B. Soft Nature</Label>
-                    <Textarea
-                      placeholder="Rate/comment on owner's nature..."
-                      value={tenantPart.softNature}
-                      onChange={(e) => handleTenantPartChange("softNature", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>C. Owner Transparent</Label>
-                    <Textarea
-                      placeholder="Rate/comment on owner's transparency..."
-                      value={tenantPart.ownerTransparent}
-                      onChange={(e) => handleTenantPartChange("ownerTransparent", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>D. Problem Solver</Label>
-                    <Textarea
-                      placeholder="Rate/comment on owner's problem-solving..."
-                      value={tenantPart.problemSolver}
-                      onChange={(e) => handleTenantPartChange("problemSolver", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>E. Easy on Refund Money</Label>
-                    <Textarea
-                      placeholder="Rate/comment on refund process..."
-                      value={tenantPart.easyOnRefundMoney}
-                      onChange={(e) => handleTenantPartChange("easyOnRefundMoney", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>F. Overall Experience</Label>
-                    <Textarea
-                      placeholder="Rate/comment on overall experience..."
-                      value={tenantPart.overallExperience}
-                      onChange={(e) => handleTenantPartChange("overallExperience", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                </div>
-              </div>
+                )}
 
-              {/* Owner Part - Reviewing Tenant */}
-              <div className="space-y-4 border rounded-lg p-4">
-                <h3 className="font-semibold text-lg">B. Owner Part (Reviewing Tenant)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>A. Tenant Understandable</Label>
-                    <Textarea
-                      placeholder="Rate/comment on tenant's understanding..."
-                      value={ownerPart.tenantUnderstandable}
-                      onChange={(e) => handleOwnerPartChange("tenantUnderstandable", e.target.value)}
-                      rows={3}
-                    />
+                {reviewerType === "owner" && (
+                  <div className="space-y-4 border rounded-lg p-6 bg-orange-50/30 border-orange-100">
+                    <h3 className="font-semibold text-xl text-orange-900 flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-sm">B</div>
+                      Reviewing Tenant
+                    </h3>
+                    <p className="text-sm text-orange-700/70 mb-4">Please share your experience with the tenant.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label className="text-orange-900 font-medium">1. Tenant Understandable</Label>
+                        <Textarea
+                          placeholder="How understanding was the tenant regarding property rules?"
+                          value={ownerPart.tenantUnderstandable}
+                          onChange={(e) => handleOwnerPartChange("tenantUnderstandable", e.target.value)}
+                          rows={3}
+                          className="bg-white border-orange-200 focus-visible:ring-orange-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-orange-900 font-medium">2. Soft Nature</Label>
+                        <Textarea
+                          placeholder="Comment on the tenant's behavior and nature."
+                          value={ownerPart.softNature}
+                          onChange={(e) => handleOwnerPartChange("softNature", e.target.value)}
+                          rows={3}
+                          className="bg-white border-orange-200 focus-visible:ring-orange-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-orange-900 font-medium">3. Tenant Transparent</Label>
+                        <Textarea
+                          placeholder="How transparent was the tenant about any damages or issues?"
+                          value={ownerPart.tenantTransparent}
+                          onChange={(e) => handleOwnerPartChange("tenantTransparent", e.target.value)}
+                          rows={3}
+                          className="bg-white border-orange-200 focus-visible:ring-orange-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-orange-900 font-medium">4. Problem Solver</Label>
+                        <Textarea
+                          placeholder="Did the tenant cooperate in resolving maintenance needs?"
+                          value={ownerPart.problemSolver}
+                          onChange={(e) => handleOwnerPartChange("problemSolver", e.target.value)}
+                          rows={3}
+                          className="bg-white border-orange-200 focus-visible:ring-orange-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-orange-900 font-medium">5. Punctual on Payment</Label>
+                        <Textarea
+                          placeholder="How punctual was the tenant with rent and utility payments?"
+                          value={ownerPart.punctualOnPayment}
+                          onChange={(e) => handleOwnerPartChange("punctualOnPayment", e.target.value)}
+                          rows={3}
+                          className="bg-white border-orange-200 focus-visible:ring-orange-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-orange-900 font-medium">6. Overall Experience</Label>
+                        <Textarea
+                          placeholder="Your overall recommendation for future landlords."
+                          value={ownerPart.overallExperience}
+                          onChange={(e) => handleOwnerPartChange("overallExperience", e.target.value)}
+                          rows={3}
+                          className="bg-white border-orange-200 focus-visible:ring-orange-500"
+                        />
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>B. Soft Nature</Label>
-                    <Textarea
-                      placeholder="Rate/comment on tenant's nature..."
-                      value={ownerPart.softNature}
-                      onChange={(e) => handleOwnerPartChange("softNature", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>C. Tenant Transparent</Label>
-                    <Textarea
-                      placeholder="Rate/comment on tenant's transparency..."
-                      value={ownerPart.tenantTransparent}
-                      onChange={(e) => handleOwnerPartChange("tenantTransparent", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>D. Problem Solver</Label>
-                    <Textarea
-                      placeholder="Rate/comment on tenant's problem-solving..."
-                      value={ownerPart.problemSolver}
-                      onChange={(e) => handleOwnerPartChange("problemSolver", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>E. Punctual on Pay Payment</Label>
-                    <Textarea
-                      placeholder="Rate/comment on payment punctuality..."
-                      value={ownerPart.punctualOnPayment}
-                      onChange={(e) => handleOwnerPartChange("punctualOnPayment", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>F. Overall Experience</Label>
-                    <Textarea
-                      placeholder="Rate/comment on overall experience..."
-                      value={ownerPart.overallExperience}
-                      onChange={(e) => handleOwnerPartChange("overallExperience", e.target.value)}
-                      rows={3}
-                    />
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="flex gap-4">
@@ -372,4 +396,3 @@ const Review = () => {
 };
 
 export default Review;
-

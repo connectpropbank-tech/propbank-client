@@ -8,8 +8,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Building2, Users, AlertCircle, Archive, CheckCircle2, Phone, Mail, User as UserIcon, X, Upload, ImageIcon, MessageSquare, Save, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { uploadBase64Image } from "@/services/uploadService";
+import AdminPropertyDetailsDialog from "@/components/AdminPropertyDetailsDialog";
+import { propertyService, Property } from "@/services/propertyService";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8002";
+
 
 interface AdminNotification {
   id: string;
@@ -47,18 +50,6 @@ interface AdminNotification {
   adminRemarks?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-interface Property {
-  id: string;
-  title: string;
-  propertyType: string;
-  listingType: string;
-  address: string;
-  ownerName: string;
-  ownerEmail: string;
-  status: string;
-  createdAt: string;
 }
 
 interface Agent {
@@ -101,6 +92,11 @@ const AdminPortal = () => {
   // Store pending banner images as base64 strings (not yet uploaded)
   const [pendingBannerImages, setPendingBannerImages] = useState<string[]>([]);
 
+  // Full Property Details Dialog State
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [isPropertyDialogOpen, setIsPropertyDialogOpen] = useState(false);
+  const [loadingProperty, setLoadingProperty] = useState(false);
+
   useEffect(() => {
     fetchData();
   }, [activeTab]);
@@ -131,6 +127,26 @@ const AdminPortal = () => {
     }
   };
 
+  const handleViewPropertyDetails = async (propertyId: string) => {
+    if (!propertyId) return;
+
+    setLoadingProperty(true);
+    try {
+      const property = await propertyService.getPropertyById(propertyId);
+      setSelectedProperty(property);
+      setIsPropertyDialogOpen(true);
+    } catch (error) {
+      console.error("Error fetching full property details:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load complete property details.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingProperty(false);
+    }
+  };
+
   const fetchNotifications = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/notifications?unread=true`);
@@ -140,7 +156,7 @@ const AdminPortal = () => {
         // Double-check isRead is false as a safety measure
         const serviceRequests = Array.isArray(data)
           ? data.filter((n: AdminNotification) =>
-            (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry") && n.isRead === false
+            (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry") && n.isRead === false
           )
           : [];
 
@@ -435,6 +451,7 @@ const AdminPortal = () => {
     }
   };
 
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
       <div className="mb-8">
@@ -709,9 +726,21 @@ const AdminPortal = () => {
                                         ) : (
                                           <div className="flex items-start gap-2">
                                             <span className="text-sm font-medium text-muted-foreground">Listing Type:</span>
-                                            <span className="text-sm text-muted-foreground italic">Not available</span>
+                                            <span className="text-sm capitalize">{notification.propertyListingType || 'Rent'}</span>
                                           </div>
                                         )}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="mt-3 w-full"
+                                          onClick={() => handleViewPropertyDetails(notification.propertyId)}
+                                          disabled={loadingProperty}
+                                        >
+                                          {loadingProperty && selectedProperty?.id === notification.propertyId ? (
+                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                          ) : null}
+                                          View All Details
+                                        </Button>
                                       </div>
                                     </div>
                                   )}
@@ -887,6 +916,18 @@ const AdminPortal = () => {
                                       <p className="text-sm font-medium text-gray-500">{notification.propertyId || 'N/A'}</p>
                                     </div>
                                   </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-3 w-full"
+                                    onClick={() => handleViewPropertyDetails(notification.propertyId)}
+                                    disabled={loadingProperty}
+                                  >
+                                    {loadingProperty && selectedProperty?.id === notification.propertyId ? (
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : null}
+                                    View All Details
+                                  </Button>
                                 </div>
 
                                 {/* User Details */}
@@ -1103,8 +1144,19 @@ const AdminPortal = () => {
                                       <p className="text-sm font-medium capitalize">{notification.propertyListingType || 'Rent'}</p>
                                     </div>
                                   </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-3 w-full"
+                                    onClick={() => handleViewPropertyDetails(notification.propertyId)}
+                                    disabled={loadingProperty}
+                                  >
+                                    {loadingProperty && selectedProperty?.id === notification.propertyId ? (
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : null}
+                                    View All Details
+                                  </Button>
                                 </div>
-
                                 {/* Owner Details */}
                                 <div>
                                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -1282,6 +1334,17 @@ const AdminPortal = () => {
                               Owner: {property.ownerName} • {property.ownerEmail}
                             </p>
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewPropertyDetails(property.id)}
+                            disabled={loadingProperty}
+                          >
+                            {loadingProperty && selectedProperty?.id === property.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            ) : null}
+                            View Full Details
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -1386,16 +1449,26 @@ const AdminPortal = () => {
                                   <span className="text-sm">{notification.ownerEmail}</span>
                                 </div>
                               )}
-                              {notification.ownerPhone && (
-                                <div className="flex items-center gap-2">
-                                  <Phone className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-sm">{notification.ownerPhone}</span>
-                                </div>
-                              )}
+                              <div className="flex items-center justify-between gap-2 mt-4">
+                                <span className="text-xs text-muted-foreground">
+                                  Completed: {new Date(notification.timestamp).toLocaleString()}
+                                </span>
+                                {notification.propertyId && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs"
+                                    onClick={() => handleViewPropertyDetails(notification.propertyId)}
+                                    disabled={loadingProperty}
+                                  >
+                                    {loadingProperty && selectedProperty?.id === notification.propertyId ? (
+                                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                    ) : null}
+                                    Property Details
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <span className="text-xs text-muted-foreground">
-                              Completed: {new Date(notification.timestamp).toLocaleString()}
-                            </span>
                           </div>
                         </div>
                       </CardContent>
@@ -1650,7 +1723,13 @@ const AdminPortal = () => {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+
+      <AdminPropertyDetailsDialog
+        property={selectedProperty}
+        isOpen={isPropertyDialogOpen}
+        onOpenChange={setIsPropertyDialogOpen}
+      />
+    </div >
   );
 };
 

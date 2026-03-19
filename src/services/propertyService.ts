@@ -19,20 +19,50 @@ interface Property {
   squareFeet: number;
   images: string[];
   rentalStatus?: string; // 'available' | 'rented'
-  furnishedChecklist?: string[]; // Array of furnished items
+  furnishedChecklist?: any[]; // Array of furnished items
   ownerUID: string;
   ownerName: string;
   ownerEmail: string;
+  status: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
   unitNumber?: string; // Optional unit number
+  floor?: string;
+  location?: string;
   configuration?: string; // e.g., "2 BHK"
   unitCondition?: string; // e.g., "Unfurnished"
   carpetArea?: string; // e.g., "1200 sqft"
   constructedArea?: string; // e.g., "1500 sqft"
   monthlyRent?: string;
   sellingPrice?: string;
+  personName?: string;
+  tenantName?: string;
+  mobileNumber?: string;
+  primaryNo?: string;
+  ultNo?: string;
+  monthlyRent1stYear?: string;
+  monthlyRent2ndYear?: string;
+  monthlyRent3rdYear?: string;
+  monthlyRent4thYear?: string;
+  rentFromDate1?: string;
+  rentToDate1?: string;
+  rentFromDate2?: string;
+  rentToDate2?: string;
+  paymentDueDate?: string;
+  escalationPercentage?: string;
+  escalationAmount?: string;
+  securityDeposit?: string;
+  agreementPeriod?: string;
+  agreementStartDate?: string;
+  agreementEndDate?: string;
+  noticePeriod?: string;
+  lockInPeriod?: string;
+  maintenanceToBePaidBy?: string;
+  specificComments?: string;
+  tenants?: any[];
+  buyers?: any[];
+  wantToSell?: boolean;
 }
 
 // Site settings from admin

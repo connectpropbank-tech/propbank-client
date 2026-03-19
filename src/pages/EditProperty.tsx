@@ -646,7 +646,7 @@ const EditProperty = () => {
 
       const updateData = {
         ...safeRestData,
-        title: propertyTitle, // Backend expects 'title' field
+        title: propertyTitle, 
         tenantName: `${data.tenantFirstName || ""} ${data.tenantLastName || ""}`.trim(),
         personName: `${data.tenantFirstName || ""} ${data.tenantLastName || ""}`.trim(),
         images: uploadedImages,
@@ -655,9 +655,6 @@ const EditProperty = () => {
         tenants: updatedTenants,
       };
 
-      // Debug log
-
-      // Send update request to backend
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PUT',
         headers: {
@@ -696,7 +693,6 @@ const EditProperty = () => {
       });
     }
   };
-
 
   const isPropertyEditable = () => {
     if (!property) return false;
