@@ -11,7 +11,7 @@ import { uploadBase64Image } from "@/services/uploadService";
 import AdminPropertyDetailsDialog from "@/components/AdminPropertyDetailsDialog";
 import { propertyService, Property } from "@/services/propertyService";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8002";
+import { API_BASE_URL } from "../utils/config";
 
 
 interface AdminNotification {

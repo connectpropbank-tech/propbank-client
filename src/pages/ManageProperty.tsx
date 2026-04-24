@@ -608,7 +608,7 @@ const ManageProperty = () => {
 
       if (updateData.success) {
         // Create admin notification
-        const notificationResponse = await fetch('${API_BASE_URL}/admin/notifications', {
+        const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
