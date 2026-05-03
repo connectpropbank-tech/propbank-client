@@ -620,6 +620,8 @@ const ManageProperty = () => {
             propertyId: propertyId,
             ownerId: user?.uid,
             ownerName: user?.displayName || user?.email || 'Unknown Owner',
+            ownerEmail: user?.email || '',
+            ownerPhone: user?.phoneNumber || '',
             timestamp: new Date().toISOString(),
             isRead: false,
             priority: 'medium'

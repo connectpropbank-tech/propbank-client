@@ -96,81 +96,12 @@ const HomePage = () => {
   const ITEMS_PER_PAGE = 12;
   const hasLoadedRef = useRef(false); // Track if properties have been loaded
 
-  // Get current user and their phone number
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
-        // Fetch user phone number from backend
-        try {
-          const response = await fetch(`${API_BASE_URL}/users/${firebaseUser.uid}`);
-          if (response.ok) {
-            const data = await response.json();
-            if (data.user && data.user.phoneNumber) {
-              setUserPhone(data.user.phoneNumber);
-            }
-          }
-        } catch (error) {
-
-        }
-      } else {
-        setUserPhone("");
-      }
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Load properties only once on mount
-  useEffect(() => {
-    if (!hasLoadedRef.current) {
-      hasLoadedRef.current = true;
-      loadAllProperties();
-    }
-  }, []); // Empty dependency array - only run on mount
-
-  // Infinite scroll observer
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
-          loadMoreProperties();
-        }
-      },
-      { threshold: 1.0 }
-    );
-
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
-
-    return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
-    };
-  }, [hasMore, loading, loadingMore]);
-
-  // Banner carousel rotation - every 10 seconds
-  useEffect(() => {
-    const bannerImages = siteSettings.bannerImages || [];
-    if (bannerImages.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setCurrentBannerIndex(prev => (prev + 1) % bannerImages.length);
-    }, 10000); // 10 seconds
-
-    return () => clearInterval(interval);
-  }, [siteSettings.bannerImages]);
-
   const loadAllProperties = async () => {
     try {
       setLoading(true);
       const response = await propertyService.getAllPropertiesWithSettings();
       const fetchedProperties = response.properties;
       setAllProperties(fetchedProperties);
-
-      // Update site settings from backend
 
       if (response.siteSettings) {
         setSiteSettings(prev => ({
@@ -185,7 +116,6 @@ const HomePage = () => {
       setHasMore(fetchedProperties.length > ITEMS_PER_PAGE);
       setPage(1);
     } catch (error) {
-
       toast({
         title: "Error",
         description: "Failed to load properties. Please refresh the page.",
@@ -195,30 +125,6 @@ const HomePage = () => {
       setLoading(false);
     }
   };
-
-  const loadMoreProperties = useCallback(() => {
-    if (!hasMore || loadingMore) return;
-
-    setLoadingMore(true);
-
-    // Simulate network delay for smooth UX
-    setTimeout(() => {
-      const startIndex = page * ITEMS_PER_PAGE;
-      const endIndex = startIndex + ITEMS_PER_PAGE;
-      const sourceProperties = isSearching ? getFilteredProperties() : allProperties;
-      const newProperties = sourceProperties.slice(startIndex, endIndex);
-
-      if (newProperties.length > 0) {
-        setProperties(prev => [...prev, ...newProperties]);
-        setPage(prev => prev + 1);
-        setHasMore(endIndex < sourceProperties.length);
-      } else {
-        setHasMore(false);
-      }
-
-      setLoadingMore(false);
-    }, 500);
-  }, [page, hasMore, loadingMore, isSearching, allProperties, getFilteredProperties]);
 
   const getFilteredProperties = useCallback(() => {
     let filtered = [...allProperties];
@@ -303,10 +209,29 @@ const HomePage = () => {
     return filtered;
   }, [allProperties, searchQuery, searchType, selectedCategories, selectedListingTypes, selectedProjectCondition, budgetRange]);
 
-  // Automatically trigger search when any filter changes
-  useEffect(() => {
-    handleSearch();
-  }, [searchQuery, searchType, selectedCategories, selectedListingTypes, selectedProjectCondition, budgetRange]);
+  const loadMoreProperties = useCallback(() => {
+    if (!hasMore || loadingMore) return;
+
+    setLoadingMore(true);
+
+    // Simulate network delay for smooth UX
+    setTimeout(() => {
+      const startIndex = page * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      const sourceProperties = isSearching ? getFilteredProperties() : allProperties;
+      const newProperties = sourceProperties.slice(startIndex, endIndex);
+
+      if (newProperties.length > 0) {
+        setProperties(prev => [...prev, ...newProperties]);
+        setPage(prev => prev + 1);
+        setHasMore(endIndex < sourceProperties.length);
+      } else {
+        setHasMore(false);
+      }
+
+      setLoadingMore(false);
+    }, 500);
+  }, [page, hasMore, loadingMore, isSearching, allProperties, getFilteredProperties]);
 
   const handleSearch = useCallback(() => {
     const hasActiveFilters = searchQuery.trim() !== "" || 
@@ -333,6 +258,78 @@ const HomePage = () => {
       });
     }
   }, [searchQuery, selectedCategories, getFilteredProperties, setIsSearching, toast]);
+
+  // Get current user and their phone number
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        // Fetch user phone number from backend
+        try {
+          const response = await fetch(`${API_BASE_URL}/users/${firebaseUser.uid}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.user && data.user.phoneNumber) {
+              setUserPhone(data.user.phoneNumber);
+            }
+          }
+        } catch (error) {
+          // Silent error
+        }
+      } else {
+        setUserPhone("");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Load properties only once on mount
+  useEffect(() => {
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadAllProperties();
+    }
+  }, []); // Empty dependency array - only run on mount
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          loadMoreProperties();
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasMore, loading, loadingMore, loadMoreProperties]);
+
+  // Banner carousel rotation - every 10 seconds
+  useEffect(() => {
+    const bannerImages = siteSettings.bannerImages || [];
+    if (bannerImages.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentBannerIndex(prev => (prev + 1) % bannerImages.length);
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(interval);
+  }, [siteSettings.bannerImages]);
+
+  // Automatically trigger search when any filter changes
+  useEffect(() => {
+    handleSearch();
+  }, [searchQuery, searchType, selectedCategories, selectedListingTypes, selectedProjectCondition, budgetRange, handleSearch]);
 
   // Set search trigger after handleSearch is defined
   useEffect(() => {

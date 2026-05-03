@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Eye, MapPin, Home, Calendar, CheckCircle, ClipboardList, FileText, Scale, Wrench, RefreshCw, FileX, Image as ImageIcon, Loader2 } from "lucide-react";
+import { ArrowLeft, Eye, MapPin, Home, Calendar, CheckCircle, ClipboardList, FileText, Scale, Wrench, RefreshCw, FileX, Image as ImageIcon, Loader2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,7 @@ interface RaisedRequest {
   resolvedAt?: string; // Timestamp when marked as resolved
   priority?: string;
   adminRemarks?: string;
+  adminImage?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1250,10 +1251,25 @@ const PropertyDetails = () => {
                               </div>
                             )}
 
-                            {request.adminRemarks && (
-                              <div className="mt-3 pt-3 border-t bg-blue-50/50 p-2 rounded">
-                                <label className="text-xs font-medium text-blue-800">Admin Remarks</label>
-                                <p className="text-sm text-blue-900 font-medium italic">"{request.adminRemarks}"</p>
+                            {(request.adminRemarks || request.adminImage) && (
+                              <div className="mt-3 pt-3 border-t bg-blue-50/50 p-3 rounded-lg border border-blue-100">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <MessageSquare className="h-3.5 w-3.5 text-blue-700" />
+                                  <label className="text-xs font-bold text-blue-800 uppercase tracking-wider">Admin Response</label>
+                                </div>
+                                {request.adminRemarks && (
+                                  <p className="text-sm text-blue-900 font-medium italic mb-2">"{request.adminRemarks}"</p>
+                                )}
+                                {request.adminImage && (
+                                  <div className="mt-2">
+                                    <img 
+                                      src={request.adminImage} 
+                                      alt="Admin attachment" 
+                                      className="max-w-full h-auto max-h-48 rounded border border-blue-200 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                      onClick={() => window.open(request.adminImage, '_blank')}
+                                    />
+                                  </div>
+                                )}
                               </div>
                             )}
 

@@ -23,6 +23,7 @@ interface Property {
   ownerUID: string;
   ownerName: string;
   ownerEmail: string;
+  ownerPhone?: string;
   status: string;
   isActive: boolean;
   createdAt: string;

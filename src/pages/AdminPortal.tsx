@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Users, AlertCircle, Archive, CheckCircle2, Phone, Mail, User as UserIcon, X, Upload, ImageIcon, MessageSquare, Save, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { uploadBase64Image } from "@/services/uploadService";
+import { uploadBase64Image, fileToBase64 } from "@/services/uploadService";
 import AdminPropertyDetailsDialog from "@/components/AdminPropertyDetailsDialog";
 import { propertyService, Property } from "@/services/propertyService";
 
@@ -48,6 +48,7 @@ interface AdminNotification {
   resolvedAt?: string; // Timestamp when marked as resolved
   priority: string;
   adminRemarks?: string;
+  adminImage?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -88,6 +89,8 @@ const AdminPortal = () => {
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [remarkImages, setRemarkImages] = useState<Record<string, string>>({});
+  const [uploadingRemarkImage, setUploadingRemarkImage] = useState<string | null>(null);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   // Store pending banner images as base64 strings (not yet uploaded)
   const [pendingBannerImages, setPendingBannerImages] = useState<string[]>([]);
@@ -412,7 +415,7 @@ const AdminPortal = () => {
     }
   };
 
-  const handleSaveRemarks = async (notificationId: string, remarks: string) => {
+  const handleSaveRemarks = async (notificationId: string, remarks: string, adminImage?: string) => {
     setUpdating(notificationId);
     try {
       const response = await fetch(`${API_BASE_URL}/admin/notifications/${notificationId}/remarks`, {
@@ -420,7 +423,7 @@ const AdminPortal = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ remarks }),
+        body: JSON.stringify({ remarks, adminImage }),
       });
 
       if (response.ok) {
@@ -433,7 +436,7 @@ const AdminPortal = () => {
         setNotifications(prev =>
           prev.map(n =>
             n.id === notificationId
-              ? { ...n, adminRemarks: remarks }
+              ? { ...n, adminRemarks: remarks, adminImage: adminImage }
               : n
           )
         );
@@ -448,6 +451,38 @@ const AdminPortal = () => {
       });
     } finally {
       setUpdating(null);
+    }
+  };
+
+  const handleRemarkImageUpload = async (notificationId: string, file: File) => {
+    setUploadingRemarkImage(notificationId);
+    try {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target?.result as string;
+        try {
+          const imageUrl = await uploadBase64Image(base64);
+          setRemarkImages(prev => ({
+            ...prev,
+            [notificationId]: imageUrl
+          }));
+          toast({
+            title: "Success",
+            description: "Image uploaded successfully. Click Save Remarks to finalize.",
+          });
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: "Failed to upload image. Please try again.",
+            variant: "destructive"
+          });
+        } finally {
+          setUploadingRemarkImage(null);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      setUploadingRemarkImage(null);
     }
   };
 
@@ -930,6 +965,110 @@ const AdminPortal = () => {
                                   </Button>
                                 </div>
 
+                                {/* Owner Details */}
+                                {notification.ownerName && (
+                                  <div>
+                                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                      <span>👤</span> Owner Details
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-green-50/50 rounded-lg border border-green-100">
+                                      <div className="flex items-center gap-2">
+                                        <UserIcon className="h-4 w-4 text-green-600" />
+                                        <span className="text-sm font-medium">{notification.ownerName}</span>
+                                      </div>
+                                      {notification.ownerEmail && (
+                                        <div className="flex items-center gap-2">
+                                          <Mail className="h-4 w-4 text-green-600" />
+                                          <a href={`mailto:${notification.ownerEmail}`} className="text-sm text-blue-600 hover:underline">
+                                            {notification.ownerEmail}
+                                          </a>
+                                        </div>
+                                      )}
+                                      {notification.ownerPhone && (
+                                        <div className="flex items-center gap-2">
+                                          <Phone className="h-4 w-4 text-green-600" />
+                                          <a href={`tel:${notification.ownerPhone}`} className="text-sm text-blue-600 hover:underline">
+                                            {notification.ownerPhone}
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Tenant Details */}
+                                {notification.tenantName && (
+                                  <div className="mt-4">
+                                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                      <span>🔑</span> Tenant Details
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-blue-50/50 rounded-lg border border-blue-100">
+                                      <div className="flex items-center gap-2">
+                                        <UserIcon className="h-4 w-4 text-blue-600" />
+                                        <span className="text-sm font-medium">{notification.tenantName}</span>
+                                      </div>
+                                      {notification.tenantEmail && (
+                                        <div className="flex items-center gap-2">
+                                          <Mail className="h-4 w-4 text-blue-600" />
+                                          <a href={`mailto:${notification.tenantEmail}`} className="text-sm text-blue-600 hover:underline">
+                                            {notification.tenantEmail}
+                                          </a>
+                                        </div>
+                                      )}
+                                      {notification.tenantPhone && (
+                                        <div className="flex items-center gap-2">
+                                          <Phone className="h-4 w-4 text-blue-600" />
+                                          <a href={`tel:${notification.tenantPhone}`} className="text-sm text-blue-600 hover:underline">
+                                            {notification.tenantPhone}
+                                          </a>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Buyer Details */}
+                                {notification.buyers && (
+                                  <div className="mt-4">
+                                    <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                      <span>🤝</span> Buyer Details
+                                    </h4>
+                                    <div className="space-y-3">
+                                      {(() => {
+                                        try {
+                                          const buyers = JSON.parse(notification.buyers);
+                                          return Array.isArray(buyers) ? buyers.map((buyer: any, idx: number) => (
+                                            <div key={idx} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-amber-50/50 rounded-lg border border-amber-100">
+                                              <div className="flex items-center gap-2">
+                                                <UserIcon className="h-4 w-4 text-amber-600" />
+                                                <span className="text-sm font-medium">{buyer.firstName} {buyer.lastName}</span>
+                                              </div>
+                                              {buyer.email && (
+                                                <div className="flex items-center gap-2">
+                                                  <Mail className="h-4 w-4 text-amber-600" />
+                                                  <a href={`mailto:${buyer.email}`} className="text-sm text-blue-600 hover:underline">
+                                                    {buyer.email}
+                                                  </a>
+                                                </div>
+                                              )}
+                                              {buyer.phone && (
+                                                <div className="flex items-center gap-2">
+                                                  <Phone className="h-4 w-4 text-amber-600" />
+                                                  <a href={`tel:${buyer.phone}`} className="text-sm text-blue-600 hover:underline">
+                                                    {buyer.phone}
+                                                  </a>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )) : null;
+                                        } catch (e) {
+                                          return null;
+                                        }
+                                      })()}
+                                    </div>
+                                  </div>
+                                )}
+
                                 {/* User Details */}
                                 <div>
                                   <h4 className="text-sm font-semibold mb-3">User Details (Who Raised the Request):</h4>
@@ -1003,38 +1142,6 @@ const AdminPortal = () => {
                                   </div>
                                 </div>
 
-                                {/* Admin Remarks Section */}
-                                <div className="mt-4 pt-4 border-t border-gray-100">
-                                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                    <MessageSquare className="h-4 w-4 text-blue-600" />
-                                    Admin Remarks (Visible to Tenant)
-                                  </h4>
-                                  <div className="space-y-3">
-                                    <textarea
-                                      className="w-full min-h-[100px] p-3 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-y"
-                                      placeholder="Add your remarks or solution here..."
-                                      defaultValue={notification.adminRemarks || ""}
-                                      id={`remarks-${notification.id}`}
-                                    />
-                                    <div className="flex justify-end">
-                                      <Button
-                                        size="sm"
-                                        disabled={updating === notification.id}
-                                        onClick={() => {
-                                          const el = document.getElementById(`remarks-${notification.id}`) as HTMLTextAreaElement;
-                                          handleSaveRemarks(notification.id, el.value);
-                                        }}
-                                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                                      >
-                                        {updating === notification.id ? (
-                                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                        ) : (
-                                          <Save className="h-4 w-4 mr-2" />
-                                        )}
-                                        Save Remarks
-                                      </Button>
-                                    </div>
-                                  </div>
                                 </div>
                               </div>
                             ) : notification.type === "general_inquiry" ? (
@@ -1252,6 +1359,84 @@ const AdminPortal = () => {
                                 )}
                               </div>
                             )}
+
+                            {/* Global Admin Remarks Section */}
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                <MessageSquare className="h-4 w-4 text-blue-600" />
+                                Admin Remarks (Visible to Client)
+                              </h4>
+                              <div className="space-y-3">
+                                <textarea
+                                  className="w-full min-h-[100px] p-3 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-y"
+                                  placeholder="Add your remarks or solution here..."
+                                  defaultValue={notification.adminRemarks || ""}
+                                  id={`remarks-${notification.id}`}
+                                />
+
+                                {/* Admin Image Attachment */}
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="relative"
+                                      disabled={uploadingRemarkImage === notification.id}
+                                    >
+                                      {uploadingRemarkImage === notification.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      ) : (
+                                        <Upload className="h-4 w-4 mr-2" />
+                                      )}
+                                      {notification.adminImage || remarkImages[notification.id] ? "Change Attachment" : "Attach Image"}
+                                      <input
+                                        type="file"
+                                        className="absolute inset-0 opacity-0 cursor-pointer"
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) handleRemarkImageUpload(notification.id, file);
+                                        }}
+                                      />
+                                    </Button>
+                                    {(notification.adminImage || remarkImages[notification.id]) && (
+                                      <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-100">
+                                        Image Attached
+                                      </Badge>
+                                    )}
+                                  </div>
+
+                                  {(notification.adminImage || remarkImages[notification.id]) && (
+                                    <div className="mt-2">
+                                      <img
+                                        src={remarkImages[notification.id] || notification.adminImage}
+                                        alt="Admin attachment"
+                                        className="max-w-xs h-auto max-h-40 rounded-lg border shadow-sm"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex justify-end">
+                                  <Button
+                                    size="sm"
+                                    disabled={updating === notification.id || uploadingRemarkImage === notification.id}
+                                    onClick={() => {
+                                      const el = document.getElementById(`remarks-${notification.id}`) as HTMLTextAreaElement;
+                                      handleSaveRemarks(notification.id, el.value, remarkImages[notification.id] || notification.adminImage);
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                  >
+                                    {updating === notification.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : (
+                                      <Save className="h-4 w-4 mr-2" />
+                                    )}
+                                    Save Remarks
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
 
                             <div className="flex items-center gap-2 mt-4">
                               <Badge variant={notification.priority === "high" ? "destructive" : "secondary"}>

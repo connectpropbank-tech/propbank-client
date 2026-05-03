@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useState, useEffect } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, BedDouble, Bath, Maximize, Loader2, Filter } from "lucide-react";
 import { propertyService, Property } from "@/services/propertyService";
 import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/firebase";
+import { API_BASE_URL } from "@/utils/config";
 
 // Utility function to get placeholder image URL
 const getPlaceholderImage = (propertyType?: string): string => {
@@ -61,6 +63,8 @@ const SearchResults = () => {
     searchParams.get('projectCondition') || ''
   );
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [sendingEnquiry, setSendingEnquiry] = useState<string | null>(null);
 
   // Load search results with filters
   const performSearch = async () => {
@@ -145,6 +149,79 @@ const SearchResults = () => {
     setSearchType(newType);
     // Auto-search when type changes
     setTimeout(performSearch, 100);
+  };
+
+  const handleEnquireProperty = async (property: Property) => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      toast({
+        title: "Login Required",
+        description: "Please login to enquire about properties.",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    setSendingEnquiry(property.id);
+    try {
+      // Prepare notification payload with all required fields
+      const notificationPayload = {
+        type: 'property_enquiry',
+        title: 'Property Enquiry Request',
+        message: `User ${currentUser.displayName || currentUser.email || 'Unknown User'} is interested in property: ${property.title || property.id}`,
+        propertyId: property.id || '',
+        ownerId: property.ownerUID || '',
+        ownerName: property.ownerName || 'Unknown Owner',
+        ownerPhone: property.ownerPhone || property.primaryNo || '',
+        ownerEmail: property.ownerEmail || '',
+        // User details (person who enquired) - currently logged in user
+        userId: currentUser.uid || '',
+        userName: currentUser.displayName || currentUser.email || 'Unknown User',
+        userEmail: currentUser.email || '',
+        userPhone: currentUser.phoneNumber || '',
+        // Property details
+        propertyTitle: property.title || '',
+        propertyAddress: property.address || property.city || 'Not specified',
+        propertyListingType: property.listingType || 'rent',
+        // Tenant info if available
+        tenantName: property.tenants && property.tenants.length > 0 ? `${property.tenants[0].firstName} ${property.tenants[0].lastName}` : '',
+        tenantEmail: property.tenants && property.tenants.length > 0 ? property.tenants[0].email : '',
+        tenantPhone: property.tenants && property.tenants.length > 0 ? property.tenants[0].phone : '',
+        // Buyers info if available
+        buyers: property.buyers && property.buyers.length > 0 ? JSON.stringify(property.buyers) : '',
+        timestamp: new Date().toISOString(),
+        isRead: false,
+        priority: 'high'
+      };
+
+      const notificationResponse = await fetch(`${API_BASE_URL}/admin/notifications`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(notificationPayload),
+      });
+
+      const notificationData = await notificationResponse.json();
+
+      if (notificationData.success) {
+        toast({
+          title: "Enquiry Sent",
+          description: "Your enquiry has been sent to the admin. They will contact you soon.",
+        });
+      } else {
+        throw new Error(notificationData.message || 'Failed to send enquiry');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send enquiry. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEnquiry(null);
+    }
   };
 
   const formatPrice = (property: Property): string => {
@@ -437,8 +514,14 @@ const SearchResults = () => {
                           Owner: {property.ownerName}
                         </span>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="w-full">
-                            Enquire about this property
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="w-full"
+                            onClick={() => handleEnquireProperty(property)}
+                            disabled={sendingEnquiry === property.id}
+                          >
+                            {sendingEnquiry === property.id ? "Sending..." : "Enquire Now"}
                           </Button>
                         </div>
                       </div>

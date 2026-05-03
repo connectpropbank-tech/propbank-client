@@ -22,7 +22,8 @@ import {
     Maximize,
     Briefcase,
     Info,
-    CheckCircle2
+    CheckCircle2,
+    Users
 } from "lucide-react";
 import { Property } from "@/services/propertyService";
 
@@ -155,20 +156,73 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                             <div className="space-y-1">
                                 <DataRow label="Name" value={property.ownerName} />
                                 <DataRow label="Email" value={property.ownerEmail} icon={Mail} />
+                                <DataRow label="Phone" value={property.ownerPhone} icon={Phone} />
                                 <DataRow label="Owner ID" value={property.ownerUID} />
                             </div>
                         </div>
 
                         {/* Current Person Info (Tenant/Lead) */}
-                        <div className="lg:col-span-2">
+                        <div className="md:col-span-3">
                             <SectionTitle title="Primary Contact (Tenant/Person)" icon={Phone} />
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-orange-50/30 p-4 rounded-lg">
                                 <DataRow label="Person Name" value={property.personName || property.tenantName} />
                                 <DataRow label="Mobile Number" value={property.mobileNumber} />
                                 <DataRow label="Primary No" value={property.primaryNo} />
                                 <DataRow label="Alt No" value={property.ultNo} />
                             </div>
                         </div>
+
+                        {/* Tenants List */}
+                        {property.tenants && property.tenants.length > 0 && (
+                            <div className="md:col-span-3">
+                                <SectionTitle title="All Registered Tenants" icon={Users} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {property.tenants.map((tenant, idx) => (
+                                        <div key={idx} className="border rounded-lg p-4 bg-blue-50/30">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h4 className="font-semibold">{tenant.firstName} {tenant.lastName}</h4>
+                                                <Badge variant={tenant.isActive ? "default" : "secondary"}>
+                                                    {tenant.isActive ? "Active" : "Past"}
+                                                </Badge>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                                                <DataRow label="Email" value={tenant.email} icon={Mail} />
+                                                <DataRow label="Phone" value={tenant.phone} icon={Phone} />
+                                                <DataRow label="Rent" value={tenant.monthlyRent ? `₹${tenant.monthlyRent}` : "N/A"} />
+                                                <DataRow label="Due Date" value={tenant.paymentDueDate} />
+                                                <DataRow label="Start Date" value={formatDate(tenant.leaseStartDate)} />
+                                                <DataRow label="End Date" value={formatDate(tenant.leaseEndDate)} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Buyers List */}
+                        {property.buyers && property.buyers.length > 0 && (
+                            <div className="md:col-span-3">
+                                <SectionTitle title="Interested Buyers" icon={Users} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {property.buyers.map((buyer, idx) => (
+                                        <div key={idx} className="border rounded-lg p-4 bg-green-50/30">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h4 className="font-semibold">{buyer.firstName} {buyer.lastName}</h4>
+                                                <Badge variant={buyer.isActive ? "default" : "secondary"}>
+                                                    {buyer.isActive ? "Active" : "Closed"}
+                                                </Badge>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                                                <DataRow label="Email" value={buyer.email} icon={Mail} />
+                                                <DataRow label="Phone" value={buyer.phone} icon={Phone} />
+                                                <DataRow label="Offer" value={buyer.offerAmount ? `₹${buyer.offerAmount}` : "N/A"} />
+                                                <DataRow label="Closing" value={formatDate(buyer.closingDate)} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Agreement Details */}
                         {property.listingType === 'rent' && (
