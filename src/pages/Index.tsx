@@ -8,7 +8,7 @@ import GradientSpotlight from "@/components/GradientSpotlight";
 import GeneralInquiryForm from "@/components/GeneralInquiryForm";
 import heroImage from "@/assets/hero-realestate.jpg";
 import { Link, useNavigate } from "react-router-dom";
-import { Building2, MapPin, Home, Loader2, Search, Filter, Calendar, Settings, ArrowRight } from "lucide-react";
+import { Building2, Building, Factory, MapPin, Home, Loader2, Search, Filter, Calendar, Settings, ArrowRight } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { propertyService, Property, SiteSettings } from "@/services/propertyService";
 import { useToast } from "@/hooks/use-toast";
@@ -87,6 +87,7 @@ const HomePage = () => {
     selectedCategories,
     setSelectedCategories,
     selectedListingTypes,
+    setSelectedListingTypes,
     isSearching,
     setIsSearching,
     setOnSearchTrigger
@@ -217,7 +218,7 @@ const HomePage = () => {
 
       setLoadingMore(false);
     }, 500);
-  }, [page, hasMore, loadingMore, isSearching, allProperties]);
+  }, [page, hasMore, loadingMore, isSearching, allProperties, getFilteredProperties]);
 
   const getFilteredProperties = useCallback(() => {
     let filtered = [...allProperties];
@@ -235,21 +236,35 @@ const HomePage = () => {
     }
 
     // Filter by search type (buy/rent) - Note: backend uses 'sell' for 'buy'
-    if (searchType) {
-      // This would require listingType field in properties
-      // For now, we'll assume all properties can be both bought and rented
-      // You can add this logic when the backend provides listingType field
+    if (searchType && searchType !== "all") {
+      filtered = filtered.filter(property => {
+        const backendType = (searchType === 'buy' ? 'sell' : searchType).toLowerCase();
+        return property.listingType?.toLowerCase() === backendType;
+      });
     }
+
+    // Filter by status (show active properties or those without a specific status set)
+    filtered = filtered.filter(property => 
+      !property.status || 
+      property.status === "" || 
+      property.status.toLowerCase() === "active" || 
+      property.isActive === true
+    );
+
+    // Filter out rented properties (show available or ones with no status set)
+    filtered = filtered.filter(property => {
+      if (property.listingType === "rent") {
+        return property.rentalStatus !== "rented";
+      }
+      return true;
+    });
 
     // Filter by header selected listing types (if any)
     if (selectedListingTypes && selectedListingTypes.length > 0) {
       filtered = filtered.filter(property => {
-        if (!property.listingType) return false;
-        // Map frontend types to backend types
-        return selectedListingTypes.some(type => {
-          const backendType = type === 'buy' ? 'sell' : type;
-          return property.listingType === backendType;
-        });
+        const propType = property.listingType?.toLowerCase();
+        const displayType = propType === 'sell' ? 'buy' : propType;
+        return selectedListingTypes.some(t => t.toLowerCase() === displayType);
       });
     }
 
@@ -288,8 +303,21 @@ const HomePage = () => {
     return filtered;
   }, [allProperties, searchQuery, searchType, selectedCategories, selectedListingTypes, selectedProjectCondition, budgetRange]);
 
+  // Automatically trigger search when any filter changes
+  useEffect(() => {
+    handleSearch();
+  }, [searchQuery, searchType, selectedCategories, selectedListingTypes, selectedProjectCondition, budgetRange]);
+
   const handleSearch = useCallback(() => {
-    setIsSearching(true);
+    const hasActiveFilters = searchQuery.trim() !== "" || 
+      searchType !== "all" || 
+      selectedCategories.length > 0 || 
+      selectedListingTypes.length > 0 || 
+      selectedProjectCondition !== "" || 
+      budgetRange.min > 0 || 
+      budgetRange.max > 0;
+
+    setIsSearching(hasActiveFilters);
 
     const filteredProperties = getFilteredProperties();
     const initialResults = filteredProperties.slice(0, ITEMS_PER_PAGE);
@@ -316,8 +344,9 @@ const HomePage = () => {
 
   const clearFilters = () => {
     setSearchQuery("");
-    setSearchType("buy");
+    setSearchType("all");
     setSelectedCategories([]);
+    setSelectedListingTypes([]);
     setSelectedProjectCondition("");
     setBudgetRange({ min: 0, max: 0 });
     setIsSearching(false);
@@ -809,124 +838,111 @@ const HomePage = () => {
             <p className="text-gray-600 text-base sm:text-lg">Your dream property is just a search away</p>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-lg border">
-            <div className="mb-4 sm:mb-6">
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
-                <div className="flex items-center gap-0 rounded-lg border border-input bg-background shadow-sm overflow-hidden w-full">
-                  <Select value={searchType} onValueChange={setSearchType}>
-                    <SelectTrigger className="w-20 sm:w-32 border-0 border-r border-input rounded-none bg-muted/50 text-xs sm:text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="buy">Buy</SelectItem>
-                      <SelectItem value="rent">Rent</SelectItem>
-                    </SelectContent>
-                  </Select>
+          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100">
+            <div className="mb-8">
+              <div className="flex items-center bg-white rounded-2xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-slate-900 focus-within:border-transparent transition-all overflow-hidden group">
+                <Select value={searchType} onValueChange={setSearchType}>
+                  <SelectTrigger className="w-32 border-0 border-r border-gray-200 rounded-none bg-gray-50/50 h-14 focus:ring-0 focus:ring-offset-0 font-semibold text-gray-700 px-6">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="buy">Buy</SelectItem>
+                    <SelectItem value="rent">Rent</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                  <Input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by location, type, or features..."
-                    className="flex-1 border-0 rounded-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-xs sm:text-sm"
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  />
-
-                  <Button
-                    onClick={handleSearch}
-                    className="rounded-none px-3 sm:px-6 text-xs sm:text-sm"
-                    variant="default"
-                  >
-                    <Search className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Search</span>
-                  </Button>
-                </div>
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by location, type, or features..."
+                  className="flex-1 border-0 rounded-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 text-base py-7 px-6"
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                />
+                <Button
+                  onClick={handleSearch}
+                  className="rounded-none px-8 h-14 bg-[#111827] hover:bg-[#1F2937] transition-all text-white font-semibold text-base flex items-center gap-2"
+                  variant="default"
+                >
+                  <Search className="h-5 w-5" />
+                  <span>Search</span>
+                </Button>
               </div>
             </div>
 
-            {/* Filters Grid - Mobile Responsive */}
-            <div className="space-y-4 sm:space-y-6">
+            {/* Filters Sections */}
+            <div className="space-y-10">
               {/* Property Types */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-medium text-foreground text-center sm:text-left">Property Types</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+              <div className="space-y-4">
+                <h3 className="text-base font-bold text-gray-900">Property Types</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <Button
-                    variant={selectedCategories.length === 0 ? "default" : "outline"}
-                    size="sm"
-                    className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
+                    variant="outline"
+                    className={`h-24 rounded-xl flex flex-col items-center justify-center gap-3 transition-all duration-200 border-gray-200 shadow-sm hover:border-blue-200 hover:bg-blue-50/30 ${selectedCategories.length === 0 ? "bg-[#111827] text-white border-[#111827] hover:bg-[#1F2937] hover:text-white" : "text-gray-600 bg-white"}`}
                     onClick={() => {
                       setSelectedCategories([]);
-                      setSearchQuery("");
-                      setSelectedProjectCondition("");
                     }}
                   >
-                    <Home className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>All</span>
+                    <Home className={`h-6 w-6 ${selectedCategories.length === 0 ? "text-white" : "text-gray-400"}`} />
+                    <span className="font-semibold text-sm">All</span>
                   </Button>
                   <Button
-                    variant={selectedCategories.includes("residential") ? "default" : "outline"}
-                    size="sm"
-                    className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
+                    variant="outline"
+                    className={`h-24 rounded-xl flex flex-col items-center justify-center gap-3 transition-all duration-200 border-gray-200 shadow-sm hover:border-blue-200 hover:bg-blue-50/30 ${selectedCategories.includes("residential") ? "bg-[#111827] text-white border-[#111827] hover:bg-[#1F2937] hover:text-white" : "text-gray-600 bg-white"}`}
                     onClick={() => handleCategoryToggle("residential")}
                   >
-                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Residential</span>
+                    <Building2 className={`h-6 w-6 ${selectedCategories.includes("residential") ? "text-white" : "text-gray-400"}`} />
+                    <span className="font-semibold text-sm">Residential</span>
                   </Button>
                   <Button
-                    variant={selectedCategories.includes("commercial") ? "default" : "outline"}
-                    size="sm"
-                    className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
+                    variant="outline"
+                    className={`h-24 rounded-xl flex flex-col items-center justify-center gap-3 transition-all duration-200 border-gray-200 shadow-sm hover:border-blue-200 hover:bg-blue-50/30 ${selectedCategories.includes("commercial") ? "bg-[#111827] text-white border-[#111827] hover:bg-[#1F2937] hover:text-white" : "text-gray-600 bg-white"}`}
                     onClick={() => handleCategoryToggle("commercial")}
                   >
-                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Commercial</span>
+                    <Building className={`h-6 w-6 ${selectedCategories.includes("commercial") ? "text-white" : "text-gray-400"}`} />
+                    <span className="font-semibold text-sm">Commercial</span>
                   </Button>
                   <Button
-                    variant={selectedCategories.includes("industrial") ? "default" : "outline"}
-                    size="sm"
-                    className="h-auto p-2 sm:p-3 flex-col gap-1 text-xs"
+                    variant="outline"
+                    className={`h-24 rounded-xl flex flex-col items-center justify-center gap-3 transition-all duration-200 border-gray-200 shadow-sm hover:border-blue-200 hover:bg-blue-50/30 ${selectedCategories.includes("industrial") ? "bg-[#111827] text-white border-[#111827] hover:bg-[#1F2937] hover:text-white" : "text-gray-600 bg-white"}`}
                     onClick={() => handleCategoryToggle("industrial")}
                   >
-                    <Building2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Industrial</span>
+                    <Factory className={`h-6 w-6 ${selectedCategories.includes("industrial") ? "text-white" : "text-gray-400"}`} />
+                    <span className="font-semibold text-sm">Industrial</span>
                   </Button>
                 </div>
               </div>
 
-              {/* Project Types & Budget - Two Column Layout on Mobile */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-16 gap-y-8">
                 {/* Project Types */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-foreground">Project Types</h3>
-                  <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-4">
+                  <h3 className="text-base font-bold text-gray-900">Project Types</h3>
+                  <div className="grid grid-cols-2 gap-4">
                     <Button
-                      variant={!selectedProjectCondition ? "default" : "outline"}
-                      size="sm"
+                      variant="outline"
                       onClick={() => setSelectedProjectCondition("")}
-                      className="text-xs"
+                      className={`h-12 rounded-xl font-semibold border-gray-200 shadow-sm transition-all ${!selectedProjectCondition ? "bg-[#111827] text-white border-[#111827] hover:bg-[#1F2937]" : "text-gray-600 bg-white hover:bg-gray-50"}`}
                     >
                       All Projects
                     </Button>
                     <Button
-                      variant={selectedProjectCondition === "New Project" ? "default" : "outline"}
-                      size="sm"
+                      variant="outline"
                       onClick={() => setSelectedProjectCondition("New Project")}
-                      className="text-xs"
+                      className={`h-12 rounded-xl font-semibold border-gray-200 shadow-sm transition-all ${selectedProjectCondition === "New Project" ? "bg-[#111827] text-white border-[#111827] hover:bg-[#1F2937]" : "text-gray-600 bg-white hover:bg-gray-50"}`}
                     >
                       New Project
                     </Button>
                     <Button
-                      variant={selectedProjectCondition === "Ready Project" ? "default" : "outline"}
-                      size="sm"
+                      variant="outline"
                       onClick={() => setSelectedProjectCondition("Ready Project")}
-                      className="text-xs"
+                      className={`h-12 rounded-xl font-semibold border-gray-200 shadow-sm transition-all ${selectedProjectCondition === "Ready Project" ? "bg-[#111827] text-white border-[#111827] hover:bg-[#1F2937]" : "text-gray-600 bg-white hover:bg-gray-50"}`}
                     >
                       Ready Project
                     </Button>
                     <Button
-                      variant={selectedProjectCondition === "Preleased" ? "default" : "outline"}
-                      size="sm"
+                      variant="outline"
                       onClick={() => setSelectedProjectCondition("Preleased")}
-                      className="text-xs"
+                      className={`h-12 rounded-xl font-semibold border-gray-200 shadow-sm transition-all ${selectedProjectCondition === "Preleased" ? "bg-[#111827] text-white border-[#111827] hover:bg-[#1F2937]" : "text-gray-600 bg-white hover:bg-gray-50"}`}
                     >
                       Preleased
                     </Button>
@@ -934,21 +950,19 @@ const HomePage = () => {
                 </div>
 
                 {/* Budget Range */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium text-foreground">
-                    Budget Range (₹{searchType === 'rent' ? '/month' : ''})
-                  </h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Min Budget</label>
+                <div className="space-y-4">
+                  <h3 className="text-base font-bold text-gray-900">Budget Range (₹)</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-500">Min Budget</label>
                       <Select
                         value={budgetRange.min.toString()}
                         onValueChange={(value) => setBudgetRange({ ...budgetRange, min: parseInt(value) || 0 })}
                       >
-                        <SelectTrigger className="w-full text-xs">
-                          <SelectValue placeholder="Select Min" />
+                        <SelectTrigger className="w-full h-12 rounded-xl border-gray-200 bg-white text-gray-700 font-medium">
+                          <SelectValue placeholder="No Min" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl border-gray-200 shadow-xl">
                           <SelectItem value="0">No Min</SelectItem>
                           {searchType === 'buy' ? (
                             <>
@@ -957,79 +971,50 @@ const HomePage = () => {
                               <SelectItem value="3000000">₹30 Lakh</SelectItem>
                               <SelectItem value="4000000">₹40 Lakh</SelectItem>
                               <SelectItem value="5000000">₹50 Lakh</SelectItem>
-                              <SelectItem value="6000000">₹60 Lakh</SelectItem>
-                              <SelectItem value="7000000">₹70 Lakh</SelectItem>
-                              <SelectItem value="8000000">₹80 Lakh</SelectItem>
-                              <SelectItem value="9000000">₹90 Lakh</SelectItem>
+                              <SelectItem value="7500000">₹75 Lakh</SelectItem>
                               <SelectItem value="10000000">₹1 Crore</SelectItem>
-                              <SelectItem value="15000000">₹1.5 Crore</SelectItem>
                               <SelectItem value="20000000">₹2 Crore</SelectItem>
-                              <SelectItem value="30000000">₹3 Crore</SelectItem>
                               <SelectItem value="50000000">₹5 Crore</SelectItem>
                             </>
                           ) : (
                             <>
                               <SelectItem value="5000">₹5,000</SelectItem>
                               <SelectItem value="10000">₹10,000</SelectItem>
-                              <SelectItem value="15000">₹15,000</SelectItem>
                               <SelectItem value="20000">₹20,000</SelectItem>
-                              <SelectItem value="25000">₹25,000</SelectItem>
                               <SelectItem value="30000">₹30,000</SelectItem>
-                              <SelectItem value="40000">₹40,000</SelectItem>
                               <SelectItem value="50000">₹50,000</SelectItem>
-                              <SelectItem value="75000">₹75,000</SelectItem>
                               <SelectItem value="100000">₹1 Lakh</SelectItem>
-                              <SelectItem value="150000">₹1.5 Lakh</SelectItem>
-                              <SelectItem value="200000">₹2 Lakh</SelectItem>
                             </>
                           )}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-xs text-muted-foreground">Max Budget</label>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-500">Max Budget</label>
                       <Select
                         value={budgetRange.max.toString()}
                         onValueChange={(value) => setBudgetRange({ ...budgetRange, max: parseInt(value) || 0 })}
                       >
-                        <SelectTrigger className="w-full text-xs">
-                          <SelectValue placeholder="Select Max" />
+                        <SelectTrigger className="w-full h-12 rounded-xl border-gray-200 bg-white text-gray-700 font-medium">
+                          <SelectValue placeholder="No Max" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl border-gray-200 shadow-xl">
                           <SelectItem value="0">No Max</SelectItem>
                           {searchType === 'buy' ? (
                             <>
-                              <SelectItem value="1000000">₹10 Lakh</SelectItem>
-                              <SelectItem value="2000000">₹20 Lakh</SelectItem>
-                              <SelectItem value="3000000">₹30 Lakh</SelectItem>
-                              <SelectItem value="4000000">₹40 Lakh</SelectItem>
                               <SelectItem value="5000000">₹50 Lakh</SelectItem>
-                              <SelectItem value="6000000">₹60 Lakh</SelectItem>
-                              <SelectItem value="7000000">₹70 Lakh</SelectItem>
-                              <SelectItem value="8000000">₹80 Lakh</SelectItem>
-                              <SelectItem value="9000000">₹90 Lakh</SelectItem>
                               <SelectItem value="10000000">₹1 Crore</SelectItem>
-                              <SelectItem value="15000000">₹1.5 Crore</SelectItem>
                               <SelectItem value="20000000">₹2 Crore</SelectItem>
-                              <SelectItem value="30000000">₹3 Crore</SelectItem>
                               <SelectItem value="50000000">₹5 Crore</SelectItem>
                               <SelectItem value="100000000">₹10 Crore</SelectItem>
                             </>
                           ) : (
                             <>
-                              <SelectItem value="5000">₹5,000</SelectItem>
-                              <SelectItem value="10000">₹10,000</SelectItem>
-                              <SelectItem value="15000">₹15,000</SelectItem>
                               <SelectItem value="20000">₹20,000</SelectItem>
-                              <SelectItem value="25000">₹25,000</SelectItem>
-                              <SelectItem value="30000">₹30,000</SelectItem>
-                              <SelectItem value="40000">₹40,000</SelectItem>
                               <SelectItem value="50000">₹50,000</SelectItem>
-                              <SelectItem value="75000">₹75,000</SelectItem>
                               <SelectItem value="100000">₹1 Lakh</SelectItem>
-                              <SelectItem value="150000">₹1.5 Lakh</SelectItem>
                               <SelectItem value="200000">₹2 Lakh</SelectItem>
-                              <SelectItem value="300000">₹3 Lakh</SelectItem>
+                              <SelectItem value="500000">₹5 Lakh</SelectItem>
                             </>
                           )}
                         </SelectContent>
@@ -1042,8 +1027,12 @@ const HomePage = () => {
 
             {/* Clear Filters Button */}
             {(selectedCategories.length > 0 || selectedProjectCondition || budgetRange.min > 0 || budgetRange.max > 0 || searchQuery.trim()) && (
-              <div className="mt-4 sm:mt-6 text-center">
-                <Button variant="ghost" onClick={clearFilters} size="sm">
+              <div className="mt-8 flex justify-center">
+                <Button 
+                  variant="ghost" 
+                  onClick={clearFilters} 
+                  className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl px-6 transition-all"
+                >
                   <Filter className="h-4 w-4 mr-2" />
                   Clear All Filters
                 </Button>
@@ -1136,13 +1125,7 @@ const HomePage = () => {
           ) : (
             <>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 px-2">
-                {properties
-                  .filter(property =>
-                    // Show available rental properties OR all properties for sale
-                    (property.listingType === "rent" && property.rentalStatus === "available") ||
-                    (property.listingType === "sell")
-                  )
-                  .map((property) => (
+                {properties.map((property) => (
                     <Card key={property.id} className="overflow-hidden hover:shadow-lg transition-shadow group flex flex-col h-full p-2">
                       {/* Property Image */}
                       <div className="relative aspect-video overflow-hidden">
@@ -1235,7 +1218,7 @@ const HomePage = () => {
                             size="sm"
                             className="w-full"
                             onClick={() => handleEnquireProperty(property)}
-                            disabled={sendingEnquiry === property.id || !auth.currentUser}
+                            disabled={sendingEnquiry === property.id}
                           >
                             {sendingEnquiry === property.id ? "Sending..." : "Enquire Now"}
                           </Button>

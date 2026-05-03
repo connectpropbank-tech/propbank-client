@@ -21,7 +21,7 @@ const SearchContext = createContext<SearchContextType | undefined>(undefined);
 
 export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState("buy");
+  const [searchType, setSearchType] = useState("all");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedListingTypes, setSelectedListingTypes] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -35,7 +35,7 @@ export const SearchProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const clearSearch = useCallback(() => {
     setSearchQuery("");
-    setSearchType("buy");
+    setSearchType("all");
     setSelectedCategories([]);
     setSelectedListingTypes([]);
     setIsSearching(false);
