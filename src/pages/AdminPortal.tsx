@@ -560,7 +560,10 @@ const AdminPortal = () => {
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 space-y-3">
                             <div>
-                              <h3 className="font-semibold text-lg">{notification.title}</h3>
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-semibold text-lg">{notification.title}</h3>
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">Active</span>
+                              </div>
                               {/* Only show message for notifications that don't have custom display */}
                               {notification.type !== "property_enquiry" && notification.type !== "service_request" && notification.type !== "review" && notification.type !== "legal_service_request" && notification.type !== "other_service_request" && notification.type !== "inspection_report" && notification.type !== "general_inquiry" && notification.type !== "agreement_termination" && notification.type !== "agreement_renewal" && (
                                 <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
@@ -1659,6 +1662,7 @@ const AdminPortal = () => {
                         <div className="flex items-center gap-2 mb-1">
                           <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
                           <h3 className="font-semibold text-base">{notification.title}</h3>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">Completed</span>
                         </div>
                         <p className="text-sm text-muted-foreground mb-4">{notification.message}</p>
 
