@@ -1126,19 +1126,13 @@ const EditProperty = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Notice Period</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} disabled={!isPropertyEditable()}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select notice period" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="1 Month">1 Month</SelectItem>
-                                <SelectItem value="2 Months">2 Months</SelectItem>
-                                <SelectItem value="3 Months">3 Months</SelectItem>
-                                <SelectItem value="6 Months">6 Months</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g. 1 Month, 45 Days, etc."
+                                disabled={!isPropertyEditable()}
+                                {...field}
+                              />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}

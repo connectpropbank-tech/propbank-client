@@ -144,12 +144,11 @@ const AddTenant = () => {
               securityDeposit: tenant.securityDeposit,
               previousAddress: tenant.previousAddress,
               employmentStatus: tenant.employmentStatus,
-              employer: tenant.employer,
-              monthlyIncome: tenant.monthlyIncome || '',
+              employer: tenant.employer || '',
               paymentDueDate: tenant.paymentDueDate || '',
               escalationPercentage: tenant.escalationPercentage || '',
               escalationAmount: tenant.escalationAmount || '',
-              notes: tenant.notes,
+              notes: tenant.notes || '',
               rentSchedule: tenant.rentSchedule || []
             })));
           }
@@ -164,7 +163,6 @@ const AddTenant = () => {
 
   const searchUserByPhone = async (tenantId: string, phoneNumber: string) => {
     if (!phoneNumber || phoneNumber.trim().length < 10) {
-      // Clear user info if phone is too short
       setTenants(prev => prev.map(tenant =>
         tenant.id === tenantId
           ? { ...tenant, userInfo: null, userUID: undefined, searchError: undefined, searchingUser: false }
@@ -173,7 +171,6 @@ const AddTenant = () => {
       return;
     }
 
-    // Set searching state
     setTenants(prev => prev.map(tenant =>
       tenant.id === tenantId
         ? { ...tenant, searchingUser: true, searchError: undefined }
@@ -185,7 +182,6 @@ const AddTenant = () => {
       const data = await response.json();
 
       if (data.success && data.user) {
-        // User found - auto-fill tenant fields and show user info
         const user = data.user;
         const nameParts = user.name.split(' ');
         const firstName = nameParts[0] || '';
@@ -218,7 +214,6 @@ const AddTenant = () => {
           description: `Found user: ${user.name} `,
         });
       } else {
-        // User not found
         setTenants(prev => prev.map(tenant =>
           tenant.id === tenantId
             ? {
@@ -256,22 +251,18 @@ const AddTenant = () => {
       if (tenant.id === tenantId) {
         const updated = { ...tenant, [field]: value };
 
-        // If phone number changed, search for user (debounced)
         if (field === 'phone') {
-          // Clear previous user info when phone changes
           updated.userInfo = null;
           updated.userUID = undefined;
           updated.searchError = undefined;
 
-          // Clear previous timeout
           if (tenant.searchTimeoutId) {
             clearTimeout(tenant.searchTimeoutId);
           }
 
-          // Debounce the search
           const timeoutId = setTimeout(() => {
             searchUserByPhone(tenantId, value);
-          }, 1000); // Wait 1 second after user stops typing
+          }, 1000);
 
           updated.searchTimeoutId = timeoutId;
         }
@@ -346,7 +337,7 @@ const AddTenant = () => {
     setTenants(prev => prev.map(tenant => {
       if (tenant.id === tenantId) {
         const newSchedule = [...(tenant.rentSchedule || [])];
-        if (!newSchedule[index]) return tenant; // Safety check
+        if (!newSchedule[index]) return tenant;
         newSchedule[index] = { ...newSchedule[index], [field]: value };
         return { ...tenant, rentSchedule: newSchedule };
       }
@@ -400,7 +391,6 @@ const AddTenant = () => {
       previousAddress: '',
       employmentStatus: '',
       employer: '',
-      monthlyIncome: '',
       paymentDueDate: '',
       escalationPercentage: '',
       escalationAmount: '',
@@ -440,7 +430,6 @@ const AddTenant = () => {
       return;
     }
 
-    // Check if any tenant has a search error (user not found)
     const tenantsWithSearchError = tenants.filter(tenant => tenant.searchError);
     if (tenantsWithSearchError.length > 0) {
       toast({
@@ -451,7 +440,6 @@ const AddTenant = () => {
       return;
     }
 
-    // Check if any tenant is still being searched
     const tenantsStillSearching = tenants.filter(tenant => tenant.searchingUser);
     if (tenantsStillSearching.length > 0) {
       toast({
@@ -462,7 +450,6 @@ const AddTenant = () => {
       return;
     }
 
-    // Validate spouse details if married
     const tenantsWithMissingSpouseInfo = tenants.filter(tenant => {
       if (tenant.isMarried && tenant.spouse) {
         return !tenant.spouse.firstName || !tenant.spouse.lastName || !tenant.spouse.phone;
@@ -489,15 +476,14 @@ const AddTenant = () => {
 
       const property = propertyData.property;
 
-      // Prepare tenant data for property update
       const newTenantInfos = tenants.map(({ id, userInfo, searchError, searchingUser, searchTimeoutId, ...tenant }) => ({
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9), // Generate unique ID
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         firstName: tenant.firstName,
         lastName: tenant.lastName,
         email: tenant.email,
         phone: tenant.phone,
         emergencyContact: tenant.emergencyContact,
-        userUID: tenant.userUID, // Map to platform user if found
+        userUID: tenant.userUID,
         isMarried: tenant.isMarried,
         spouse: tenant.isMarried && tenant.spouse ? tenant.spouse : null,
         leaseStartDate: tenant.leaseStartDate,
@@ -507,7 +493,6 @@ const AddTenant = () => {
         previousAddress: tenant.previousAddress,
         employmentStatus: tenant.employmentStatus,
         employer: tenant.employer,
-        monthlyIncome: tenant.monthlyIncome,
         paymentDueDate: tenant.paymentDueDate,
         escalationPercentage: tenant.escalationPercentage,
         escalationAmount: tenant.escalationAmount,
@@ -515,25 +500,21 @@ const AddTenant = () => {
         notes: tenant.notes,
         rentSchedule: tenant.rentSchedule,
         isActive: true
-        // Let backend handle createdAt and updatedAt timestamps
       }));
 
-      // Get existing tenants or initialize empty array
       const existingTenants = property.tenants || [];
       const updatedTenants = [...existingTenants, ...newTenantInfos];
 
-      // Update property with new tenants using property update API
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Send specific fields only to avoid overwriting OwnerUID or timestamps
           tenants: updatedTenants,
-          rentalStatus: 'rented', // Ensure status is updated
-          listingType: 'rent',    // Ensure listing type is correct
-          status: property.status || 'active', // Preserve status or default to active
+          rentalStatus: 'rented',
+          listingType: 'rent',
+          status: property.status || 'active',
         }),
       });
 
@@ -545,7 +526,6 @@ const AddTenant = () => {
           description: `${tenants.length} tenant(s) added successfully`
         });
 
-        // Navigate back to manage property page
         setTimeout(() => {
           navigate("/manage-property");
         }, 1500);
@@ -603,7 +583,6 @@ const AddTenant = () => {
               <h2 className="text-2xl font-bold">Current Tenants ({existingTenants.length})</h2>
             </div>
 
-            {/* Property Occupied Notice - hide in read-only mode */}
             {!readOnly && (
               <div className="mb-4 p-4 border border-orange-200 bg-orange-50 rounded-lg">
                 <div className="flex items-center">
@@ -635,7 +614,6 @@ const AddTenant = () => {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {/* Personal Information */}
                     <div>
                       <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Personal Information</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -654,7 +632,6 @@ const AddTenant = () => {
                       </div>
                     </div>
 
-                    {/* Emergency Contact */}
                     {tenant.emergencyContact && (
                       <div>
                         <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Emergency Contact</h3>
@@ -665,7 +642,6 @@ const AddTenant = () => {
                       </div>
                     )}
 
-                    {/* Spouse Information */}
                     {tenant.isMarried && tenant.spouse && (
                       <div>
                         <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Spouse Information</h3>
@@ -698,7 +674,6 @@ const AddTenant = () => {
                       </div>
                     )}
 
-                    {/* Lease Information */}
                     <div>
                       <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Lease Information</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -726,7 +701,6 @@ const AddTenant = () => {
                           <label className="text-xs font-medium text-muted-foreground">Notice Period</label>
                           <p>{tenant.noticePeriod || 'N/A'}</p>
                         </div>
-                        {/* Rent Schedule Table */}
                         {tenant.rentSchedule && tenant.rentSchedule.length > 0 && (
                           <div className="md:col-span-3 mt-2">
                             <label className="text-xs font-medium text-muted-foreground mb-1 block">Rent Schedule</label>
@@ -757,7 +731,6 @@ const AddTenant = () => {
                       </div>
                     </div>
 
-                    {/* Background Information */}
                     <div>
                       <h3 className="text-md font-semibold text-gray-700 mb-3 border-b pb-1">Background Information</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -773,10 +746,6 @@ const AddTenant = () => {
                           <label className="text-xs font-medium text-muted-foreground">Employer/Company</label>
                           <p>{tenant.employer || 'N/A'}</p>
                         </div>
-                        <div>
-                          <label className="text-xs font-medium text-muted-foreground">Monthly Income</label>
-                          <p>{tenant.monthlyIncome ? `₹${Number(tenant.monthlyIncome).toLocaleString()}` : 'N/A'}</p>
-                        </div>
                         <div className="md:col-span-3">
                           <label className="text-xs font-medium text-muted-foreground">Additional Notes</label>
                           <p>{tenant.notes || 'N/A'}</p>
@@ -791,7 +760,6 @@ const AddTenant = () => {
           </div>
         )}
 
-        {/* Only show Add Tenant form if there are no existing tenants AND not in read-only mode */}
         {existingTenants.length === 0 && !readOnly && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -836,7 +804,6 @@ const AddTenant = () => {
                   )}
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Personal Information */}
                   <div>
                     <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                       <User className="h-4 w-4" />
@@ -891,7 +858,6 @@ const AddTenant = () => {
                             <XCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
                           )}
                         </div>
-                        {/* User Info Display */}
                         {tenant.userInfo && !tenant.searchingUser && (
                           <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                             <div className="flex items-center gap-3">
@@ -910,7 +876,6 @@ const AddTenant = () => {
                             </div>
                           </div>
                         )}
-                        {/* Error Display */}
                         {tenant.searchError && !tenant.searchingUser && (
                           <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                             <p className="text-sm text-red-900">{tenant.searchError}</p>
@@ -927,7 +892,6 @@ const AddTenant = () => {
                         />
                       </div>
 
-                      {/* Marital Status Checkbox */}
                       <div className="md:col-span-2 flex items-center space-x-2 pt-2">
                         <Checkbox
                           id={`isMarried - ${tenant.id} `}
@@ -944,7 +908,6 @@ const AddTenant = () => {
                     </div>
                   </div>
 
-                  {/* Spouse Information - Show only if married */}
                   {tenant.isMarried && (
                     <div className="border rounded-lg p-4 bg-blue-50/50">
                       <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
@@ -1031,7 +994,6 @@ const AddTenant = () => {
                     </div>
                   )}
 
-                  {/* Lease Information */}
                   <div>
                     <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                       <FileText className="h-4 w-4" />
@@ -1075,7 +1037,6 @@ const AddTenant = () => {
                         />
                       </div>
 
-                      {/* Dynamic Rent Schedule */}
                       <div className="md:col-span-2 mt-2 space-y-4 pt-4 border-t">
                         <div className="flex items-center justify-between">
                           <Label className="text-base font-semibold">Monthly Rent Schedule</Label>
@@ -1160,25 +1121,16 @@ const AddTenant = () => {
                       </div>
                       <div>
                         <Label htmlFor={`noticePeriod - ${tenant.id} `}>Notice Period *</Label>
-                        <Select
+                        <Input
+                          id={`noticePeriod - ${tenant.id} `}
                           value={tenant.noticePeriod}
-                          onValueChange={(value) => handleInputChange(tenant.id, 'noticePeriod', value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select notice period" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1 Month">1 Month</SelectItem>
-                            <SelectItem value="2 Months">2 Months</SelectItem>
-                            <SelectItem value="3 Months">3 Months</SelectItem>
-                            <SelectItem value="6 Months">6 Months</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          onChange={(e) => handleInputChange(tenant.id, 'noticePeriod', e.target.value)}
+                          placeholder="e.g. 1 Month, 45 Days, etc."
+                        />
                       </div>
                     </div>
                   </div>
 
-                  {/* Background Information */}
                   <div>
                     <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                       <MapPin className="h-4 w-4" />

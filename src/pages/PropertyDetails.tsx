@@ -1484,30 +1484,13 @@ const PropertyDetails = () => {
             <div className="py-4">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="notice-period" className="mb-2 block">Select Notice Period</Label>
-                  <RadioGroup
+                  <Input
                     id="notice-period"
                     value={selectedNoticePeriod}
-                    onValueChange={setSelectedNoticePeriod}
-                    className="grid grid-cols-2 gap-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="Immediate" id="immediate" />
-                      <Label htmlFor="immediate">Immediate</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="1 Month" id="1-month" />
-                      <Label htmlFor="1-month">1 Month</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="2 Months" id="2-months" />
-                      <Label htmlFor="2-months">2 Months</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="3 Months" id="3-months" />
-                      <Label htmlFor="3-months">3 Months</Label>
-                    </div>
-                  </RadioGroup>
+                    onChange={(e) => setSelectedNoticePeriod(e.target.value)}
+                    placeholder="e.g. 1 Month, 45 Days, etc."
+                    className="mt-2"
+                  />
                 </div>
 
                 <div className="bg-blue-50 p-3 rounded-md border border-blue-100 text-sm text-blue-800">

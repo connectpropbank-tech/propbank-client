@@ -26,16 +26,32 @@ const TerminateAgreement = () => {
 
   const handleNoticeChange = (period: string) => {
     setNoticePeriod(period);
-    if (period === "Immediate") {
+    if (!period || period.toLowerCase().includes("immediate")) {
       setTerminationDate(null);
       return;
     }
 
     const today = new Date();
-    const months = parseInt(period.split(" ")[0]); // Extract number
+    const parts = period.split(" ");
+    const num = parseInt(parts[0]);
+    
+    if (isNaN(num)) {
+      setTerminationDate(null);
+      return;
+    }
+
     const calculatedDate = new Date(today);
-    calculatedDate.setMonth(today.getMonth() + months);
-    setTerminationDate(calculatedDate);
+    if (period.toLowerCase().includes("month")) {
+      calculatedDate.setMonth(today.getMonth() + num);
+      setTerminationDate(calculatedDate);
+    } else if (period.toLowerCase().includes("day")) {
+      calculatedDate.setDate(today.getDate() + num);
+      setTerminationDate(calculatedDate);
+    } else {
+      // Default to months if just a number is entered
+      calculatedDate.setMonth(today.getMonth() + num);
+      setTerminationDate(calculatedDate);
+    }
   };
 
 
@@ -241,22 +257,13 @@ const TerminateAgreement = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {/* Notice Period Selection */}
               <div className="space-y-2">
                 <label className="text-sm font-medium">Notice Period</label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {["Immediate", "1 Month", "2 Months", "3 Months"].map((option) => (
-                    <Button
-                      key={option}
-                      type="button"
-                      variant={noticePeriod === option ? "default" : "outline"}
-                      onClick={() => handleNoticeChange(option)}
-                      className="w-full"
-                    >
-                      {option}
-                    </Button>
-                  ))}
-                </div>
+                <Input
+                  value={noticePeriod}
+                  onChange={(e) => handleNoticeChange(e.target.value)}
+                  placeholder="e.g. 1 Month, 45 Days, etc."
+                />
               </div>
 
               {noticePeriod !== "Immediate" && terminationDate && (

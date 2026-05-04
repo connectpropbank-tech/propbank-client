@@ -1061,17 +1061,6 @@ const AddPropertyForm = () => {
                       )}
                     />
 
-                    <FormField control={form.control} name="tenantMonthlyIncome"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Monthly Income</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Monthly Income" {...field} value={field.value || ""} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
                     {/* Spouse Information Section */}
                     <div className="lg:col-span-3 mt-6 pt-4 border-t">
@@ -1515,19 +1504,9 @@ const AddPropertyForm = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Notice Period / Early Termination Notice <span className="text-red-500">*</span></FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select notice period" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="1 Month">1 Month</SelectItem>
-                              <SelectItem value="2 Months">2 Months</SelectItem>
-                              <SelectItem value="3 Months">3 Months</SelectItem>
-                              <SelectItem value="6 Months">6 Months</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <FormControl>
+                            <Input placeholder="e.g. 1 Month, 45 Days, etc." {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
