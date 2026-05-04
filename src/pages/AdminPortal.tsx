@@ -460,20 +460,30 @@ const AdminPortal = () => {
       const reader = new FileReader();
       reader.onload = async (e) => {
         const base64 = e.target?.result as string;
+        // Set local preview immediately
+        setRemarkImages(prev => ({
+          ...prev,
+          [notificationId]: base64
+        }));
+
         try {
           const imageUrl = await uploadBase64Image(base64);
+          // Store the actual Cloudflare URL for saving, but keep the base64 for the current session's preview
+          // We can use a separate state or just update the same state if we're careful.
+          // For now, let's store the URL in a way that handleSaveRemarks can use it.
           setRemarkImages(prev => ({
             ...prev,
-            [notificationId]: imageUrl
+            [`url-${notificationId}`]: imageUrl
           }));
+          
           toast({
             title: "Success",
-            description: "Image uploaded successfully. Click Save Remarks to finalize.",
+            description: "Image uploaded to Cloudflare successfully. Click Save Remarks to finalize.",
           });
         } catch (error) {
           toast({
             title: "Error",
-            description: "Failed to upload image. Please try again.",
+            description: "Failed to upload image to Cloudflare. Please try again.",
             variant: "destructive"
           });
         } finally {
@@ -1141,8 +1151,6 @@ const AdminPortal = () => {
                                     )}
                                   </div>
                                 </div>
-
-                                </div>
                               </div>
                             ) : notification.type === "general_inquiry" ? (
                               /* For General Inquiry: Show inquiry details and user info */
@@ -1407,12 +1415,41 @@ const AdminPortal = () => {
                                   </div>
 
                                   {(notification.adminImage || remarkImages[notification.id]) && (
-                                    <div className="mt-2">
-                                      <img
-                                        src={remarkImages[notification.id] || notification.adminImage}
-                                        alt="Admin attachment"
-                                        className="max-w-xs h-auto max-h-40 rounded-lg border shadow-sm"
-                                      />
+                                    <div className="mt-2 space-y-2">
+                                      <div className="relative">
+                                        <img
+                                          src={remarkImages[notification.id] || notification.adminImage}
+                                          alt="Admin attachment"
+                                          title={remarkImages[`url-${notification.id}`] || notification.adminImage}
+                                          className="max-w-xs h-auto max-h-60 rounded-lg border shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                          onClick={() => {
+                                            const url = remarkImages[`url-${notification.id}`] || notification.adminImage;
+                                            window.open(url, '_blank');
+                                          }}
+                                          referrerPolicy="no-referrer"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            if (!target.src.includes('placehold.co')) {
+                                              target.src = "https://placehold.co/400x300?text=Image+Load+Error";
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                      <div className="flex flex-col gap-2">
+                                        <a 
+                                          href={remarkImages[`url-${notification.id}`] || notification.adminImage} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-blue-600 hover:underline flex items-center gap-1 font-medium bg-blue-50 px-2 py-1 rounded w-fit"
+                                          onClick={() => console.log("Direct link clicked for:", remarkImages[`url-${notification.id}`] || notification.adminImage)}
+                                        >
+                                          <ImageIcon className="h-3.5 w-3.5" />
+                                          View Full Image
+                                        </a>
+                                        <p className="text-[10px] text-gray-400 break-all bg-gray-50 p-1 rounded border border-gray-100">
+                                          URL: {remarkImages[`url-${notification.id}`] || notification.adminImage}
+                                        </p>
+                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -1423,7 +1460,7 @@ const AdminPortal = () => {
                                     disabled={updating === notification.id || uploadingRemarkImage === notification.id}
                                     onClick={() => {
                                       const el = document.getElementById(`remarks-${notification.id}`) as HTMLTextAreaElement;
-                                      handleSaveRemarks(notification.id, el.value, remarkImages[notification.id] || notification.adminImage);
+                                      handleSaveRemarks(notification.id, el.value, remarkImages[`url-${notification.id}`] || notification.adminImage);
                                     }}
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
                                   >
