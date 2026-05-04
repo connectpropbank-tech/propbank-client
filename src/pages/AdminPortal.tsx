@@ -1371,22 +1371,22 @@ const AdminPortal = () => {
                               </div>
                             )}
 
-                            {/* Global Admin Remarks Section */}
-                            <div className="mt-4 pt-4 border-t border-gray-100">
-                              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                <MessageSquare className="h-4 w-4 text-blue-600" />
-                                Admin Remarks (Visible to Client)
-                              </h4>
-                              <div className="space-y-3">
-                                <textarea
-                                  className="w-full min-h-[100px] p-3 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-y"
-                                  placeholder="Add your remarks or solution here..."
-                                  defaultValue={notification.adminRemarks || ""}
-                                  id={`remarks-${notification.id}`}
-                                />
+                            {/* Admin Remarks - Only for Service Requests */}
+                            {notification.type === "service_request" && (
+                              <div className="mt-4 pt-4 border-t border-gray-100">
+                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                  <MessageSquare className="h-4 w-4 text-blue-600" />
+                                  Admin Remarks (Visible to Client)
+                                </h4>
+                                <div className="space-y-3">
+                                  <textarea
+                                    className="w-full min-h-[100px] p-3 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-y"
+                                    placeholder="Add your remarks or solution here..."
+                                    defaultValue={notification.adminRemarks || ""}
+                                    id={`remarks-${notification.id}`}
+                                  />
 
-                                {/* Admin Image Attachment - Only for Service Requests */}
-                                {notification.type === "service_request" && (
+                                  {/* Admin Image Attachment - Only for Service Requests */}
                                   <div className="space-y-2">
                                   <div className="flex items-center gap-2">
                                     <Button
@@ -1457,28 +1457,28 @@ const AdminPortal = () => {
                                     </div>
                                   )}
                                   </div>
-                                )}
 
-                                <div className="flex justify-end">
-                                  <Button
-                                    size="sm"
-                                    disabled={updating === notification.id || uploadingRemarkImage === notification.id}
-                                    onClick={() => {
-                                      const el = document.getElementById(`remarks-${notification.id}`) as HTMLTextAreaElement;
-                                      handleSaveRemarks(notification.id, el.value, remarkImages[`url-${notification.id}`] || notification.adminImage);
-                                    }}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                                  >
-                                    {updating === notification.id ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : (
-                                      <Save className="h-4 w-4 mr-2" />
-                                    )}
-                                    Save Remarks
-                                  </Button>
+                                  <div className="flex justify-end">
+                                    <Button
+                                      size="sm"
+                                      disabled={updating === notification.id || uploadingRemarkImage === notification.id}
+                                      onClick={() => {
+                                        const el = document.getElementById(`remarks-${notification.id}`) as HTMLTextAreaElement;
+                                        handleSaveRemarks(notification.id, el.value, remarkImages[`url-${notification.id}`] || notification.adminImage);
+                                      }}
+                                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    >
+                                      {updating === notification.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      ) : (
+                                        <Save className="h-4 w-4 mr-2" />
+                                      )}
+                                      Save Remarks
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
+                            )}
 
                             <div className="flex items-center gap-2 mt-4">
                               <Badge variant={notification.priority === "high" ? "destructive" : "secondary"}>
