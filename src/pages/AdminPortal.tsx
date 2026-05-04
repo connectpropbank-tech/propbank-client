@@ -1382,8 +1382,9 @@ const AdminPortal = () => {
                                   id={`remarks-${notification.id}`}
                                 />
 
-                                {/* Admin Image Attachment */}
-                                <div className="space-y-2">
+                                {/* Admin Image Attachment - Only for Service Requests */}
+                                {notification.type === "service_request" && (
+                                  <div className="space-y-2">
                                   <div className="flex items-center gap-2">
                                     <Button
                                       variant="outline"
@@ -1452,7 +1453,8 @@ const AdminPortal = () => {
                                       </div>
                                     </div>
                                   )}
-                                </div>
+                                  </div>
+                                )}
 
                                 <div className="flex justify-end">
                                   <Button
