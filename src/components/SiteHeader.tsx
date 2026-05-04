@@ -150,7 +150,7 @@ const SiteHeader = () => {
 
                   {/* Contact Us */}
                   <a
-                    href="mailto:connectpropbank@gmail.com"
+                    href="mailto:connect@propbank.shop"
                     className="px-3 py-3 rounded-md transition-colors text-left flex items-center gap-3 hover:bg-accent hover:text-accent-foreground"
                     onClick={() => setIsOpen(false)}
                   >

@@ -1183,8 +1183,8 @@ const EditProperty = () => {
 
                 {/* Unit Condition & Maintenance */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 border rounded-lg">
-                  <div className="lg:col-span-2">
-                    <h3 className="text-lg font-semibold mb-6">Unit Condition & Maintenance</h3>
+                  <div className="lg:col-span-3">
+                    <h3 className="text-lg font-semibold mb-2">Unit Condition & Maintenance</h3>
                   </div>
 
                   <FormField

@@ -107,9 +107,16 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                             <Badge variant={property.listingType === 'sell' ? 'default' : 'secondary'} className="capitalize">
                                 For {property.listingType}
                             </Badge>
-                            <Badge variant={property.rentalStatus === 'rented' ? 'destructive' : 'outline'} className="capitalize">
-                                {property.rentalStatus || 'Available'}
-                            </Badge>
+                            {property.listingType === 'rent' && (
+                                <Badge variant={property.rentalStatus === 'rented' || property.isRented ? 'destructive' : 'outline'} className="capitalize">
+                                    {property.rentalStatus === 'rented' || property.isRented ? 'Rented' : 'Available'}
+                                </Badge>
+                            )}
+                            {property.listingType === 'sell' && (
+                                <Badge variant={property.isSold ? 'destructive' : 'outline'} className="capitalize">
+                                    {property.isSold ? 'Sold' : 'Available'}
+                                </Badge>
+                            )}
                             <Badge variant={property.status === 'active' ? 'default' : 'secondary'} className="bg-green-100 text-green-800 border-green-200">
                                 {property.status}
                             </Badge>

@@ -232,6 +232,7 @@ interface Property {
   ownerUID: string;
   ownerName: string;
   ownerEmail: string;
+  ownerPhone?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -249,10 +250,26 @@ const PropertyDetails = () => {
   const [isTerminationDialogOpen, setIsTerminationDialogOpen] = useState(false);
   const [selectedNoticePeriod, setSelectedNoticePeriod] = useState("Immediate");
   const [submittingTermination, setSubmittingTermination] = useState(false);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/users/${currentUser.uid}`);
+          if (res.ok) {
+            const userData = await res.json();
+            // Handle both {success: true, user: {...}} and direct {...} formats
+            const role = userData.user?.role || userData.role || 'individual';
+            setCurrentUserRole(role);
+          }
+        } catch (e) {
+          console.error("Error fetching user role", e);
+        }
+      } else {
+        setCurrentUserRole(null);
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -1349,11 +1366,27 @@ const PropertyDetails = () => {
                     <label className="text-xs font-medium text-muted-foreground">Owner Name</label>
                     <p className="text-sm font-medium">{property.ownerName}</p>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Owner Email</label>
-                    <p className="text-sm">{property.ownerEmail}</p>
-                  </div>
-                  <div>
+                  {(currentUserRole === 'admin' || (user && user.uid === property.ownerUID)) ? (
+                    <>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Owner Email</label>
+                        <p className="text-sm">{property.ownerEmail}</p>
+                      </div>
+                      {property.ownerPhone && (
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Owner Phone</label>
+                          <p className="text-sm">{property.ownerPhone}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="pt-2">
+                      <p className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-100">
+                        Contact details are hidden for privacy. Please use the "Enquire Now" button to contact the admin.
+                      </p>
+                    </div>
+                  )}
+                  <div className="pt-2">
                     <label className="text-xs font-medium text-muted-foreground">Property Status</label>
                     <div className="text-sm mt-1">
                       <Badge variant={property.isActive ? "default" : "secondary"}>

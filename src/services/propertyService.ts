@@ -64,6 +64,8 @@ interface Property {
   tenants?: any[];
   buyers?: any[];
   wantToSell?: boolean;
+  isRented?: boolean;
+  isSold?: boolean;
 }
 
 // Site settings from admin

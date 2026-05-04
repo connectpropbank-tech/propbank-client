@@ -101,7 +101,22 @@ const HomePage = () => {
       setLoading(true);
       const response = await propertyService.getAllPropertiesWithSettings();
       const fetchedProperties = response.properties;
-      setAllProperties(fetchedProperties);
+      
+      // Filter properties for display (exclude rented/sold)
+      const displayProperties = fetchedProperties.filter(property => {
+        const isInactive = property.status?.toLowerCase() === "inactive" || property.isActive === false;
+        if (isInactive) return false;
+        
+        if (property.listingType === "rent") {
+          return property.rentalStatus !== "rented" && !property.isRented;
+        }
+        if (property.listingType === "sell") {
+          return !property.isSold;
+        }
+        return true;
+      });
+
+      setAllProperties(displayProperties);
 
       if (response.siteSettings) {
         setSiteSettings(prev => ({
@@ -111,9 +126,9 @@ const HomePage = () => {
       }
 
       // Initially show first page of properties
-      const initialProperties = fetchedProperties.slice(0, ITEMS_PER_PAGE);
+      const initialProperties = displayProperties.slice(0, ITEMS_PER_PAGE);
       setProperties(initialProperties);
-      setHasMore(fetchedProperties.length > ITEMS_PER_PAGE);
+      setHasMore(displayProperties.length > ITEMS_PER_PAGE);
       setPage(1);
     } catch (error) {
       toast({
@@ -157,10 +172,13 @@ const HomePage = () => {
       property.isActive === true
     );
 
-    // Filter out rented properties (show available or ones with no status set)
+    // Filter out rented and sold properties (show only available ones)
     filtered = filtered.filter(property => {
       if (property.listingType === "rent") {
-        return property.rentalStatus !== "rented";
+        return property.rentalStatus !== "rented" && !property.isRented;
+      }
+      if (property.listingType === "sell") {
+        return !property.isSold;
       }
       return true;
     });

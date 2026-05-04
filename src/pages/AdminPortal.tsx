@@ -177,7 +177,7 @@ const AdminPortal = () => {
 
   const fetchAllProperties = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/properties`);
+      const response = await fetch(`${API_BASE_URL}/properties?all=true`);
       if (response.ok) {
         const data = await response.json();
         // Handle both response formats
@@ -499,9 +499,11 @@ const AdminPortal = () => {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-7xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Admin Portal</h1>
-        <p className="text-muted-foreground">Manage properties, agents, service requests, and more</p>
+      <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Admin Portal</h1>
+          <p className="text-muted-foreground">Manage properties, agents, service requests, and more</p>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -1558,7 +1560,7 @@ const AdminPortal = () => {
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground mt-2">
-                              Owner: {property.ownerName} • {property.ownerEmail}
+                              Owner: {property.ownerName} • {property.ownerEmail} {property.ownerPhone && `• ${property.ownerPhone}`}
                             </p>
                           </div>
                           <Button
@@ -1603,20 +1605,20 @@ const AdminPortal = () => {
                     <div className="flex items-center gap-3">
                       <CardTitle className="text-base">Individuals</CardTitle>
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                        {agents.filter(a => !a.role || a.role === "individual").length}
+                        {agents.filter(a => a.role === "individual" || !a.role).length}
                       </span>
                     </div>
                     <CardDescription>Registered individual users</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {agents.filter(a => !a.role || a.role === "individual").length === 0 ? (
+                    {agents.filter(a => a.role === "individual" || !a.role).length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <UserIcon className="h-8 w-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">No individual users found</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {agents.filter(a => !a.role || a.role === "individual").map((agent) => (
+                        {agents.filter(a => a.role === "individual" || !a.role).map((agent) => (
                           <div key={agent.uid} className="flex items-center justify-between p-3 rounded-lg border bg-gray-50/50 hover:bg-gray-50 transition-colors">
                             <div>
                               <h3 className="font-medium text-sm">{agent.name}</h3>
@@ -1643,20 +1645,20 @@ const AdminPortal = () => {
                     <div className="flex items-center gap-3">
                       <CardTitle className="text-base">Agents</CardTitle>
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700 border border-purple-200">
-                        {agents.filter(a => a.role && a.role !== "individual").length}
+                        {agents.filter(a => a.role === "agent").length}
                       </span>
                     </div>
                     <CardDescription>Registered property agents</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {agents.filter(a => a.role && a.role !== "individual").length === 0 ? (
+                    {agents.filter(a => a.role === "agent").length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
                         <p className="text-sm">No agents found</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {agents.filter(a => a.role && a.role !== "individual").map((agent) => (
+                        {agents.filter(a => a.role === "agent").map((agent) => (
                           <div key={agent.uid} className="flex items-center justify-between p-3 rounded-lg border bg-purple-50/30 hover:bg-purple-50/60 transition-colors">
                             <div>
                               <h3 className="font-medium text-sm">{agent.name}</h3>
@@ -1743,6 +1745,56 @@ const AdminPortal = () => {
                           </div>
                         </div>
 
+                        {/* Service Request Details (Original Request) */}
+                        {notification.type === "service_request" && (notification.serviceType || notification.serviceComment || notification.serviceImage) && (
+                          <div className="bg-yellow-50/50 border border-yellow-100 rounded-lg p-3 mb-3">
+                            <h4 className="text-xs font-semibold text-yellow-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              Original Request Details
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {notification.serviceType && (
+                                <div>
+                                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">Service Type</span>
+                                  <p className="text-sm font-medium">{notification.serviceType}</p>
+                                </div>
+                              )}
+                              {notification.serviceComment && (
+                                <div className="md:col-span-2">
+                                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">Tenant Comment</span>
+                                  <p className="text-sm italic text-gray-700">"{notification.serviceComment}"</p>
+                                </div>
+                              )}
+                              {notification.serviceImage && (
+                                <div className="md:col-span-2">
+                                  <span className="text-[10px] text-muted-foreground uppercase font-semibold mb-2 block">Tenant Attachment</span>
+                                  <img
+                                    src={notification.serviceImage}
+                                    alt="Tenant attachment"
+                                    className="max-w-xs h-auto max-h-40 rounded border border-yellow-100 shadow-sm cursor-pointer hover:opacity-90"
+                                    onClick={() => window.open(notification.serviceImage, '_blank')}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Agreement / Termination Specific Details */}
+                        {(notification.type === "agreement_renewal" || notification.type === "agreement_termination") && (notification.userName || notification.userPhone || notification.userEmail) && (
+                          <div className="bg-orange-50/50 border border-orange-100 rounded-lg p-3 mb-3">
+                            <h4 className="text-xs font-semibold text-orange-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                              <UserIcon className="h-3.5 w-3.5" />
+                              Tenant Details
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                              {notification.userName && <span className="font-medium">{notification.userName}</span>}
+                              {notification.userPhone && <span className="text-muted-foreground">{notification.userPhone}</span>}
+                              {notification.userEmail && <span className="text-blue-600 truncate">{notification.userEmail}</span>}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Timestamps row */}
                         <div className="flex flex-wrap gap-x-6 gap-y-1 mb-3 text-xs text-muted-foreground">
                           <span>
@@ -1762,6 +1814,47 @@ const AdminPortal = () => {
                             </span>
                           )}
                         </div>
+
+                        {/* Resolving History - Remarks and Attachments */}
+                        {notification.type === "service_request" && (notification.adminRemarks || notification.adminImage) && (
+                          <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3 mb-4">
+                            <h4 className="text-xs font-semibold text-blue-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                              <MessageSquare className="h-3.5 w-3.5" />
+                              Resolution History
+                            </h4>
+                            
+                            {notification.adminRemarks && (
+                              <div className="text-sm text-gray-700 bg-white p-2.5 rounded border border-blue-50 mb-3 whitespace-pre-wrap">
+                                {notification.adminRemarks}
+                              </div>
+                            )}
+
+                            {notification.adminImage && (
+                              <div className="space-y-2">
+                                <div className="relative group w-fit">
+                                  <img
+                                    src={notification.adminImage}
+                                    alt="Resolution attachment"
+                                    className="max-w-xs h-auto max-h-48 rounded-lg border border-blue-100 shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => window.open(notification.adminImage, '_blank')}
+                                  />
+                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg pointer-events-none">
+                                    <ImageIcon className="h-6 w-6 text-white drop-shadow-md" />
+                                  </div>
+                                </div>
+                                <a 
+                                  href={notification.adminImage} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-medium bg-white px-2 py-1 rounded border border-blue-50 w-fit"
+                                >
+                                  <ImageIcon className="h-3 w-3" />
+                                  View Full Attachment
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {/* Actions row */}
                         <div className="flex items-center justify-end gap-2">

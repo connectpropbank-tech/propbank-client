@@ -505,16 +505,16 @@ const AddTenant = () => {
       const existingTenants = property.tenants || [];
       const updatedTenants = [...existingTenants, ...newTenantInfos];
 
-      const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
-        method: 'PUT',
+      // Call the dedicated tenant creation endpoint which handles notifications
+      const response = await fetch(`${API_BASE_URL}/tenants`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          tenants: updatedTenants,
-          rentalStatus: 'rented',
-          listingType: 'rent',
-          status: property.status || 'active',
+          propertyId: propertyId,
+          ownerUID: property.ownerUID,
+          tenants: newTenantInfos
         }),
       });
 
