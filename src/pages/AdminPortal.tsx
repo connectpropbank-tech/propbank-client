@@ -377,37 +377,34 @@ const AdminPortal = () => {
           title: "Success",
           description: checked
             ? "Request marked as complete and moved to archive"
-            : "Request marked as incomplete"
+            : "Request unarchived and moved back to Active Service Requests"
         });
 
-        // Update local state immediately for better UX
-        setNotifications(prev =>
-          prev.map(n =>
-            n.id === notificationId
-              ? { ...n, isRead: checked }
-              : n
-          ).filter(n => {
-            // In Active Service Requests tab, only show unread service requests
-            // In Archive tab, show all
-            if (activeTab === "service-requests") {
-              return !n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination");
-            }
-            return true;
-          })
-        );
-
-        // If we're in archive tab, also refresh to show the newly completed item
         if (activeTab === "archive") {
-          await fetchArchivedNotifications();
+          // Remove from archive list immediately
+          setNotifications(prev => prev.filter(n => n.id !== notificationId));
+        } else {
+          // In Active tab: remove completed items
+          setNotifications(prev =>
+            prev.map(n =>
+              n.id === notificationId ? { ...n, isRead: checked } : n
+            ).filter(n => {
+              if (activeTab === "service-requests") {
+                return !n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination");
+              }
+              return true;
+            })
+          );
         }
       } else {
-        throw new Error("Failed to mark as complete");
+        throw new Error("Failed to update status");
       }
     } catch (error) {
-
       toast({
         title: "Error",
-        description: "Failed to mark request as complete. Please try again.",
+        description: checked
+          ? "Failed to mark request as complete. Please try again."
+          : "Failed to unarchive request. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -1677,20 +1674,36 @@ const AdminPortal = () => {
                                 <span className="text-xs text-muted-foreground">
                                   Completed: {new Date(notification.timestamp).toLocaleString()}
                                 </span>
-                                {notification.propertyId && (
+                                <div className="flex items-center gap-2">
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 text-xs"
-                                    onClick={() => handleViewPropertyDetails(notification.propertyId)}
-                                    disabled={loadingProperty}
+                                    className="h-8 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+                                    onClick={() => handleMarkComplete(notification.id, false)}
+                                    disabled={updating === notification.id}
                                   >
-                                    {loadingProperty && selectedProperty?.id === notification.propertyId ? (
+                                    {updating === notification.id ? (
                                       <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                    ) : null}
-                                    Property Details
+                                    ) : (
+                                      <Archive className="h-3 w-3 mr-1" />
+                                    )}
+                                    Unarchive
                                   </Button>
-                                )}
+                                  {notification.propertyId && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-xs"
+                                      onClick={() => handleViewPropertyDetails(notification.propertyId)}
+                                      disabled={loadingProperty}
+                                    >
+                                      {loadingProperty && selectedProperty?.id === notification.propertyId ? (
+                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      ) : null}
+                                      Property Details
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
