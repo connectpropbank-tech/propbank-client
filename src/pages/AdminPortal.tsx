@@ -1653,63 +1653,90 @@ const AdminPortal = () => {
               ) : (
                 <div className="space-y-4">
                   {notifications.map((notification) => (
-                    <Card key={notification.id} className="border-l-4 border-l-gray-300 opacity-75">
+                    <Card key={notification.id} className="border-l-4 border-l-gray-300 opacity-90">
                       <CardContent className="pt-6">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 space-y-3">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              <h3 className="font-semibold text-lg">{notification.title}</h3>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{notification.message}</p>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        {/* Title */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
+                          <h3 className="font-semibold text-base">{notification.title}</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-4">{notification.message}</p>
+
+                        {/* Owner Details */}
+                        <div className="bg-gray-50 rounded-lg p-3 mb-3 space-y-1">
+                          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Owner Details</p>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                            {notification.ownerName && (
                               <div className="flex items-center gap-2">
-                                <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                <UserIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                                 <span className="text-sm">{notification.ownerName}</span>
                               </div>
-                              {notification.ownerEmail && (
-                                <div className="flex items-center gap-2">
-                                  <Mail className="h-4 w-4 text-muted-foreground" />
-                                  <span className="text-sm">{notification.ownerEmail}</span>
-                                </div>
-                              )}
-                              <div className="flex items-center justify-between gap-2 mt-4">
-                                <span className="text-xs text-muted-foreground">
-                                  Completed: {new Date(notification.timestamp).toLocaleString()}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700"
-                                    onClick={() => handleMarkComplete(notification.id, false)}
-                                    disabled={updating === notification.id}
-                                  >
-                                    {updating === notification.id ? (
-                                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                    ) : (
-                                      <Archive className="h-3 w-3 mr-1" />
-                                    )}
-                                    Unarchive
-                                  </Button>
-                                  {notification.propertyId && (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 text-xs"
-                                      onClick={() => handleViewPropertyDetails(notification.propertyId)}
-                                      disabled={loadingProperty}
-                                    >
-                                      {loadingProperty && selectedProperty?.id === notification.propertyId ? (
-                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                      ) : null}
-                                      Property Details
-                                    </Button>
-                                  )}
-                                </div>
+                            )}
+                            {notification.ownerEmail && (
+                              <div className="flex items-center gap-2">
+                                <Mail className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <span className="text-sm">{notification.ownerEmail}</span>
                               </div>
-                            </div>
+                            )}
+                            {notification.ownerPhone && (
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                                <span className="text-sm">{notification.ownerPhone}</span>
+                              </div>
+                            )}
                           </div>
+                        </div>
+
+                        {/* Timestamps row */}
+                        <div className="flex flex-wrap gap-x-6 gap-y-1 mb-3 text-xs text-muted-foreground">
+                          <span>
+                            <span className="font-medium text-gray-600">Received: </span>
+                            {new Date(notification.timestamp).toLocaleString()}
+                          </span>
+                          {notification.resolvedAt && (
+                            <span>
+                              <span className="font-medium text-green-700">✓ Marked Complete: </span>
+                              {new Date(notification.resolvedAt).toLocaleString()}
+                            </span>
+                          )}
+                          {notification.updatedAt && (
+                            <span>
+                              <span className="font-medium text-gray-600">Last Modified: </span>
+                              {new Date(notification.updatedAt).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Actions row */}
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs text-orange-600 border-orange-200 hover:bg-orange-50 hover:text-orange-700"
+                            onClick={() => handleMarkComplete(notification.id, false)}
+                            disabled={updating === notification.id}
+                          >
+                            {updating === notification.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <Archive className="h-3 w-3 mr-1" />
+                            )}
+                            Unarchive
+                          </Button>
+                          {notification.propertyId && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => handleViewPropertyDetails(notification.propertyId)}
+                              disabled={loadingProperty}
+                            >
+                              {loadingProperty && selectedProperty?.id === notification.propertyId ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : null}
+                              Property Details
+                            </Button>
+                          )}
                         </div>
 
                         {/* Archive History */}
