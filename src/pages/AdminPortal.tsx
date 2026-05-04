@@ -49,6 +49,7 @@ interface AdminNotification {
   priority: string;
   adminRemarks?: string;
   adminImage?: string;
+  archiveHistory?: { action: string; timestamp: string }[];
   createdAt: string;
   updatedAt: string;
 }
@@ -369,7 +370,9 @@ const AdminPortal = () => {
     setUpdating(notificationId);
     try {
       const response = await fetch(`${API_BASE_URL}/admin/notifications/${notificationId}/read`, {
-        method: "PUT"
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: checked ? "archive" : "unarchive" }),
       });
 
       if (response.ok) {
@@ -1708,6 +1711,26 @@ const AdminPortal = () => {
                             </div>
                           </div>
                         </div>
+
+                        {/* Archive History */}
+                        {notification.archiveHistory && notification.archiveHistory.length > 0 && (
+                          <div className="mt-4 pt-3 border-t border-gray-100">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Status History</p>
+                            <div className="space-y-1">
+                              {notification.archiveHistory.map((entry, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-xs">
+                                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${entry.action === "archived" ? "bg-green-400" : "bg-orange-400"}`} />
+                                  <span className={entry.action === "archived" ? "text-green-700" : "text-orange-700"}>
+                                    {entry.action === "archived" ? "Archived" : "Unarchived"}
+                                  </span>
+                                  <span className="text-muted-foreground">
+                                    — {new Date(entry.timestamp).toLocaleString()}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
