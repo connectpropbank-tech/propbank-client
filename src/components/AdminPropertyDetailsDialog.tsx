@@ -23,7 +23,8 @@ import {
     Briefcase,
     Info,
     CheckCircle2,
-    Users
+    Users,
+    Image as ImageIcon
 } from "lucide-react";
 import { Property } from "@/services/propertyService";
 
@@ -87,9 +88,11 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                 {Icon && <Icon className="w-3 h-3" />}
                 <span>{label}</span>
             </div>
-            <div className="text-sm font-medium">{value || "N/A"}</div>
+            <div className="text-sm font-medium break-all break-words whitespace-pre-wrap">{value || "N/A"}</div>
         </div>
     );
+
+    const hasImages = (property.images && property.images.length > 0) || (property.internalImages && property.internalImages.length > 0);
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -142,6 +145,64 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                             </div>
                         </div>
 
+                        {/* Property Photos Section */}
+                        {hasImages && (
+                            <div className="md:col-span-3">
+                                <SectionTitle title="Property Photos" icon={ImageIcon} />
+                                <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+                                    {property.images && property.images.length > 0 && (
+                                        <div>
+                                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Main Images</h4>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                {property.images.map((img, index) => (
+                                                    <div 
+                                                        key={`main-${index}`} 
+                                                        className="rounded-lg overflow-hidden border bg-white relative h-28 flex items-center justify-center group cursor-pointer" 
+                                                        onClick={() => window.open(img, '_blank')}
+                                                    >
+                                                        <img
+                                                            src={img}
+                                                            alt={`Main ${index + 1}`}
+                                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                            onError={(e) => {
+                                                                const target = e.target as HTMLImageElement;
+                                                                target.style.display = 'none';
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {property.internalImages && property.internalImages.length > 0 && (
+                                        <div className={property.images && property.images.length > 0 ? "pt-4 border-t border-gray-200" : ""}>
+                                            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Internal Images</h4>
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                                {property.internalImages.map((img, index) => (
+                                                    <div 
+                                                        key={`internal-${index}`} 
+                                                        className="rounded-lg overflow-hidden border bg-white relative h-28 flex items-center justify-center group cursor-pointer" 
+                                                        onClick={() => window.open(img, '_blank')}
+                                                    >
+                                                        <img
+                                                            src={img}
+                                                            alt={`Internal ${index + 1}`}
+                                                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                            onError={(e) => {
+                                                                const target = e.target as HTMLImageElement;
+                                                                target.style.display = 'none';
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Area Details */}
                         <div className="md:col-span-3">
                             <SectionTitle title="Area & Pricing" icon={Maximize} />
@@ -159,12 +220,12 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
 
                         {/* Tenant/Owner Info */}
                         <div className="lg:col-span-1">
-                            <SectionTitle title="Owner Details" icon={User} />
-                            <div className="space-y-1">
+                            <SectionTitle title={property.ownerRole === "agent" ? "Agent Details" : "Owner Details"} icon={User} />
+                            <div className="space-y-1 bg-gray-50/30 p-3 rounded-lg border">
                                 <DataRow label="Name" value={property.ownerName} />
                                 <DataRow label="Email" value={property.ownerEmail} icon={Mail} />
                                 <DataRow label="Phone" value={property.ownerPhone} icon={Phone} />
-                                <DataRow label="Owner ID" value={property.ownerUID} />
+                                <DataRow label={property.ownerRole === "agent" ? "Agent ID" : "Owner ID"} value={property.ownerUID} />
                             </div>
                         </div>
 
@@ -186,14 +247,21 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {property.tenants.map((tenant, idx) => (
                                         <div key={idx} className="border rounded-lg p-4 bg-blue-50/30">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h4 className="font-semibold">{tenant.firstName} {tenant.lastName}</h4>
+                                            <div className="flex justify-between items-start mb-3 border-b pb-2">
+                                                <div>
+                                                    <h4 className="font-semibold text-base">{tenant.firstName} {tenant.lastName}</h4>
+                                                    {tenant.email && (
+                                                        <p className="text-xs text-muted-foreground break-all mt-0.5 flex items-center gap-1">
+                                                            <Mail className="w-3 h-3 flex-shrink-0" />
+                                                            <span>{tenant.email}</span>
+                                                        </p>
+                                                    )}
+                                                </div>
                                                 <Badge variant={tenant.isActive ? "default" : "secondary"}>
                                                     {tenant.isActive ? "Active" : "Past"}
                                                 </Badge>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-                                                <DataRow label="Email" value={tenant.email} icon={Mail} />
                                                 <DataRow label="Phone" value={tenant.phone} icon={Phone} />
                                                 <DataRow label="Rent" value={tenant.monthlyRent ? `₹${tenant.monthlyRent}` : "N/A"} />
                                                 <DataRow label="Due Date" value={tenant.paymentDueDate} />
@@ -206,6 +274,28 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                             </div>
                         )}
 
+                        {/* Pre-leased Info */}
+                        {property.isPreLeased && (
+                            <div className="md:col-span-3">
+                                <SectionTitle title="Pre-leased Details" icon={Briefcase} />
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-blue-50/50 p-4 rounded-lg">
+                                    <DataRow label="Asset Type" value={property.preLeasedType} className="capitalize" />
+                                    <DataRow label="Agreement Term" value={property.agreementTerm} />
+                                    <DataRow label="Lock-in Period" value={property.lockInPeriodPreLeased} />
+                                    <DataRow label="Monthly Income" value={property.rentalIncome ? `₹${property.rentalIncome}` : "N/A"} />
+                                    <DataRow label="Escalation" value={property.escalation} />
+                                    <DataRow label="Agreement Start" value={formatDate(property.agreementStartDate)} />
+                                    <DataRow label="Purpose" value={property.purpose} className="capitalize" />
+                                    <div className="col-span-2">
+                                        <DataRow label="Tenant Details" value={property.tenantDetails} />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <DataRow label="Specific Requirements" value={property.specificRequirement} />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Buyers List */}
                         {property.buyers && property.buyers.length > 0 && (
                             <div className="md:col-span-3">
@@ -213,14 +303,21 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {property.buyers.map((buyer, idx) => (
                                         <div key={idx} className="border rounded-lg p-4 bg-green-50/30">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h4 className="font-semibold">{buyer.firstName} {buyer.lastName}</h4>
+                                            <div className="flex justify-between items-start mb-3 border-b pb-2">
+                                                <div>
+                                                    <h4 className="font-semibold text-base">{buyer.firstName} {buyer.lastName}</h4>
+                                                    {buyer.email && (
+                                                        <p className="text-xs text-muted-foreground break-all mt-0.5 flex items-center gap-1">
+                                                            <Mail className="w-3 h-3 flex-shrink-0" />
+                                                            <span>{buyer.email}</span>
+                                                        </p>
+                                                    )}
+                                                </div>
                                                 <Badge variant={buyer.isActive ? "default" : "secondary"}>
                                                     {buyer.isActive ? "Active" : "Closed"}
                                                 </Badge>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
-                                                <DataRow label="Email" value={buyer.email} icon={Mail} />
                                                 <DataRow label="Phone" value={buyer.phone} icon={Phone} />
                                                 <DataRow label="Offer" value={buyer.offerAmount ? `₹${buyer.offerAmount}` : "N/A"} />
                                                 <DataRow label="Closing" value={formatDate(buyer.closingDate)} />

@@ -93,11 +93,13 @@ interface Property {
   images: string[];
   tenants?: TenantInfo[];
   buyers?: BuyerInfo[];
+  isSold?: boolean;
   rentalStatus?: string; // 'available' or 'rented'
   furnishedChecklist?: string[]; // Array of furnished items
   ownerUID: string;
   ownerName: string;
   ownerEmail: string;
+  ownerRole?: string;
   wantToSell?: boolean; // Toggle for "Want to Sell?" - can be toggled ON/OFF
   status: string; // 'active' or 'inactive' (default: 'active')
   isActive: boolean; // Legacy field, kept for backward compatibility
@@ -942,6 +944,12 @@ const ManageProperty = () => {
                                               ))}
                                             </p>
                                           )}
+                                          {/* Show buyer on a separate line if property is sold */}
+                                          {property.isSold && property.buyers && property.buyers.length > 0 && (
+                                            <p className="text-sm text-green-600 font-medium mt-1">
+                                              Buyer: {property.buyers[property.buyers.length - 1].firstName} {property.buyers[property.buyers.length - 1].lastName} ({property.buyers[property.buyers.length - 1].phone})
+                                            </p>
+                                          )}
                                         </div>
                                       </div>
                                       {/* Action Menu for Owners */}
@@ -1077,6 +1085,17 @@ const ManageProperty = () => {
                                             )}
                                           </div>
                                         )}
+                                        {property.listingType === 'sell' && (
+                                          <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className={
+                                              property.isSold
+                                                ? 'bg-red-50 text-red-700 border-red-200 text-xs whitespace-nowrap'
+                                                : 'bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap'
+                                            }>
+                                              {property.isSold ? 'Sold' : 'Available for Sale'}
+                                            </Badge>
+                                          </div>
+                                        )}
                                         {property.listingType && (
                                           <Badge className="bg-blue-600 text-white hover:bg-blue-700 text-xs whitespace-nowrap">
                                             {property.listingType === 'rent' ? 'Rent' : property.listingType === 'sell' ? 'Sell' : property.listingType}
@@ -1194,7 +1213,7 @@ const ManageProperty = () => {
                                           {/* Show owner info */}
                                           {property.ownerName && (
                                             <p className="text-sm text-gray-600 mt-1">
-                                              Owner: {property.ownerName}
+                                              {property.ownerRole === "agent" ? "Agent" : "Owner"}: {property.ownerName}
                                             </p>
                                           )}
                                         </div>

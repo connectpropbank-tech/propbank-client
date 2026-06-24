@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -24,15 +25,21 @@ interface AdminNotification {
   ownerName: string;
   ownerPhone?: string;
   ownerEmail?: string;
+  ownerRole?: string;
   // User details for property enquiry notifications
   userId?: string;
   userName?: string;
   userEmail?: string;
   userPhone?: string;
+  // Tenant details (if property is rented)
+  tenantName?: string;
+  tenantPhone?: string;
+  tenantEmail?: string;
   // Property details for property enquiry notifications
   propertyTitle?: string;
   propertyAddress?: string;
   propertyListingType?: string;
+  buyers?: string;
   // Service request specific fields
   serviceType?: string;
   serviceComment?: string;
@@ -75,6 +82,7 @@ interface SiteSettings {
 
 const AdminPortal = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("service-requests");
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [properties, setProperties] = useState<Property[]>([]);
@@ -130,27 +138,24 @@ const AdminPortal = () => {
       setLoading(false);
     }
   };
-
   const handleViewPropertyDetails = async (propertyId: string) => {
     if (!propertyId) return;
-
     setLoadingProperty(true);
+    setSelectedProperty({ id: propertyId } as any); // temporary set for loading spinner
     try {
-      const property = await propertyService.getPropertyById(propertyId);
-      setSelectedProperty(property);
+      const prop = await propertyService.getPropertyById(propertyId);
+      setSelectedProperty(prop);
       setIsPropertyDialogOpen(true);
     } catch (error) {
-      console.error("Error fetching full property details:", error);
       toast({
         title: "Error",
-        description: "Failed to load complete property details.",
+        description: "Failed to fetch property details",
         variant: "destructive"
       });
     } finally {
       setLoadingProperty(false);
     }
   };
-
   const fetchNotifications = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/notifications?unread=true`);
@@ -160,7 +165,7 @@ const AdminPortal = () => {
         // Double-check isRead is false as a safety measure
         const serviceRequests = Array.isArray(data)
           ? data.filter((n: AdminNotification) =>
-            (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry") && n.isRead === false
+            (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry" || n.type === "property_added") && n.isRead === false
           )
           : [];
 
@@ -210,7 +215,7 @@ const AdminPortal = () => {
         const data = await response.json();
         // Filter for read/completed notifications
         const archived = Array.isArray(data)
-          ? data.filter((n: AdminNotification) => n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry"))
+          ? data.filter((n: AdminNotification) => n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry" || n.type === "property_added"))
           : [];
         // Sort by timestamp, newest first
         archived.sort((a: AdminNotification, b: AdminNotification) =>
@@ -393,7 +398,7 @@ const AdminPortal = () => {
               n.id === notificationId ? { ...n, isRead: checked } : n
             ).filter(n => {
               if (activeTab === "service-requests") {
-                return !n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination");
+                return !n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "property_added");
               }
               return true;
             })
@@ -702,9 +707,18 @@ const AdminPortal = () => {
                                     {(notification.ownerName || notification.ownerEmail || notification.ownerPhone) ? (
                                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         {notification.ownerName && (
-                                          <div className="flex items-center gap-2">
+                                          <div className="flex items-center gap-2 flex-wrap">
                                             <UserIcon className="h-4 w-4 text-muted-foreground" />
                                             <span className="text-sm font-medium">{notification.ownerName}</span>
+                                            {notification.ownerRole && (
+                                              <Badge variant="outline" className={`text-[10px] h-5 px-2 py-0 capitalize ${
+                                                notification.ownerRole === "agent"
+                                                  ? "bg-purple-100 text-purple-800 border-purple-300"
+                                                  : "bg-green-100 text-green-800 border-green-300"
+                                              }`}>
+                                                {notification.ownerRole === "agent" ? "Agent" : "Owner"}
+                                              </Badge>
+                                            )}
                                           </div>
                                         )}
                                         {notification.ownerEmail && (
@@ -987,9 +1001,18 @@ const AdminPortal = () => {
                                       <span>👤</span> Owner Details
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-green-50/50 rounded-lg border border-green-100">
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
                                         <UserIcon className="h-4 w-4 text-green-600" />
                                         <span className="text-sm font-medium">{notification.ownerName}</span>
+                                        {notification.ownerRole && (
+                                          <Badge variant="outline" className={`text-[10px] h-5 px-2 py-0 capitalize ${
+                                            notification.ownerRole === "agent"
+                                              ? "bg-purple-100 text-purple-800 border-purple-300"
+                                              : "bg-green-100 text-green-800 border-green-300"
+                                          }`}>
+                                            {notification.ownerRole === "agent" ? "Agent" : "Owner"}
+                                          </Badge>
+                                        )}
                                       </div>
                                       {notification.ownerEmail && (
                                         <div className="flex items-center gap-2">
@@ -1283,9 +1306,18 @@ const AdminPortal = () => {
                                     <span>👤</span> Owner Details
                                   </h4>
                                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                       <UserIcon className="h-4 w-4 text-purple-600" />
                                       <span className="text-sm font-medium">{notification.ownerName || 'N/A'}</span>
+                                      {notification.ownerRole && (
+                                        <Badge variant="outline" className={`text-[10px] h-5 px-2 py-0 capitalize ${
+                                          notification.ownerRole === "agent"
+                                            ? "bg-purple-100 text-purple-800 border-purple-300"
+                                            : "bg-green-100 text-green-800 border-green-300"
+                                        }`}>
+                                          {notification.ownerRole === "agent" ? "Agent" : "Owner"}
+                                        </Badge>
+                                      )}
                                     </div>
                                     {notification.ownerEmail && (
                                       <div className="flex items-center gap-2">
@@ -1560,7 +1592,7 @@ const AdminPortal = () => {
                               </Badge>
                             </div>
                             <p className="text-xs text-muted-foreground mt-2">
-                              Owner: {property.ownerName} • {property.ownerEmail} {property.ownerPhone && `• ${property.ownerPhone}`}
+                              {property.ownerRole === "agent" ? "Agent" : "Owner"}: {property.ownerName} • {property.ownerEmail} {property.ownerPhone && `• ${property.ownerPhone}`}
                             </p>
                           </div>
                           <Button
@@ -1725,9 +1757,18 @@ const AdminPortal = () => {
                           <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Owner Details</p>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                             {notification.ownerName && (
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <UserIcon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                                 <span className="text-sm">{notification.ownerName}</span>
+                                {notification.ownerRole && (
+                                  <Badge variant="outline" className={`text-[10px] h-5 px-2 py-0 capitalize ${
+                                    notification.ownerRole === "agent"
+                                      ? "bg-purple-100 text-purple-800 border-purple-300"
+                                      : "bg-green-100 text-green-800 border-green-300"
+                                  }`}>
+                                    {notification.ownerRole === "agent" ? "Agent" : "Owner"}
+                                  </Badge>
+                                )}
                               </div>
                             )}
                             {notification.ownerEmail && (
@@ -1744,6 +1785,67 @@ const AdminPortal = () => {
                             )}
                           </div>
                         </div>
+
+                        {/* Property Added Details */}
+                        {notification.type === "property_added" && (
+                          <div className="bg-purple-50/50 border border-purple-100 rounded-lg p-3 mb-3 space-y-3">
+                            <h4 className="text-xs font-semibold text-purple-800 uppercase tracking-wide flex items-center gap-1.5">
+                              <Building2 className="h-3.5 w-3.5" />
+                              Property Details
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                              {notification.propertyTitle && (
+                                <div>
+                                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">Property Title</span>
+                                  <p className="font-medium">{notification.propertyTitle}</p>
+                                </div>
+                              )}
+                              {notification.propertyAddress && (
+                                <div className="md:col-span-2">
+                                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">Address</span>
+                                  <p className="font-medium">{notification.propertyAddress}</p>
+                                </div>
+                              )}
+                              {notification.propertyListingType && (
+                                <div>
+                                  <span className="text-[10px] text-muted-foreground uppercase font-semibold">Listing Type</span>
+                                  <p className="font-medium capitalize">{notification.propertyListingType}</p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Show buyer details if sold */}
+                            {notification.propertyListingType === "sell" && notification.buyers && (() => {
+                              try {
+                                const buyersList = JSON.parse(notification.buyers);
+                                if (Array.isArray(buyersList) && buyersList.length > 0) {
+                                  const buyer = buyersList[buyersList.length - 1];
+                                  return (
+                                    <div className="mt-3 pt-3 border-t border-purple-100 bg-green-50/50 rounded-lg p-3">
+                                      <h5 className="text-xs font-semibold text-green-800 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                                        <UserIcon className="h-3.5 w-3.5" />
+                                        Buyer Details (Sold Out Already)
+                                      </h5>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                        <div>
+                                          <span className="text-[10px] text-muted-foreground uppercase font-semibold">Buyer Name</span>
+                                          <p className="font-medium">{buyer.firstName} {buyer.lastName}</p>
+                                        </div>
+                                        <div>
+                                          <span className="text-[10px] text-muted-foreground uppercase font-semibold">Phone Number</span>
+                                          <p className="font-medium">{buyer.phone}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                              } catch (e) {
+                                console.error("Error parsing buyers JSON", e);
+                              }
+                              return null;
+                            })()}
+                          </div>
+                        )}
 
                         {/* Service Request Details (Original Request) */}
                         {notification.type === "service_request" && (notification.serviceType || notification.serviceComment || notification.serviceImage) && (

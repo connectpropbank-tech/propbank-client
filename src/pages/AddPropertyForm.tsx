@@ -106,6 +106,10 @@ const formSchema = z.object({
   projectCondition: z.string().optional(),
   rentalStatus: z.string().optional(), // New field to track if property is rented
   possessionDate: z.string().optional(), // Possession date for available for rent
+  saleStatus: z.string().optional(),
+  buyerFirstName: z.string().optional(),
+  buyerLastName: z.string().optional(),
+  buyerPhone: z.string().optional(),
 
   // Furnished Checklist
   furnishedChecklist: z.array(z.object({
@@ -120,6 +124,17 @@ const formSchema = z.object({
   images: z.array(z.string()).optional(),
   internalImages: z.array(z.string()).optional(),
   specificComments: z.string().optional(),
+
+  // Pre-leased Details
+  isPreLeased: z.boolean().default(false),
+  preLeasedType: z.string().optional(),
+  agreementTerm: z.string().optional(),
+  lockInPeriodPreLeased: z.string().optional(),
+  rentalIncome: z.string().optional(),
+  escalation: z.string().optional(),
+  tenantDetails: z.string().optional(),
+  purpose: z.string().optional(),
+  specificRequirement: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -443,11 +458,23 @@ const AddPropertyForm = () => {
       projectCondition: "",
       rentalStatus: "",
       possessionDate: '',
+      saleStatus: "available",
+      buyerFirstName: "",
+      buyerLastName: "",
+      buyerPhone: "",
       furnishedChecklist: [],
       images: [],
       internalImages: [],
       specificComments: "",
-
+      isPreLeased: false,
+      preLeasedType: "",
+      agreementTerm: "",
+      lockInPeriodPreLeased: "",
+      rentalIncome: "",
+      escalation: "",
+      tenantDetails: "",
+      purpose: "",
+      specificRequirement: "",
     },
   });
 
@@ -475,6 +502,59 @@ const AddPropertyForm = () => {
           variant: "destructive",
         });
         return;
+      }
+
+      // Sync and validate pre-leased properties
+      if (data.listingType === "sell" && data.isPreLeased) {
+        data.projectCondition = "Preleased";
+        
+        if (!data.preLeasedType) {
+          toast({
+            title: "Missing Pre-leased Type",
+            description: "Please select the property type (Residential/Commercial/Industrial).",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data.rentalIncome) {
+          toast({
+            title: "Missing Rental Income",
+            description: "Please enter the rental income for the pre-leased property.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+
+      // Validate buyer details for sold properties
+      if (data.listingType === "sell" && data.saleStatus === "sold") {
+        if (!data.buyerFirstName || data.buyerFirstName.trim() === "") {
+          toast({
+            title: "Missing Buyer Information",
+            description: "Please enter the buyer's first name for sold properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data.buyerLastName || data.buyerLastName.trim() === "") {
+          toast({
+            title: "Missing Buyer Information",
+            description: "Please enter the buyer's last name for sold properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data.buyerPhone || data.buyerPhone.trim() === "") {
+          toast({
+            title: "Missing Buyer Contact",
+            description: "Please enter the buyer's phone number for sold properties.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // Validate tenant details for rented properties
@@ -567,6 +647,11 @@ const AddPropertyForm = () => {
         // Add legacy tenantName for compatibility
         tenantName: `${data.tenantFirstName} ${data.tenantLastName}`.trim(),
 
+        isSold: data.saleStatus === "sold",
+        buyerFirstName: data.buyerFirstName,
+        buyerLastName: data.buyerLastName,
+        buyerPhone: data.buyerPhone,
+
         images: uploadedImages, // Ensure images from state are included
         furnishedChecklist: checkedFurnishedItems, // Only include checked items
         ownerUID: currentUser.uid,
@@ -612,7 +697,6 @@ const AddPropertyForm = () => {
       case "residential":
         return [
           { value: "bunglow", label: "Bunglow" },
-          { value: "1 BHK Flat", label: "1 BHK" },
           { value: "2 BHK Flat", label: "2 BHK" },
           { value: "3 BHK Flat", label: "3 BHK" },
           { value: "4 BHK Flat", label: "4 BHK" },
@@ -792,6 +876,31 @@ const AddPropertyForm = () => {
                       )}
                     />
                   )}
+
+                  {/* Sale Status - Only show for sale properties */}
+                  {form.watch("listingType") === "sell" && (
+                    <FormField
+                      control={form.control}
+                      name="saleStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sale Status</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value || "available"}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select sale status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="available">Available for Sale</SelectItem>
+                              <SelectItem value="sold">Sold Out Already</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 {/* Unit Details */}
@@ -891,6 +1000,66 @@ const AddPropertyForm = () => {
                     />
                   )}
                 </div>
+
+                {/* Buyer Information - Only show when property is already sold */}
+                {form.watch("listingType") === "sell" && form.watch("saleStatus") === "sold" && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 border rounded-lg">
+                    <div className="lg:col-span-3">
+                      <h3 className="text-lg font-semibold mb-4">Buyer Information</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Since this property is already sold, please provide the buyer details.
+                      </p>
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <FormField
+                        control={form.control}
+                        name="buyerFirstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First Name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Buyer First Name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <FormField
+                        control={form.control}
+                        name="buyerLastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Buyer Last Name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <FormField
+                        control={form.control}
+                        name="buyerPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Buyer Phone Number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Tenant Information - Only show when property is already rented */}
                 {form.watch("listingType") === "rent" && form.watch("rentalStatus") === "rented" && (
@@ -1391,23 +1560,28 @@ const AddPropertyForm = () => {
                   )}
 
                   {form.watch("listingType") === "sell" && (
-                    <FormField
-                      control={form.control}
-                      name="sellingPrice"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Selling Price (₹) *</FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder="Enter selling price (e.g., 5000000)"
-                              type="number"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="space-y-6 lg:col-span-2">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                          control={form.control}
+                          name="sellingPrice"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Selling Price (₹) *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="Enter selling price (e.g., 5000000)"
+                                  type="number"
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                      </div>
+                    </div>
                   )}
 
                   {!form.watch("listingType") && (
@@ -1504,9 +1678,23 @@ const AddPropertyForm = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Notice Period / Early Termination Notice <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. 1 Month, 45 Days, etc." {...field} />
-                          </FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Notice Period" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="1 Month">1 Month</SelectItem>
+                              <SelectItem value="2 Months">2 Months</SelectItem>
+                              <SelectItem value="3 Months">3 Months</SelectItem>
+                              <SelectItem value="4 Months">4 Months</SelectItem>
+                              <SelectItem value="5 Months">5 Months</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1611,7 +1799,7 @@ const AddPropertyForm = () => {
                     />
                   )}
 
-                  {form.watch("listingType") !== "rent" && (
+                  {form.watch("listingType") === "sell" && (
                     <FormField
                       control={form.control}
                       name="projectCondition"

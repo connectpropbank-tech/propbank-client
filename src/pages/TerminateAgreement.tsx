@@ -4,6 +4,14 @@ import { ArrowLeft, XCircle, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { auth } from "@/firebase";
@@ -21,37 +29,52 @@ const TerminateAgreement = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isOwner, setIsOwner] = useState<boolean>(false);
 
-  const [noticePeriod, setNoticePeriod] = useState<string>("Immediate"); // "Immediate", "1 Month", "2 Months", "3 Months"
+  const getLocalTodayString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [noticePeriod, setNoticePeriod] = useState<string>("");
+  const [noticeStartDate, setNoticeStartDate] = useState<string>(getLocalTodayString());
   const [terminationDate, setTerminationDate] = useState<Date | null>(null);
+
+  const calculateTerminationDate = (period: string, startDateStr: string) => {
+    if (!period || period.toLowerCase().includes("immediate")) {
+      return null;
+    }
+
+    const parts = period.split(" ");
+    const num = parseInt(parts[0]);
+    if (isNaN(num)) {
+      return null;
+    }
+
+    const startDate = new Date(startDateStr);
+    const calculatedDate = new Date(startDate);
+    
+    if (period.toLowerCase().includes("month")) {
+      calculatedDate.setMonth(startDate.getMonth() + num);
+    } else if (period.toLowerCase().includes("day")) {
+      calculatedDate.setDate(startDate.getDate() + num);
+    } else {
+      calculatedDate.setMonth(startDate.getMonth() + num);
+    }
+    return calculatedDate;
+  };
 
   const handleNoticeChange = (period: string) => {
     setNoticePeriod(period);
-    if (!period || period.toLowerCase().includes("immediate")) {
-      setTerminationDate(null);
-      return;
-    }
+    const calculated = calculateTerminationDate(period, noticeStartDate);
+    setTerminationDate(calculated);
+  };
 
-    const today = new Date();
-    const parts = period.split(" ");
-    const num = parseInt(parts[0]);
-    
-    if (isNaN(num)) {
-      setTerminationDate(null);
-      return;
-    }
-
-    const calculatedDate = new Date(today);
-    if (period.toLowerCase().includes("month")) {
-      calculatedDate.setMonth(today.getMonth() + num);
-      setTerminationDate(calculatedDate);
-    } else if (period.toLowerCase().includes("day")) {
-      calculatedDate.setDate(today.getDate() + num);
-      setTerminationDate(calculatedDate);
-    } else {
-      // Default to months if just a number is entered
-      calculatedDate.setMonth(today.getMonth() + num);
-      setTerminationDate(calculatedDate);
-    }
+  const handleStartDateChange = (startDateStr: string) => {
+    setNoticeStartDate(startDateStr);
+    const calculated = calculateTerminationDate(noticePeriod, startDateStr);
+    setTerminationDate(calculated);
   };
 
 
@@ -112,6 +135,17 @@ const TerminateAgreement = () => {
     }
   }, [user, property]);
 
+  useEffect(() => {
+    if (property) {
+      const initialNotice = property.noticePeriod && property.noticePeriod !== "Immediate"
+        ? property.noticePeriod
+        : "1 Month";
+      setNoticePeriod(initialNotice);
+      const calculated = calculateTerminationDate(initialNotice, noticeStartDate);
+      setTerminationDate(calculated);
+    }
+  }, [property]);
+
   const handleTerminate = async () => {
     if (!user) {
       return;
@@ -122,14 +156,14 @@ const TerminateAgreement = () => {
 
     let confirmationMessage = "";
     if (isTenantRequest) {
-      if (noticePeriod === "Immediate") {
+      if (!noticePeriod || noticePeriod === "Immediate") {
         confirmationMessage = "Are you sure you want to request IMMEDIATE termination? The owner will be notified.";
       } else {
         confirmationMessage = `Are you sure you want to request termination with a ${noticePeriod}? The owner will be notified.`;
       }
     } else {
       // Owner Mode
-      if (noticePeriod === "Immediate") {
+      if (!noticePeriod || noticePeriod === "Immediate") {
         confirmationMessage = "Are you sure you want to terminate this agreement IMMEDIATELY? This will:\n\n• Remove all tenant information\n• Mark property as Available\n• This action cannot be undone.";
       } else {
         confirmationMessage = `Are you sure you want to serve a ${noticePeriod}? This will:\n\n• Set anticipated termination date\n• Notify the tenant via email\n• Keep property occupied until final termination.\n\nProceed?`;
@@ -148,11 +182,14 @@ const TerminateAgreement = () => {
       const endpoint = isTenantRequest ? '/agreements/request-termination' : '/agreements/terminate';
       const url = `${baseUrl}${endpoint}`;
 
+      const formattedStartDate = new Date(noticeStartDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+      const formattedEndDate = terminationDate ? terminationDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : "";
+
       const body = {
         propertyId: propertyId || '',
         noticePeriod: noticePeriod,
-        // Only include terminationDate for Owner actions as it's calculated
-        ...(isOwner && { terminationDate: terminationDate ? terminationDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : "" }),
+        noticeStartDate: formattedStartDate,
+        terminationDate: formattedEndDate,
       };
 
       const response = await fetch(url, {
@@ -183,7 +220,7 @@ const TerminateAgreement = () => {
 
       if (data.success) {
         toast({
-          title: isTenantRequest ? "Request Sent" : (noticePeriod === "Immediate" ? "Agreement Terminated" : "Notice Served"),
+          title: isTenantRequest ? "Request Sent" : (!noticePeriod || noticePeriod === "Immediate" ? "Agreement Terminated" : "Notice Served"),
           description: data.message || "Action completed successfully.",
         });
         // Navigate back
@@ -259,14 +296,34 @@ const TerminateAgreement = () => {
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Notice Period</label>
+                <Select
+                  value={noticePeriod || ""}
+                  onValueChange={(value) => handleNoticeChange(value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Notice Period" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1 Month">1 Month</SelectItem>
+                    <SelectItem value="2 Months">2 Months</SelectItem>
+                    <SelectItem value="3 Months">3 Months</SelectItem>
+                    <SelectItem value="4 Months">4 Months</SelectItem>
+                    <SelectItem value="5 Months">5 Months</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Notice Period Starts From</label>
                 <Input
-                  value={noticePeriod}
-                  onChange={(e) => handleNoticeChange(e.target.value)}
-                  placeholder="e.g. 1 Month, 45 Days, etc."
+                  type="date"
+                  value={noticeStartDate}
+                  min={getLocalTodayString()}
+                  onChange={(e) => handleStartDateChange(e.target.value)}
                 />
               </div>
 
-              {noticePeriod !== "Immediate" && terminationDate && (
+              {noticePeriod && noticePeriod !== "Immediate" && terminationDate && (
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-blue-800 font-medium">
                     Calculated Termination Date: {terminationDate.toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -283,7 +340,7 @@ const TerminateAgreement = () => {
               {/* Warnings */}
               {isOwner ? (
                 // Owner Warnings (Existing)
-                noticePeriod === "Immediate" ? (
+                !noticePeriod || noticePeriod === "Immediate" ? (
                   <Alert variant="destructive" className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                     <AlertDescription className="flex-1">
@@ -402,7 +459,7 @@ const TerminateAgreement = () => {
                 <Button
                   onClick={handleTerminate}
                   disabled={submitting}
-                  variant={isOwner && noticePeriod === "Immediate" ? "destructive" : "default"}
+                  variant={isOwner && (!noticePeriod || noticePeriod === "Immediate") ? "destructive" : "default"}
                   className="flex-1"
                 >
                   {submitting ? (
@@ -413,11 +470,11 @@ const TerminateAgreement = () => {
                   ) : (
                     <>
                       {isOwner
-                        ? (noticePeriod === "Immediate" ? <XCircle className="h-4 w-4 mr-2" /> : <AlertTriangle className="h-4 w-4 mr-2" />)
+                        ? ((!noticePeriod || noticePeriod === "Immediate") ? <XCircle className="h-4 w-4 mr-2" /> : <AlertTriangle className="h-4 w-4 mr-2" />)
                         : <AlertTriangle className="h-4 w-4 mr-2" />
                       }
                       {isOwner
-                        ? (noticePeriod === "Immediate" ? "Terminate Immediately" : "Serve Termination Notice")
+                        ? ((!noticePeriod || noticePeriod === "Immediate") ? "Terminate Immediately" : "Serve Termination Notice")
                         : "Request Termination"
                       }
                     </>

@@ -511,7 +511,7 @@ const SearchResults = () => {
                       <p className="text-sm font-medium mb-2">Property Enquiry</p>
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">
-                          Owner: {property.ownerName}
+                          {property.ownerRole === "agent" ? "Agent" : "Owner"}: {property.ownerName}
                         </span>
                         <div className="flex gap-2">
                           <Button 

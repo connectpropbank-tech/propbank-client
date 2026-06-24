@@ -145,9 +145,11 @@ const AddTenant = () => {
               previousAddress: tenant.previousAddress,
               employmentStatus: tenant.employmentStatus,
               employer: tenant.employer || '',
+              monthlyIncome: tenant.monthlyIncome || '',
               paymentDueDate: tenant.paymentDueDate || '',
               escalationPercentage: tenant.escalationPercentage || '',
               escalationAmount: tenant.escalationAmount || '',
+              noticePeriod: tenant.noticePeriod || '',
               notes: tenant.notes || '',
               rentSchedule: tenant.rentSchedule || []
             })));
@@ -391,6 +393,7 @@ const AddTenant = () => {
       previousAddress: '',
       employmentStatus: '',
       employer: '',
+      monthlyIncome: '',
       paymentDueDate: '',
       escalationPercentage: '',
       escalationAmount: '',
@@ -1121,12 +1124,21 @@ const AddTenant = () => {
                       </div>
                       <div>
                         <Label htmlFor={`noticePeriod - ${tenant.id} `}>Notice Period *</Label>
-                        <Input
-                          id={`noticePeriod - ${tenant.id} `}
-                          value={tenant.noticePeriod}
-                          onChange={(e) => handleInputChange(tenant.id, 'noticePeriod', e.target.value)}
-                          placeholder="e.g. 1 Month, 45 Days, etc."
-                        />
+                        <Select
+                          value={tenant.noticePeriod || ""}
+                          onValueChange={(value) => handleInputChange(tenant.id, 'noticePeriod', value)}
+                        >
+                          <SelectTrigger id={`noticePeriod - ${tenant.id} `}>
+                            <SelectValue placeholder="Select Notice Period" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1 Month">1 Month</SelectItem>
+                            <SelectItem value="2 Months">2 Months</SelectItem>
+                            <SelectItem value="3 Months">3 Months</SelectItem>
+                            <SelectItem value="4 Months">4 Months</SelectItem>
+                            <SelectItem value="5 Months">5 Months</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>

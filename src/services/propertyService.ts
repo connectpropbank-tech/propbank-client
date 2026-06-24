@@ -24,6 +24,7 @@ interface Property {
   ownerName: string;
   ownerEmail: string;
   ownerPhone?: string;
+  ownerRole?: string;
   status: string;
   isActive: boolean;
   createdAt: string;
@@ -66,6 +67,17 @@ interface Property {
   wantToSell?: boolean;
   isRented?: boolean;
   isSold?: boolean;
+
+  // Pre-leased Details
+  isPreLeased?: boolean;
+  preLeasedType?: string;
+  agreementTerm?: string;
+  lockInPeriodPreLeased?: string;
+  rentalIncome?: string;
+  escalation?: string;
+  tenantDetails?: string;
+  purpose?: string;
+  specificRequirement?: string;
 }
 
 // Site settings from admin

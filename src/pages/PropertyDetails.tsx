@@ -4,6 +4,7 @@ import { ArrowLeft, Eye, MapPin, Home, Calendar, CheckCircle, ClipboardList, Fil
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -233,6 +234,7 @@ interface Property {
   ownerName: string;
   ownerEmail: string;
   ownerPhone?: string;
+  ownerRole?: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -248,9 +250,25 @@ const PropertyDetails = () => {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isTerminationDialogOpen, setIsTerminationDialogOpen] = useState(false);
-  const [selectedNoticePeriod, setSelectedNoticePeriod] = useState("Immediate");
+  const [selectedNoticePeriod, setSelectedNoticePeriod] = useState("");
+  const [noticeStartDate, setNoticeStartDate] = useState<string>(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
   const [submittingTermination, setSubmittingTermination] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (property) {
+      const initialNotice = property.noticePeriod && property.noticePeriod !== "Immediate"
+        ? property.noticePeriod
+        : "1 Month";
+      setSelectedNoticePeriod(initialNotice);
+    }
+  }, [property]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -402,6 +420,26 @@ const PropertyDetails = () => {
   const submitTerminationRequest = async () => {
     setSubmittingTermination(true);
     try {
+      const formattedStartDate = new Date(noticeStartDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+      // Calculate anticipated termination date
+      let terminationDate = "";
+      if (selectedNoticePeriod && !selectedNoticePeriod.toLowerCase().includes("immediate")) {
+        const parts = selectedNoticePeriod.split(" ");
+        const num = parseInt(parts[0]);
+        if (!isNaN(num)) {
+          const startDate = new Date(noticeStartDate);
+          const calculatedDate = new Date(startDate);
+          if (selectedNoticePeriod.toLowerCase().includes("month")) {
+            calculatedDate.setMonth(startDate.getMonth() + num);
+          } else if (selectedNoticePeriod.toLowerCase().includes("day")) {
+            calculatedDate.setDate(startDate.getDate() + num);
+          } else {
+            calculatedDate.setMonth(startDate.getMonth() + num);
+          }
+          terminationDate = calculatedDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+      }
+
       const response = await fetch(`${API_BASE_URL}/agreements/request-termination`, {
         method: 'POST',
         headers: {
@@ -411,6 +449,8 @@ const PropertyDetails = () => {
         body: JSON.stringify({
           propertyId: propertyId,
           noticePeriod: selectedNoticePeriod,
+          noticeStartDate: formattedStartDate,
+          terminationDate: terminationDate,
         }),
       });
 
@@ -1358,23 +1398,23 @@ const PropertyDetails = () => {
             {/* Owner Information */}
             <Card>
               <CardHeader>
-                <CardTitle>Owner Information</CardTitle>
+                <CardTitle>{property.ownerRole === "agent" ? "Agent Information" : "Owner Information"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Owner Name</label>
+                    <label className="text-xs font-medium text-muted-foreground">{property.ownerRole === "agent" ? "Agent Name" : "Owner Name"}</label>
                     <p className="text-sm font-medium">{property.ownerName}</p>
                   </div>
                   {(currentUserRole === 'admin' || (user && user.uid === property.ownerUID)) ? (
                     <>
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground">Owner Email</label>
+                        <label className="text-xs font-medium text-muted-foreground">{property.ownerRole === "agent" ? "Agent Email" : "Owner Email"}</label>
                         <p className="text-sm">{property.ownerEmail}</p>
                       </div>
                       {property.ownerPhone && (
                         <div>
-                          <label className="text-xs font-medium text-muted-foreground">Owner Phone</label>
+                          <label className="text-xs font-medium text-muted-foreground">{property.ownerRole === "agent" ? "Agent Phone" : "Owner Phone"}</label>
                           <p className="text-sm">{property.ownerPhone}</p>
                         </div>
                       )}
@@ -1510,27 +1550,54 @@ const PropertyDetails = () => {
             <DialogHeader>
               <DialogTitle>Request Termination</DialogTitle>
               <DialogDescription>
-                Notify the owner that you wish to terminate the lease agreement.
+                Notify the {property.ownerRole === "agent" ? "agent" : "owner"} that you wish to terminate the lease agreement.
               </DialogDescription>
             </DialogHeader>
 
             <div className="py-4">
               <div className="space-y-4">
                 <div>
-                  <Input
-                    id="notice-period"
-                    value={selectedNoticePeriod}
-                    onChange={(e) => setSelectedNoticePeriod(e.target.value)}
-                    placeholder="e.g. 1 Month, 45 Days, etc."
-                    className="mt-2"
-                  />
+                  <label htmlFor="notice-period" className="text-xs font-medium text-muted-foreground">Notice Period</label>
+                  <Select
+                    value={selectedNoticePeriod || ""}
+                    onValueChange={(value) => setSelectedNoticePeriod(value)}
+                  >
+                    <SelectTrigger id="notice-period" className="mt-1">
+                      <SelectValue placeholder="Select Notice Period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1 Month">1 Month</SelectItem>
+                      <SelectItem value="2 Months">2 Months</SelectItem>
+                      <SelectItem value="3 Months">3 Months</SelectItem>
+                      <SelectItem value="4 Months">4 Months</SelectItem>
+                      <SelectItem value="5 Months">5 Months</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+
+                  <div>
+                    <label htmlFor="notice-start-date" className="text-xs font-medium text-muted-foreground">Notice Period Starts From</label>
+                    <Input
+                      id="notice-start-date"
+                      type="date"
+                      value={noticeStartDate}
+                      min={(() => {
+                        const today = new Date();
+                        const year = today.getFullYear();
+                        const month = String(today.getMonth() + 1).padStart(2, '0');
+                        const day = String(today.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                      })()}
+                      onChange={(e) => setNoticeStartDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
 
                 <div className="bg-blue-50 p-3 rounded-md border border-blue-100 text-sm text-blue-800">
                   <p>
-                    <strong>Note:</strong> Sending this request will notify the owner.
-                    {selectedNoticePeriod === "Immediate"
-                      ? " Since you selected 'Immediate', you are requesting to vacate as soon as possible."
+                    <strong>Note:</strong> Sending this request will notify the {property.ownerRole === "agent" ? "agent" : "owner"}.
+                    {!selectedNoticePeriod || selectedNoticePeriod === "Immediate"
+                      ? " Since you selected an immediate/blank notice period, you are requesting to vacate as soon as possible."
                       : ` You are engaging to serve a notice period of ${selectedNoticePeriod}.`
                     }
                   </p>

@@ -69,6 +69,10 @@ const formSchema = z.object({
   unitCondition: z.string().optional(),
   maintenanceToBePaidBy: z.string().optional(),
   rentalStatus: z.string().optional(),
+  saleStatus: z.string().optional(),
+  buyerFirstName: z.string().optional(),
+  buyerLastName: z.string().optional(),
+  buyerPhone: z.string().optional(),
   images: z.array(z.string()).optional(),
   specificComments: z.string().optional(),
   furnishedChecklist: z.array(z.object({
@@ -134,6 +138,7 @@ interface Property {
 
   // Tenants array
   tenants?: any[];
+  buyers?: any[];
 
   // Status and timestamps
   isActive: boolean;
@@ -275,6 +280,10 @@ const EditProperty = () => {
       unitCondition: "",
       maintenanceToBePaidBy: "",
       rentalStatus: "",
+      saleStatus: "available",
+      buyerFirstName: "",
+      buyerLastName: "",
+      buyerPhone: "",
       images: [],
       specificComments: "",
       furnishedChecklist: [],
@@ -354,6 +363,10 @@ const EditProperty = () => {
           unitCondition: propertyData.unitCondition || "",
           maintenanceToBePaidBy: propertyData.maintenanceToBePaidBy || "",
           rentalStatus: propertyData.rentalStatus || "",
+          saleStatus: propertyData.isSold ? "sold" : "available",
+          buyerFirstName: propertyData.buyers && propertyData.buyers.length > 0 ? propertyData.buyers[propertyData.buyers.length - 1].firstName || "" : "",
+          buyerLastName: propertyData.buyers && propertyData.buyers.length > 0 ? propertyData.buyers[propertyData.buyers.length - 1].lastName || "" : "",
+          buyerPhone: propertyData.buyers && propertyData.buyers.length > 0 ? propertyData.buyers[propertyData.buyers.length - 1].phone || "" : "",
           images: propertyData.images || [],
           specificComments: propertyData.specificComments || "",
           furnishedChecklist: propertyData.furnishedChecklist || [],
@@ -511,7 +524,6 @@ const EditProperty = () => {
       case "residential":
         return [
           { value: "bunglow", label: "Bunglow" },
-          { value: "1 BHK Flat", label: "1 BHK" },
           { value: "2 BHK Flat", label: "2 BHK" },
           { value: "3 BHK Flat", label: "3 BHK" },
           { value: "4 BHK Flat", label: "4 BHK" },
@@ -566,6 +578,36 @@ const EditProperty = () => {
           variant: "destructive",
         });
         return;
+      }
+
+      // Validate buyer details for sold properties
+      if (data.listingType === "sell" && data.saleStatus === "sold") {
+        if (!data.buyerFirstName || data.buyerFirstName.trim() === "") {
+          toast({
+            title: "Missing Buyer Information",
+            description: "Please enter the buyer's first name for sold properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data.buyerLastName || data.buyerLastName.trim() === "") {
+          toast({
+            title: "Missing Buyer Information",
+            description: "Please enter the buyer's last name for sold properties.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        if (!data.buyerPhone || data.buyerPhone.trim() === "") {
+          toast({
+            title: "Missing Buyer Contact",
+            description: "Please enter the buyer's phone number for sold properties.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       const currentUser = auth.currentUser;
@@ -641,8 +683,38 @@ const EditProperty = () => {
         createdAt: _createdAt,
         updatedAt: _updatedAt,
         tenants: _tenants,
+        buyers: _buyers,
         ...safeRestData
       } = restData as any;
+
+      let updatedBuyers = property?.buyers || [];
+
+      if (data.listingType === "sell") {
+        if (data.saleStatus === "sold") {
+          if (updatedBuyers.length === 0) {
+            const newBuyer = {
+              id: Date.now().toString(),
+              firstName: data.buyerFirstName || "",
+              lastName: data.buyerLastName || "",
+              phone: data.buyerPhone || "",
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            updatedBuyers = [newBuyer];
+          } else {
+            const lastIndex = updatedBuyers.length - 1;
+            const activeBuyer = { ...updatedBuyers[lastIndex] };
+
+            activeBuyer.firstName = data.buyerFirstName || activeBuyer.firstName;
+            activeBuyer.lastName = data.buyerLastName || activeBuyer.lastName;
+            activeBuyer.phone = data.buyerPhone || activeBuyer.phone;
+            activeBuyer.updatedAt = new Date().toISOString();
+
+            updatedBuyers[lastIndex] = activeBuyer;
+          }
+        }
+      }
 
       const updateData = {
         ...safeRestData,
@@ -653,6 +725,8 @@ const EditProperty = () => {
         furnishedChecklist: checkedFurnishedItems,
         ownerUID: property?.ownerUID || currentUser.uid,
         tenants: updatedTenants,
+        isSold: data.listingType === "sell" && data.saleStatus === "sold",
+        buyers: updatedBuyers,
       };
 
       const response = await fetch(`${API_BASE_URL}/properties/${propertyId}`, {
@@ -874,7 +948,91 @@ const EditProperty = () => {
                       </FormItem>
                     )}
                   />
+                  {/* Sale Status - Only show for sale properties */}
+                  {form.watch("listingType") === "sell" && (
+                    <FormField
+                      control={form.control}
+                      name="saleStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sale Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!isPropertyEditable()}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select sale status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="available">Available for Sale</SelectItem>
+                              <SelectItem value="sold">Sold Out Already</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
+
+                {/* Buyer Information - Only show when property is already sold */}
+                {form.watch("listingType") === "sell" && form.watch("saleStatus") === "sold" && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 border rounded-lg">
+                    <div className="lg:col-span-3">
+                      <h3 className="text-lg font-semibold mb-4">Buyer Information</h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Please provide the buyer details.
+                      </p>
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <FormField
+                        control={form.control}
+                        name="buyerFirstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First Name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Buyer First Name" disabled={!isPropertyEditable()} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <FormField
+                        control={form.control}
+                        name="buyerLastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Buyer Last Name" disabled={!isPropertyEditable()} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="md:col-span-1">
+                      <FormField
+                        control={form.control}
+                        name="buyerPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number <span className="text-red-500">*</span></FormLabel>
+                            <FormControl>
+                              <Input placeholder="Buyer Phone Number" disabled={!isPropertyEditable()} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Tenant Information - Only for Rented Properties */}
                 {form.watch("listingType") === "rent" && (
@@ -1126,13 +1284,24 @@ const EditProperty = () => {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Notice Period</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g. 1 Month, 45 Days, etc."
-                                disabled={!isPropertyEditable()}
-                                {...field}
-                              />
-                            </FormControl>
+                            <Select
+                              onValueChange={field.onChange}
+                              value={field.value || ""}
+                              disabled={!isPropertyEditable()}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select Notice Period" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="1 Month">1 Month</SelectItem>
+                                <SelectItem value="2 Months">2 Months</SelectItem>
+                                <SelectItem value="3 Months">3 Months</SelectItem>
+                                <SelectItem value="4 Months">4 Months</SelectItem>
+                                <SelectItem value="5 Months">5 Months</SelectItem>
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
