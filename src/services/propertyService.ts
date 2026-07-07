@@ -36,6 +36,7 @@ interface Property {
   unitCondition?: string; // e.g., "Unfurnished"
   carpetArea?: string; // e.g., "1200 sqft"
   constructedArea?: string; // e.g., "1500 sqft"
+  plotArea?: string; // added plotArea
   monthlyRent?: string;
   sellingPrice?: string;
   personName?: string;

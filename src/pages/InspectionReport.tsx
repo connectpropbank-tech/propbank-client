@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
@@ -292,12 +292,12 @@ const InspectionReport = () => {
         </div>
       ) : (
         <div className="flex items-center gap-2">
-          <Input
+          <input
             type="file"
             accept="image/*,application/pdf"
             onChange={(e) => handleFileUpload(field, e)}
             ref={(el) => (fileInputRefs.current[field] = el)}
-            className="hidden"
+            className="hidden flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             id={field}
           />
           <Label
@@ -396,16 +396,7 @@ const InspectionReport = () => {
                       {renderFileUpload('internetReceipt', 'Internet, any landline (if have) - Attach Payment Receipt', 'Attach Receipt', internetReceipt)}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="otherDetails">If any other, add option</Label>
-                      <Textarea
-                        id="otherDetails"
-                        placeholder="Add any other details..."
-                        value={otherDetails}
-                        onChange={(e) => setOtherDetails(e.target.value)}
-                        rows={3}
-                      />
-                    </div>
+
                   </div>
                 </div>
               )}
@@ -454,16 +445,7 @@ const InspectionReport = () => {
                       {renderFileUpload('internetReceipt', 'Internet, any landline (if have) - Attach Payment Receipt', 'Attach Receipt', internetReceipt)}
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="otherDetails">If any other, add option</Label>
-                      <Textarea
-                        id="otherDetails"
-                        placeholder="Add any other details..."
-                        value={otherDetails}
-                        onChange={(e) => setOtherDetails(e.target.value)}
-                        rows={3}
-                      />
-                    </div>
+
                   </div>
                 </div>
               )}

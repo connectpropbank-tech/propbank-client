@@ -964,7 +964,7 @@ const AddPropertyForm = () => {
                       <FormItem>
                         <FormLabel>Carpet Area (Sqft)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter carpet area" {...field} />
+                          <Input type="number" placeholder="Enter carpet area" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -977,7 +977,7 @@ const AddPropertyForm = () => {
                       <FormItem>
                         <FormLabel>Built-up Area (Sqft)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter built-up area" {...field} />
+                          <Input type="number" placeholder="Enter built-up area" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

@@ -4,6 +4,7 @@ import { ArrowLeft, Eye, MapPin, Home, Calendar, CheckCircle, ClipboardList, Fil
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import InspectionReportList from "@/components/InspectionReportList";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -1352,6 +1353,7 @@ const PropertyDetails = () => {
                 </Card>
               )
             }
+            <InspectionReportList propertyId={property.id} />
           </div >
 
           <div className="space-y-6">

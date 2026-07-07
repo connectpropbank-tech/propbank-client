@@ -400,22 +400,12 @@ const TerminateAgreement = () => {
                           <span className="font-medium">Contact Person:</span> {property.personName}
                         </p>
                       )}
-                      {property.mobileNumber && (
-                        <p className="text-sm text-orange-700">
-                          <span className="font-medium">Mobile:</span> {property.mobileNumber}
-                        </p>
-                      )}
-                      {property.ultNo && (
-                        <p className="text-sm text-orange-700">
-                          <span className="font-medium">Alt. Contact:</span> {property.ultNo}
-                        </p>
-                      )}
                       {property.tenants && property.tenants.length > 0 && (
                         <div className="mt-2">
                           <p className="text-sm font-medium text-orange-700">Additional Tenants:</p>
                           {property.tenants.filter((t: any) => t.isActive).map((tenant: any, index: number) => (
                             <p key={index} className="text-sm text-orange-700 ml-2">
-                              • {tenant.firstName} {tenant.lastName} ({tenant.email}, {tenant.phone})
+                              • {tenant.firstName} {tenant.lastName}
                             </p>
                           ))}
                         </div>

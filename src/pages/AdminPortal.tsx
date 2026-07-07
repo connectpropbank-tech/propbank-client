@@ -10,6 +10,8 @@ import { Building2, Users, AlertCircle, Archive, CheckCircle2, Phone, Mail, User
 import { Skeleton } from "@/components/ui/skeleton";
 import { uploadBase64Image, fileToBase64 } from "@/services/uploadService";
 import AdminPropertyDetailsDialog from "@/components/AdminPropertyDetailsDialog";
+import AdminUserDetailsDialog from "@/components/AdminUserDetailsDialog";
+import InspectionReportList from "@/components/InspectionReportList";
 import { propertyService, Property } from "@/services/propertyService";
 
 import { API_BASE_URL } from "../utils/config";
@@ -108,6 +110,15 @@ const AdminPortal = () => {
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isPropertyDialogOpen, setIsPropertyDialogOpen] = useState(false);
   const [loadingProperty, setLoadingProperty] = useState(false);
+
+  // User Details Dialog State
+  const [selectedUser, setSelectedUser] = useState<any | null>(null);
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+
+  const handleViewUserDetails = (user: any) => {
+    setSelectedUser(user);
+    setIsUserDialogOpen(true);
+  };
 
   useEffect(() => {
     fetchData();
@@ -793,18 +804,6 @@ const AdminPortal = () => {
                                             <span className="text-sm capitalize">{notification.propertyListingType || 'Rent'}</span>
                                           </div>
                                         )}
-                                        <Button
-                                          variant="outline"
-                                          size="sm"
-                                          className="mt-3 w-full"
-                                          onClick={() => handleViewPropertyDetails(notification.propertyId)}
-                                          disabled={loadingProperty}
-                                        >
-                                          {loadingProperty && selectedProperty?.id === notification.propertyId ? (
-                                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                          ) : null}
-                                          View All Details
-                                        </Button>
                                       </div>
                                     </div>
                                   )}
@@ -953,8 +952,13 @@ const AdminPortal = () => {
                                 )}
                                 <div className="mt-4 p-3 bg-blue-50 rounded">
                                   <p className="text-sm font-medium">Report Message:</p>
-                                  <p className="text-sm mt-1 whitespace-pre-line">{notification.message}</p>
+                                  <p className="text-sm mt-1 whitespace-pre-line">
+                                    {notification.message
+                                      .replace("on_possession", "On Possession")
+                                      .replace("on_handover", "On Handover")}
+                                  </p>
                                 </div>
+                                <InspectionReportList propertyId={notification.propertyId} />
                               </div>
                             ) : notification.type === "service_request" ? (
                               /* For Service Request: Show property details and who raised the request */
@@ -980,18 +984,7 @@ const AdminPortal = () => {
                                       <p className="text-sm font-medium text-gray-500">{notification.propertyId || 'N/A'}</p>
                                     </div>
                                   </div>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-3 w-full"
-                                    onClick={() => handleViewPropertyDetails(notification.propertyId)}
-                                    disabled={loadingProperty}
-                                  >
-                                    {loadingProperty && selectedProperty?.id === notification.propertyId ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : null}
-                                    View All Details
-                                  </Button>
+
                                 </div>
 
                                 {/* Owner Details */}
@@ -1287,19 +1280,7 @@ const AdminPortal = () => {
                                       <p className="text-sm font-medium capitalize">{notification.propertyListingType || 'Rent'}</p>
                                     </div>
                                   </div>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="mt-3 w-full"
-                                    onClick={() => handleViewPropertyDetails(notification.propertyId)}
-                                    disabled={loadingProperty}
-                                  >
-                                    {loadingProperty && selectedProperty?.id === notification.propertyId ? (
-                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                    ) : null}
-                                    View All Details
-                                  </Button>
-                                </div>
+                                  </div>
                                 {/* Owner Details */}
                                 <div>
                                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -1338,32 +1319,32 @@ const AdminPortal = () => {
                                   </div>
                                 </div>
 
-                                {/* Tenant Details (for termination) */}
-                                {notification.type === "agreement_termination" && (notification.userName || notification.userEmail || notification.userPhone) && (
+                                {/* Tenant Details (for both termination and renewal) */}
+                                {(notification.type === "agreement_termination" || notification.type === "agreement_renewal") && (notification.tenantName || notification.userName || notification.userEmail || notification.userPhone) && (
                                   <div>
                                     <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                      <span>🏠</span> Tenant Details (Removed)
+                                      <span>🏠</span> Tenant Details {notification.type === "agreement_termination" ? "(Removed)" : "(Renewal Requested)"}
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                                      {notification.userName && (
+                                      {(notification.tenantName || notification.userName) && (
                                         <div className="flex items-center gap-2">
                                           <UserIcon className="h-4 w-4 text-orange-600" />
-                                          <span className="text-sm font-medium">{notification.userName}</span>
+                                          <span className="text-sm font-medium">{notification.tenantName || notification.userName}</span>
                                         </div>
                                       )}
-                                      {notification.userEmail && (
+                                      {(notification.tenantEmail || notification.userEmail) && (
                                         <div className="flex items-center gap-2">
                                           <Mail className="h-4 w-4 text-orange-600" />
-                                          <a href={`mailto:${notification.userEmail}`} className="text-sm text-blue-600 hover:underline">
-                                            {notification.userEmail}
+                                          <a href={`mailto:${notification.tenantEmail || notification.userEmail}`} className="text-sm text-blue-600 hover:underline">
+                                            {notification.tenantEmail || notification.userEmail}
                                           </a>
                                         </div>
                                       )}
-                                      {notification.userPhone && (
+                                      {(notification.tenantPhone || notification.userPhone) && (
                                         <div className="flex items-center gap-2">
                                           <Phone className="h-4 w-4 text-orange-600" />
-                                          <a href={`tel:${notification.userPhone}`} className="text-sm text-blue-600 hover:underline">
-                                            {notification.userPhone}
+                                          <a href={`tel:${notification.tenantPhone || notification.userPhone}`} className="text-sm text-blue-600 hover:underline">
+                                            {notification.tenantPhone || notification.userPhone}
                                           </a>
                                         </div>
                                       )}
@@ -1545,6 +1526,20 @@ const AdminPortal = () => {
                                 Completed
                               </Badge>
                             )}
+                            {notification.propertyId && !notification.isRead && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 w-full"
+                                onClick={() => handleViewPropertyDetails(notification.propertyId)}
+                                disabled={loadingProperty}
+                              >
+                                {loadingProperty && selectedProperty?.id === notification.propertyId ? (
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : null}
+                                View Property Details
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -1661,9 +1656,14 @@ const AdminPortal = () => {
                                 )}
                               </div>
                             </div>
-                            <Badge variant={agent.isActive ? "default" : "secondary"} className="text-xs">
-                              {agent.isActive ? "Active" : "Inactive"}
-                            </Badge>
+                            <div className="flex items-center gap-4">
+                              <Button variant="outline" size="sm" onClick={() => handleViewUserDetails(agent)}>
+                                View Details
+                              </Button>
+                              <Badge variant={agent.isActive ? "default" : "secondary"} className="text-xs">
+                                {agent.isActive ? "Active" : "Inactive"}
+                              </Badge>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1701,13 +1701,18 @@ const AdminPortal = () => {
                                 )}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs capitalize text-purple-700 border-purple-200 bg-purple-50">
-                                {agent.role}
-                              </Badge>
-                              <Badge variant={agent.isActive ? "default" : "secondary"} className="text-xs">
-                                {agent.isActive ? "Active" : "Inactive"}
-                              </Badge>
+                            <div className="flex items-center gap-4">
+                              <Button variant="outline" size="sm" onClick={() => handleViewUserDetails(agent)}>
+                                View Details
+                              </Button>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs capitalize text-purple-700 border-purple-200 bg-purple-50">
+                                  {agent.role}
+                                </Badge>
+                                <Badge variant={agent.isActive ? "default" : "secondary"} className="text-xs">
+                                  {agent.isActive ? "Active" : "Inactive"}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -2267,9 +2272,13 @@ const AdminPortal = () => {
         isOpen={isPropertyDialogOpen}
         onOpenChange={setIsPropertyDialogOpen}
       />
-    </div >
+      <AdminUserDetailsDialog
+        user={selectedUser}
+        isOpen={isUserDialogOpen}
+        onOpenChange={setIsUserDialogOpen}
+      />
+    </div>
   );
 };
 
 export default AdminPortal;
-

@@ -27,7 +27,8 @@ import {
     Image as ImageIcon
 } from "lucide-react";
 import { Property } from "@/services/propertyService";
-
+import { API_BASE_URL } from "@/utils/config";
+import { useState, useEffect } from "react";
 interface TenantInfo {
     firstName: string;
     lastName: string;
@@ -60,6 +61,30 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
     isOpen,
     onOpenChange,
 }) => {
+    const [inspectionReports, setInspectionReports] = useState<any[]>([]);
+    const [loadingReports, setLoadingReports] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && property?.id) {
+            fetchInspectionReports();
+        }
+    }, [isOpen, property?.id]);
+
+    const fetchInspectionReports = async () => {
+        setLoadingReports(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/inspection-reports/property/${property?.id}`);
+            const data = await response.json();
+            if (data.success) {
+                setInspectionReports(data.reports || []);
+            }
+        } catch (error) {
+            console.error("Failed to fetch inspection reports:", error);
+        } finally {
+            setLoadingReports(false);
+        }
+    };
+
     if (!property) return null;
 
     const formatDate = (dateString?: string) => {
@@ -83,12 +108,12 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
     );
 
     const DataRow = ({ label, value, icon: Icon, className }: { label: string, value: string | number | undefined | null, icon?: any, className?: string }) => (
-        <div className={`flex flex-col py-2 ${className || ''}`}>
+        <div className={`flex flex-col py-2 min-w-0 overflow-hidden ${className || ''}`}>
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-0.5">
-                {Icon && <Icon className="w-3 h-3" />}
-                <span>{label}</span>
+                {Icon && <Icon className="w-3 h-3 flex-shrink-0" />}
+                <span className="truncate">{label}</span>
             </div>
-            <div className="text-sm font-medium break-all break-words whitespace-pre-wrap">{value || "N/A"}</div>
+            <div className="text-sm font-medium break-all break-words whitespace-pre-wrap capitalize">{value || "N/A"}</div>
         </div>
     );
 
@@ -103,24 +128,24 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                             <DialogTitle className="text-2xl font-bold mb-1">{property.title}</DialogTitle>
                             <DialogDescription className="flex items-center gap-1">
                                 <MapPin className="w-3 h-3" />
-                                {property.location || property.address}, {property.city}
+                                {property.location || property.address}, {property.city} {property.zipCode ? `- ${property.zipCode}` : ''}
                             </DialogDescription>
                         </div>
                         <div className="flex gap-2">
-                            <Badge variant={property.listingType === 'sell' ? 'default' : 'secondary'} className="capitalize">
+                            <Badge variant={property.listingType === 'sell' ? 'default' : 'secondary'} className="capitalize pointer-events-none">
                                 For {property.listingType}
                             </Badge>
                             {property.listingType === 'rent' && (
-                                <Badge variant={property.rentalStatus === 'rented' || property.isRented ? 'destructive' : 'outline'} className="capitalize">
+                                <Badge variant={property.rentalStatus === 'rented' || property.isRented ? 'destructive' : 'outline'} className="capitalize pointer-events-none">
                                     {property.rentalStatus === 'rented' || property.isRented ? 'Rented' : 'Available'}
                                 </Badge>
                             )}
                             {property.listingType === 'sell' && (
-                                <Badge variant={property.isSold ? 'destructive' : 'outline'} className="capitalize">
+                                <Badge variant={property.isSold ? 'destructive' : 'outline'} className="capitalize pointer-events-none">
                                     {property.isSold ? 'Sold' : 'Available'}
                                 </Badge>
                             )}
-                            <Badge variant={property.status === 'active' ? 'default' : 'secondary'} className="bg-green-100 text-green-800 border-green-200">
+                            <Badge variant={property.status === 'active' ? 'default' : 'secondary'} className="bg-green-100 text-green-800 border-green-200 capitalize pointer-events-none">
                                 {property.status}
                             </Badge>
                         </div>
@@ -142,6 +167,9 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                                 <DataRow label="Floor" value={property.floor} />
                                 <DataRow label="Bedrooms" value={property.configuration} />
                                 <DataRow label="Property ID" value={property.id} />
+                                {property.possessionDate && (
+                                    <DataRow label="Possession Date" value={formatDate(property.possessionDate)} icon={Calendar} />
+                                )}
                             </div>
                         </div>
 
@@ -209,6 +237,9 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-blue-50/50 p-4 rounded-lg">
                                 <DataRow label="Carpet Area" value={property.carpetArea} />
                                 <DataRow label="Constructed Area" value={property.constructedArea} />
+                                {property.plotArea && (
+                                    <DataRow label="Plot Area" value={property.plotArea} />
+                                )}
                                 <DataRow label="Listing Type" value={property.listingType} className="capitalize" />
                                 {property.listingType === 'sell' ? (
                                     <DataRow label="Selling Price" value={property.sellingPrice ? `₹${property.sellingPrice}` : "N/A"} icon={IndianRupee} />
@@ -219,49 +250,35 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                         </div>
 
                         {/* Tenant/Owner Info */}
-                        <div className="lg:col-span-1">
+                        <div className="md:col-span-3">
                             <SectionTitle title={property.ownerRole === "agent" ? "Agent Details" : "Owner Details"} icon={User} />
-                            <div className="space-y-1 bg-gray-50/30 p-3 rounded-lg border">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 bg-gray-50/30 p-4 rounded-lg border">
                                 <DataRow label="Name" value={property.ownerName} />
                                 <DataRow label="Email" value={property.ownerEmail} icon={Mail} />
-                                <DataRow label="Phone" value={property.ownerPhone} icon={Phone} />
+                                <DataRow label="Phone" value={property.ownerPhone || property.primaryNo} icon={Phone} />
                                 <DataRow label={property.ownerRole === "agent" ? "Agent ID" : "Owner ID"} value={property.ownerUID} />
                             </div>
                         </div>
 
-                        {/* Current Person Info (Tenant/Lead) */}
-                        <div className="md:col-span-3">
-                            <SectionTitle title="Primary Contact (Tenant/Person)" icon={Phone} />
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-orange-50/30 p-4 rounded-lg">
-                                <DataRow label="Person Name" value={property.personName || property.tenantName} />
-                                <DataRow label="Mobile Number" value={property.mobileNumber} />
-                                <DataRow label="Primary No" value={property.primaryNo} />
-                                <DataRow label="Alt No" value={property.ultNo} />
-                            </div>
-                        </div>
+
 
                         {/* Tenants List */}
                         {property.tenants && property.tenants.length > 0 && (
                             <div className="md:col-span-3">
                                 <SectionTitle title="All Registered Tenants" icon={Users} />
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4">
                                     {property.tenants.map((tenant, idx) => (
                                         <div key={idx} className="border rounded-lg p-4 bg-blue-50/30">
                                             <div className="flex justify-between items-start mb-3 border-b pb-2">
                                                 <div>
                                                     <h4 className="font-semibold text-base">{tenant.firstName} {tenant.lastName}</h4>
-                                                    {tenant.email && (
-                                                        <p className="text-xs text-muted-foreground break-all mt-0.5 flex items-center gap-1">
-                                                            <Mail className="w-3 h-3 flex-shrink-0" />
-                                                            <span>{tenant.email}</span>
-                                                        </p>
-                                                    )}
                                                 </div>
                                                 <Badge variant={tenant.isActive ? "default" : "secondary"}>
                                                     {tenant.isActive ? "Active" : "Past"}
                                                 </Badge>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                                                <DataRow label="Email" value={tenant.email} icon={Mail} />
                                                 <DataRow label="Phone" value={tenant.phone} icon={Phone} />
                                                 <DataRow label="Rent" value={tenant.monthlyRent ? `₹${tenant.monthlyRent}` : "N/A"} />
                                                 <DataRow label="Due Date" value={tenant.paymentDueDate} />
@@ -306,18 +323,13 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                                             <div className="flex justify-between items-start mb-3 border-b pb-2">
                                                 <div>
                                                     <h4 className="font-semibold text-base">{buyer.firstName} {buyer.lastName}</h4>
-                                                    {buyer.email && (
-                                                        <p className="text-xs text-muted-foreground break-all mt-0.5 flex items-center gap-1">
-                                                            <Mail className="w-3 h-3 flex-shrink-0" />
-                                                            <span>{buyer.email}</span>
-                                                        </p>
-                                                    )}
                                                 </div>
                                                 <Badge variant={buyer.isActive ? "default" : "secondary"}>
                                                     {buyer.isActive ? "Active" : "Closed"}
                                                 </Badge>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+                                                <DataRow label="Email" value={buyer.email} icon={Mail} />
                                                 <DataRow label="Phone" value={buyer.phone} icon={Phone} />
                                                 <DataRow label="Offer" value={buyer.offerAmount ? `₹${buyer.offerAmount}` : "N/A"} />
                                                 <DataRow label="Closing" value={formatDate(buyer.closingDate)} />
@@ -341,6 +353,9 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                                     <DataRow label="Lock-in Period" value={property.lockInPeriod} />
                                     <DataRow label="Rent Due Date" value={property.paymentDueDate} />
                                     <DataRow label="Escalation" value={property.escalationPercentage ? `${property.escalationPercentage}%` : property.escalationAmount} />
+                                    {property.maintenanceToBePaidBy && (
+                                        <DataRow label="Maintenance Paid By" value={property.maintenanceToBePaidBy} className="capitalize" />
+                                    )}
                                 </div>
                             </div>
                         )}
