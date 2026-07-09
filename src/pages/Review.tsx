@@ -202,16 +202,10 @@ const Review = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="space-y-2">
-                <Label htmlFor="reviewerType">I am a *</Label>
-                <Select value={reviewerType} onValueChange={setReviewerType}>
-                  <SelectTrigger id="reviewerType">
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="tenant">Tenant</SelectItem>
-                    <SelectItem value="owner">Owner</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Submitting review as</Label>
+                <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border rounded-md w-full md:w-1/3">
+                  <span className="font-semibold text-gray-800 capitalize">{reviewerType || '...'}</span>
+                </div>
               </div>
 
               <div className="pt-4">

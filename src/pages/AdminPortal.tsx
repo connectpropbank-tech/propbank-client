@@ -17,6 +17,24 @@ import { propertyService, Property } from "@/services/propertyService";
 import { API_BASE_URL } from "../utils/config";
 
 
+interface TenantReviewPart {
+  ownerUnderstandable?: string;
+  softNature?: string;
+  ownerTransparent?: string;
+  problemSolver?: string;
+  easyOnRefundMoney?: string;
+  overallExperience?: string;
+}
+
+interface OwnerReviewPart {
+  tenantUnderstandable?: string;
+  softNature?: string;
+  tenantTransparent?: string;
+  problemSolver?: string;
+  punctualOnPayment?: string;
+  overallExperience?: string;
+}
+
 interface AdminNotification {
   id: string;
   type: string;
@@ -52,6 +70,10 @@ interface AdminNotification {
   requestVisit?: boolean;
   visitDate?: string;
   visitTime?: string;
+  // Review specific fields
+  reviewerType?: string;
+  tenantPart?: TenantReviewPart;
+  ownerPart?: OwnerReviewPart;
   timestamp: string;
   isRead: boolean;
   resolvedAt?: string; // Timestamp when marked as resolved
@@ -176,7 +198,7 @@ const AdminPortal = () => {
         // Double-check isRead is false as a safety measure
         const serviceRequests = Array.isArray(data)
           ? data.filter((n: AdminNotification) =>
-            (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry" || n.type === "property_added") && n.isRead === false
+            (n.type === "review" || n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry" || n.type === "property_added") && n.isRead === false
           )
           : [];
 
@@ -810,50 +832,188 @@ const AdminPortal = () => {
                                 </div>
                               );
                             })() : notification.type === "review" ? (
-                              /* For Review: Show reviewer and property details */
-                              <div className="mt-4">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                  {notification.userName && (
-                                    <div className="flex items-center gap-2">
-                                      <UserIcon className="h-4 w-4 text-muted-foreground" />
-                                      <span className="text-sm font-medium">Reviewer: {notification.userName}</span>
-                                    </div>
-                                  )}
-                                  {notification.userEmail && (
-                                    <div className="flex items-center gap-2">
-                                      <Mail className="h-4 w-4 text-muted-foreground" />
-                                      <a
-                                        href={`mailto:${notification.userEmail}`}
-                                        className="text-sm text-blue-600 hover:underline"
-                                      >
-                                        {notification.userEmail}
-                                      </a>
-                                    </div>
-                                  )}
-                                  {notification.userPhone && (
-                                    <div className="flex items-center gap-2">
-                                      <Phone className="h-4 w-4 text-muted-foreground" />
-                                      <a
-                                        href={`tel:${notification.userPhone}`}
-                                        className="text-sm text-blue-600 hover:underline"
-                                      >
-                                        {notification.userPhone}
-                                      </a>
-                                    </div>
-                                  )}
-                                </div>
-                                {notification.propertyTitle && (
-                                  <div className="mt-4 p-3 bg-gray-50 rounded">
-                                    <p className="text-sm"><strong>Property:</strong> {notification.propertyTitle}</p>
-                                    {notification.propertyAddress && (
-                                      <p className="text-sm text-muted-foreground">{notification.propertyAddress}</p>
+                              /* For Review: Show structured reviewer, property, and review details */
+                              <div className="mt-4 space-y-4">
+                                {/* Reviewer Details */}
+                                <div className="border rounded-lg p-4 bg-blue-50/50">
+                                  <h4 className="font-semibold text-sm mb-3 text-blue-900">
+                                    Reviewer Details
+                                    {notification.reviewerType && (
+                                      <span className={`ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                        notification.reviewerType === "tenant"
+                                          ? "bg-blue-100 text-blue-800"
+                                          : "bg-orange-100 text-orange-800"
+                                      }`}>
+                                        {notification.reviewerType === "tenant" ? "Tenant" : "Owner"}
+                                      </span>
+                                    )}
+                                  </h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {notification.userName && (
+                                      <div className="flex items-center gap-2">
+                                        <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-sm font-medium">{notification.userName}</span>
+                                      </div>
+                                    )}
+                                    {notification.userEmail && (
+                                      <div className="flex items-center gap-2">
+                                        <Mail className="h-4 w-4 text-muted-foreground" />
+                                        <a href={`mailto:${notification.userEmail}`} className="text-sm text-blue-600 hover:underline">
+                                          {notification.userEmail}
+                                        </a>
+                                      </div>
+                                    )}
+                                    {notification.userPhone && (
+                                      <div className="flex items-center gap-2">
+                                        <Phone className="h-4 w-4 text-muted-foreground" />
+                                        <a href={`tel:${notification.userPhone}`} className="text-sm text-blue-600 hover:underline">
+                                          {notification.userPhone}
+                                        </a>
+                                      </div>
                                     )}
                                   </div>
-                                )}
-                                <div className="mt-4 p-3 bg-blue-50 rounded">
-                                  <p className="text-sm font-medium">Review Details:</p>
-                                  <p className="text-sm mt-1 whitespace-pre-line">{notification.message}</p>
                                 </div>
+
+                                {/* Property Details */}
+                                {(notification.propertyTitle || notification.propertyAddress) && (
+                                  <div className="border rounded-lg p-4 bg-purple-50/50">
+                                    <h4 className="font-semibold text-sm mb-3 text-purple-900">Property Details</h4>
+                                    <div className="space-y-1">
+                                      {notification.propertyTitle && (
+                                        <div className="flex items-start gap-2">
+                                          <span className="text-sm font-medium text-muted-foreground min-w-[100px]">Property:</span>
+                                          <span className="text-sm">{notification.propertyTitle}</span>
+                                        </div>
+                                      )}
+                                      {notification.propertyAddress && (
+                                        <div className="flex items-start gap-2">
+                                          <span className="text-sm font-medium text-muted-foreground min-w-[100px]">Address:</span>
+                                          <span className="text-sm text-muted-foreground">{notification.propertyAddress}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Tenant reviewing Owner — Section A */}
+                                {notification.reviewerType === "tenant" && notification.tenantPart && (
+                                  <div className="border rounded-lg p-4 bg-blue-50/30 border-blue-100">
+                                    <h4 className="font-semibold text-sm mb-3 text-blue-900 flex items-center gap-2">
+                                      <span className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">A</span>
+                                      Reviewing Owner
+                                    </h4>
+                                    <div className="space-y-3">
+                                      {notification.tenantPart.ownerUnderstandable && (
+                                        <div className="border-b border-blue-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">1. Owner Understandable</p>
+                                          <p className="text-sm text-gray-700">{notification.tenantPart.ownerUnderstandable}</p>
+                                        </div>
+                                      )}
+                                      {notification.tenantPart.softNature && (
+                                        <div className="border-b border-blue-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">2. Soft Nature</p>
+                                          <p className="text-sm text-gray-700">{notification.tenantPart.softNature}</p>
+                                        </div>
+                                      )}
+                                      {notification.tenantPart.ownerTransparent && (
+                                        <div className="border-b border-blue-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">3. Owner Transparent</p>
+                                          <p className="text-sm text-gray-700">{notification.tenantPart.ownerTransparent}</p>
+                                        </div>
+                                      )}
+                                      {notification.tenantPart.problemSolver && (
+                                        <div className="border-b border-blue-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">4. Problem Solver</p>
+                                          <p className="text-sm text-gray-700">{notification.tenantPart.problemSolver}</p>
+                                        </div>
+                                      )}
+                                      {notification.tenantPart.easyOnRefundMoney && (
+                                        <div className="border-b border-blue-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">5. Easy on Refund Money</p>
+                                          <p className="text-sm text-gray-700">{notification.tenantPart.easyOnRefundMoney}</p>
+                                        </div>
+                                      )}
+                                      {notification.tenantPart.overallExperience && (
+                                        <div className="border-b border-blue-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-1">6. Overall Experience</p>
+                                          <p className="text-sm text-gray-700">{notification.tenantPart.overallExperience}</p>
+                                        </div>
+                                      )}
+                                      {!notification.tenantPart.ownerUnderstandable &&
+                                       !notification.tenantPart.softNature &&
+                                       !notification.tenantPart.ownerTransparent &&
+                                       !notification.tenantPart.problemSolver &&
+                                       !notification.tenantPart.easyOnRefundMoney &&
+                                       !notification.tenantPart.overallExperience && (
+                                        <p className="text-sm text-muted-foreground italic">No review details provided.</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Owner reviewing Tenant — Section B */}
+                                {notification.reviewerType === "owner" && notification.ownerPart && (
+                                  <div className="border rounded-lg p-4 bg-orange-50/30 border-orange-100">
+                                    <h4 className="font-semibold text-sm mb-3 text-orange-900 flex items-center gap-2">
+                                      <span className="h-6 w-6 rounded-full bg-orange-100 flex items-center justify-center text-orange-700 text-xs font-bold">B</span>
+                                      Reviewing Tenant
+                                    </h4>
+                                    <div className="space-y-3">
+                                      {notification.ownerPart.tenantUnderstandable && (
+                                        <div className="border-b border-orange-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-1">1. Tenant Understandable</p>
+                                          <p className="text-sm text-gray-700">{notification.ownerPart.tenantUnderstandable}</p>
+                                        </div>
+                                      )}
+                                      {notification.ownerPart.softNature && (
+                                        <div className="border-b border-orange-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-1">2. Soft Nature</p>
+                                          <p className="text-sm text-gray-700">{notification.ownerPart.softNature}</p>
+                                        </div>
+                                      )}
+                                      {notification.ownerPart.tenantTransparent && (
+                                        <div className="border-b border-orange-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-1">3. Tenant Transparent</p>
+                                          <p className="text-sm text-gray-700">{notification.ownerPart.tenantTransparent}</p>
+                                        </div>
+                                      )}
+                                      {notification.ownerPart.problemSolver && (
+                                        <div className="border-b border-orange-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-1">4. Problem Solver</p>
+                                          <p className="text-sm text-gray-700">{notification.ownerPart.problemSolver}</p>
+                                        </div>
+                                      )}
+                                      {notification.ownerPart.punctualOnPayment && (
+                                        <div className="border-b border-orange-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-1">5. Punctual on Payment</p>
+                                          <p className="text-sm text-gray-700">{notification.ownerPart.punctualOnPayment}</p>
+                                        </div>
+                                      )}
+                                      {notification.ownerPart.overallExperience && (
+                                        <div className="border-b border-orange-100 pb-2 last:border-0 last:pb-0">
+                                          <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide mb-1">6. Overall Experience</p>
+                                          <p className="text-sm text-gray-700">{notification.ownerPart.overallExperience}</p>
+                                        </div>
+                                      )}
+                                      {!notification.ownerPart.tenantUnderstandable &&
+                                       !notification.ownerPart.softNature &&
+                                       !notification.ownerPart.tenantTransparent &&
+                                       !notification.ownerPart.problemSolver &&
+                                       !notification.ownerPart.punctualOnPayment &&
+                                       !notification.ownerPart.overallExperience && (
+                                        <p className="text-sm text-muted-foreground italic">No review details provided.</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Fallback: show raw message for old notifications that don't have structured fields */}
+                                {!notification.reviewerType && (
+                                  <div className="border rounded-lg p-4 bg-gray-50">
+                                    <p className="text-sm font-medium mb-2">Review Details:</p>
+                                    <p className="text-sm whitespace-pre-line text-muted-foreground">{notification.message}</p>
+                                  </div>
+                                )}
                               </div>
                             ) : notification.type === "legal_service_request" || notification.type === "other_service_request" ? (
                               /* For Legal/Other Service Request: Show user details and service info */
