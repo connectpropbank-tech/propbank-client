@@ -32,6 +32,8 @@ import { API_BASE_URL } from "../utils/config";
 
 // Raised Request interface for service requests, inspection reports, etc.
 interface RaisedRequest {
+  ownerEmail: string;
+  tenantEmail: string;
   id: string;
   type: string;
   title: string;
