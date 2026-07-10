@@ -320,7 +320,8 @@ const PropertyDetails = () => {
           'legal_service_request',
           'other_service_request',
           'agreement_renewal',
-          'agreement_termination'
+          'agreement_termination',
+          'document_upload'
         ];
         const filteredRequests = Array.isArray(data)
           ? data.filter((req: RaisedRequest) => requestTypes.includes(req.type))
@@ -1192,10 +1193,8 @@ const PropertyDetails = () => {
             }
 
             {/* Service Request History Section */}
-            {
-              raisedRequests.length > 0 && (
-                <Card>
-                  <CardHeader>
+            <Card id="service-history" className="scroll-mt-24">
+              <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <ClipboardList className="h-5 w-5" />
                       Service Request History ({raisedRequests.length})
@@ -1205,14 +1204,21 @@ const PropertyDetails = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {raisedRequests.map((request, index) => {
-                        const getRequestTypeLabel = (type: string) => {
+                    {raisedRequests.filter(req => currentUserRole === 'admin' || isOwner || req.userId === user?.uid || req.tenantEmail === user?.email || req.ownerEmail === user?.email).length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground bg-muted/10 rounded-lg border border-dashed">
+                        <ClipboardList className="h-8 w-8 mx-auto mb-3 text-muted-foreground/50" />
+                        <p>No service requests found for this property.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {raisedRequests.filter(req => currentUserRole === 'admin' || isOwner || req.userId === user?.uid || req.tenantEmail === user?.email || req.ownerEmail === user?.email).map((request, index) => {
+                          const getRequestTypeLabel = (type: string) => {
                           switch (type) {
                             case 'service_request': return 'Service Request';
                             case 'inspection_report': return 'Inspection Report';
                             case 'legal_service_request': return 'Legal Service';
                             case 'other_service_request': return 'Other Service';
+                            case 'document_upload': return 'Document Upload';
                             case 'agreement_renewal': return 'Agreement Renewal';
                             case 'agreement_termination': return 'Agreement Termination';
                             default: return 'Request';
@@ -1225,6 +1231,7 @@ const PropertyDetails = () => {
                             case 'inspection_report': return <ClipboardList className="h-4 w-4" />;
                             case 'legal_service_request': return <Scale className="h-4 w-4" />;
                             case 'other_service_request': return <FileText className="h-4 w-4" />;
+                            case 'document_upload': return <FileText className="h-4 w-4" />;
                             case 'agreement_renewal': return <RefreshCw className="h-4 w-4" />;
                             case 'agreement_termination': return <FileX className="h-4 w-4" />;
                             default: return <FileText className="h-4 w-4" />;
@@ -1295,6 +1302,18 @@ const PropertyDetails = () => {
                               )}
                             </div>
 
+                            {request.serviceImage && (
+                              <div className="mt-3 pt-3 border-t">
+                                <label className="text-xs font-medium text-muted-foreground mb-2 block">Attachment</label>
+                                <img 
+                                  src={request.serviceImage} 
+                                  alt="Service Attachment" 
+                                  className="max-w-full h-auto max-h-48 rounded border shadow-sm cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => window.open(request.serviceImage, '_blank')}
+                                />
+                              </div>
+                            )}
+
                             {request.serviceComment && (
                               <div className="mt-3 pt-3 border-t">
                                 <label className="text-xs font-medium text-muted-foreground">Comment</label>
@@ -1349,10 +1368,9 @@ const PropertyDetails = () => {
                         );
                       })}
                     </div>
+                  )}
                   </CardContent>
                 </Card>
-              )
-            }
             <InspectionReportList propertyId={property.id} />
           </div >
 
