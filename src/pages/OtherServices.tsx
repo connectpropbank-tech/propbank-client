@@ -1,6 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Wrench, Loader2 } from "lucide-react";
+import { ArrowLeft, Wrench, Loader2, Upload, X, Image as ImageIcon, FileText, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { auth } from "@/firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { API_BASE_URL } from "@/utils/config";
+import { uploadBase64Image } from "@/services/uploadService";
 
 const OTHER_SERVICE_TYPES = [
   "Keys Management",
@@ -19,7 +20,8 @@ const OTHER_SERVICE_TYPES = [
   "All maintenance work To shift (exp. Borne By owner)",
   "Pre-Rental Service - Painting, plumbing, carpenter, electrical",
   "Flat verification Before handover (In Case of Purchase) cost Rs 25000/-",
-  "Client Owner Meeting arrangement with LOI"
+  "Client Owner Meeting arrangement with LOI",
+  "Other Service"
 ];
 
 const OtherServices = () => {
@@ -31,9 +33,31 @@ const OtherServices = () => {
   const [property, setProperty] = useState<any>(null);
   const [serviceType, setServiceType] = useState<string>("");
   const [comment, setComment] = useState<string>("");
+  const [image, setImage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [userPhone, setUserPhone] = useState<string>("");
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid File",
+        description: "Please upload an image file",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setImage(result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -153,6 +177,24 @@ const OtherServices = () => {
         // The admin can then notify the owner
       }
 
+      // Upload image to Cloudflare R2 if provided
+      let serviceImageUrl = '';
+      if (image) {
+        try {
+          serviceImageUrl = await uploadBase64Image(
+            image,
+            'other-services',
+            `${user.uid}-${Date.now()}`
+          );
+        } catch (uploadError) {
+          toast({
+            title: "Image Upload Failed",
+            description: "Failed to upload image. Submitting request without image.",
+            variant: "destructive"
+          });
+        }
+      }
+
       // Prepare notification payload
       const notificationPayload = {
         type: 'other_service_request',
@@ -172,6 +214,7 @@ const OtherServices = () => {
         propertyListingType: property?.listingType || 'rent',
         serviceType: serviceType,
         serviceComment: comment,
+        serviceImage: serviceImageUrl, // Included the uploaded image URL
         timestamp: new Date().toISOString(),
         isRead: false,
         priority: 'high'
@@ -286,7 +329,57 @@ const OtherServices = () => {
                 />
               </div>
 
-              <div className="flex gap-4">
+              {/* Image Upload */}
+              <div className="space-y-4 pt-2 border p-4 rounded-md bg-gray-50/50">
+                <Label className="block mb-2 text-sm text-muted-foreground">Optional Attachment</Label>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf,.doc,.docx"
+                      onChange={handleImageUpload}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      id="image-upload"
+                    />
+                    <Button type="button" variant="outline" className="w-full sm:w-auto bg-white hover:bg-gray-100">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Attach File
+                    </Button>
+                  </div>
+                  {image && (
+                    <span className="text-sm text-green-600 flex items-center gap-1 font-medium">
+                      <CheckCircle2 className="h-4 w-4" />
+                      File attached
+                    </span>
+                  )}
+                </div>
+                
+                {image && (
+                  <div className="relative inline-block mt-3 bg-white p-2 rounded-md border shadow-sm">
+                    {image.startsWith('data:application/pdf') || image.startsWith('data:application/') ? (
+                      <div className="flex flex-col items-center justify-center w-32 h-32 bg-slate-50 border border-slate-200 rounded-md">
+                        <FileText className="w-10 h-10 text-blue-500 mb-2" />
+                        <span className="text-xs font-medium text-slate-700">Document</span>
+                      </div>
+                    ) : (
+                      <img 
+                        src={image} 
+                        alt="Attachment preview" 
+                        className="h-32 object-contain rounded-sm"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setImage(null)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow hover:bg-red-600 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-4 pt-2">
                 <Button
                   type="submit"
                   disabled={submitting || !serviceType || !comment.trim()}

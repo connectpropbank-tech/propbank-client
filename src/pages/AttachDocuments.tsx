@@ -236,6 +236,33 @@ const AttachDocuments = () => {
       }
 
       if (data.success) {
+        // Send a notification to the admin
+        try {
+          const notificationPayload = {
+            type: 'document_upload',
+            title: `New Document Uploaded: ${documentName.trim()}`,
+            message: `User ${user.displayName || user.email || 'Unknown User'} has uploaded a document (${documentType}) for property: ${property?.title || propertyId}.`,
+            propertyId: propertyId || '',
+            userId: user.uid || '',
+            userName: user.displayName || user.email || 'Unknown User',
+            userEmail: user.email || '',
+            serviceImage: data.document?.fileUrl || '', // Use the uploaded R2 URL from the response
+            timestamp: new Date().toISOString(),
+            isRead: false,
+            priority: 'medium'
+          };
+          
+          await fetch(`${API_BASE_URL}/admin/notifications`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(notificationPayload),
+          });
+        } catch (error) {
+          console.error('Failed to send notification for document upload', error);
+        }
+
         toast({
           title: "Document Uploaded",
           description: "Document has been uploaded successfully.",

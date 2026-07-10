@@ -13,9 +13,9 @@ import { User, onAuthStateChanged } from "firebase/auth";
 import { API_BASE_URL } from "@/utils/config";
 
 const LEGAL_SERVICE_TYPES = [
-  "Registration Of Rent agreement",
-  "Sale Agreement procedure",
-  "any other legal work",
+  "Registration of Rent Agreement",
+  "Sale Agreement Procedure",
+  "Any Other Legal work",
   "CIDCO/ MNNC work"
 ];
 

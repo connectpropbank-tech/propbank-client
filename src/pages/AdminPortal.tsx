@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Users, AlertCircle, Archive, CheckCircle2, Phone, Mail, User as UserIcon, X, Upload, ImageIcon, MessageSquare, Save, Loader2 } from "lucide-react";
+import { Building2, Users, AlertCircle, Archive, CheckCircle2, Phone, Mail, User as UserIcon, X, Upload, ImageIcon, MessageSquare, Save, Loader2, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { uploadBase64Image, fileToBase64 } from "@/services/uploadService";
 import AdminPropertyDetailsDialog from "@/components/AdminPropertyDetailsDialog";
@@ -104,6 +104,37 @@ interface SiteSettings {
   bannerImages?: string[];
 }
 
+const AttachmentPreview = ({ url }: { url: string }) => {
+  const [error, setError] = useState(false);
+  const isPdf = url.toLowerCase().includes('.pdf') || url.includes('application/pdf');
+
+  if (isPdf || error) {
+    return (
+      <div 
+        className="flex flex-col items-center justify-center w-48 h-48 bg-slate-50 border border-slate-200 rounded-md cursor-pointer hover:bg-slate-100 transition-colors"
+        onClick={() => window.open(url, '_blank')}
+      >
+        <FileText className="w-12 h-12 text-blue-500 mb-2" />
+        <span className="text-sm font-medium text-slate-700">View Document</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative inline-block group cursor-pointer" onClick={() => window.open(url, '_blank')}>
+      <img 
+        src={url} 
+        alt="Attachment" 
+        className="h-48 object-contain rounded-md border bg-white"
+        onError={() => setError(true)}
+      />
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-md pointer-events-none">
+        <span className="text-white text-sm font-medium">Click to view</span>
+      </div>
+    </div>
+  );
+};
+
 const AdminPortal = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -198,7 +229,7 @@ const AdminPortal = () => {
         // Double-check isRead is false as a safety measure
         const serviceRequests = Array.isArray(data)
           ? data.filter((n: AdminNotification) =>
-            (n.type === "review" || n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry" || n.type === "property_added") && n.isRead === false
+            (n.type === "document_upload" || n.type === "review" || n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry" || n.type === "property_added") && n.isRead === false
           )
           : [];
 
@@ -248,7 +279,7 @@ const AdminPortal = () => {
         const data = await response.json();
         // Filter for read/completed notifications
         const archived = Array.isArray(data)
-          ? data.filter((n: AdminNotification) => n.isRead && (n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry" || n.type === "property_added"))
+          ? data.filter((n: AdminNotification) => n.isRead && (n.type === "document_upload" || n.type === "want_to_sell" || n.type === "want_to_sell_cancelled" || n.type === "property_enquiry" || n.type === "service_request" || n.type === "review" || n.type === "legal_service_request" || n.type === "other_service_request" || n.type === "inspection_report" || n.type === "agreement_renewal" || n.type === "agreement_termination" || n.type === "general_inquiry" || n.type === "property_added"))
           : [];
         // Sort by timestamp, newest first
         archived.sort((a: AdminNotification, b: AdminNotification) =>
@@ -650,6 +681,11 @@ const AdminPortal = () => {
                                   A general inquiry has been submitted. See details below.
                                 </p>
                               )}
+                              {notification.type === "document_upload" && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  A new document has been uploaded for this property. See details below.
+                                </p>
+                              )}
                             </div>
 
                             {/* For Property Enquiry: Show User, Owner, and Property details in separate sections */}
@@ -1015,6 +1051,35 @@ const AdminPortal = () => {
                                   </div>
                                 )}
                               </div>
+                            ) : notification.type === "document_upload" ? (
+                              <div className="mt-4">
+                                <h4 className="text-sm font-semibold mb-3">Document Upload Details:</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                  {notification.userName && (
+                                    <div className="flex items-center gap-2">
+                                      <UserIcon className="h-4 w-4 text-muted-foreground" />
+                                      <span className="text-sm font-medium">{notification.userName}</span>
+                                    </div>
+                                  )}
+                                  {notification.userEmail && (
+                                    <div className="flex items-center gap-2">
+                                      <Mail className="h-4 w-4 text-muted-foreground" />
+                                      <a
+                                        href={`mailto:${notification.userEmail}`}
+                                        className="text-sm text-blue-600 hover:underline"
+                                      >
+                                        {notification.userEmail}
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                                {notification.serviceImage && (
+                                  <div className="mt-4">
+                                    <p className="text-sm font-medium mb-2">Uploaded Document:</p>
+                                    <AttachmentPreview url={notification.serviceImage} />
+                                  </div>
+                                )}
+                              </div>
                             ) : notification.type === "legal_service_request" || notification.type === "other_service_request" ? (
                               /* For Legal/Other Service Request: Show user details and service info */
                               <div className="mt-4">
@@ -1065,6 +1130,12 @@ const AdminPortal = () => {
                                   <div className="mt-4 p-3 bg-gray-50 rounded">
                                     <p className="text-sm font-medium">Service Details:</p>
                                     <p className="text-sm mt-1 whitespace-pre-line">{notification.serviceComment}</p>
+                                  </div>
+                                )}
+                                {notification.serviceImage && (
+                                  <div className="mt-4">
+                                    <p className="text-sm font-medium mb-2">Attachment:</p>
+                                    <AttachmentPreview url={notification.serviceImage} />
                                   </div>
                                 )}
                               </div>

@@ -1,10 +1,11 @@
 import { Helmet } from "react-helmet-async";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Upload, X, Image as ImageIcon, Wrench, Loader2 } from "lucide-react";
+import { ArrowLeft, Upload, X, Image as ImageIcon, Wrench, Loader2, FileText, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { auth } from "@/firebase";
@@ -24,7 +25,7 @@ const SERVICE_TYPES = [
   "Fixtures issue",
   "Painting work",
   "Electrical Issue",
-  "Any other"
+  "Any other Issue"
 ];
 
 const RequestServices = () => {
@@ -34,20 +35,12 @@ const RequestServices = () => {
   
   const [user, setUser] = useState<User | null>(null);
   const [userPhone, setUserPhone] = useState<string>("");
-  const [submitting, setSubmitting] = useState<string | null>(null);
-  const [serviceForms, setServiceForms] = useState<Record<string, ServiceRequestForm>>(() => {
-    const initial: Record<string, ServiceRequestForm> = {};
-    SERVICE_TYPES.forEach(type => {
-      initial[type] = {
-        serviceType: type,
-        image: null,
-        comment: ""
-      };
-    });
-    return initial;
-  });
+  const [submitting, setSubmitting] = useState<boolean>(false);
+  const [serviceType, setServiceType] = useState<string>("");
+  const [image, setImage] = useState<string | null>(null);
+  const [comment, setComment] = useState<string>("");
 
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -72,7 +65,7 @@ const RequestServices = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleImageUpload = (serviceType: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -88,42 +81,21 @@ const RequestServices = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
-      setServiceForms(prev => ({
-        ...prev,
-        [serviceType]: {
-          ...prev[serviceType],
-          image: result
-        }
-      }));
+      setImage(result);
     };
     reader.readAsDataURL(file);
   };
 
-  const removeImage = (serviceType: string) => {
-    setServiceForms(prev => ({
-      ...prev,
-      [serviceType]: {
-        ...prev[serviceType],
-        image: null
-      }
-    }));
-    // Reset file input
-    if (fileInputRefs.current[serviceType]) {
-      fileInputRefs.current[serviceType]!.value = '';
+  const removeImage = () => {
+    setImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
-  const handleCommentChange = (serviceType: string, comment: string) => {
-    setServiceForms(prev => ({
-      ...prev,
-      [serviceType]: {
-        ...prev[serviceType],
-        comment
-      }
-    }));
-  };
+  const handleSubmitRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  const handleSubmitRequest = async (serviceType: string) => {
     if (!user) {
       toast({
         title: "Login Required",
@@ -134,9 +106,16 @@ const RequestServices = () => {
       return;
     }
 
-    const form = serviceForms[serviceType];
-    
-    if (!form.comment.trim()) {
+    if (!serviceType) {
+      toast({
+        title: "Service Type Required",
+        description: "Please select a service type",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!comment.trim()) {
       toast({
         title: "Comment Required",
         description: "Please provide a comment describing the issue",
@@ -146,7 +125,7 @@ const RequestServices = () => {
     }
 
     try {
-      setSubmitting(serviceType);
+      setSubmitting(true);
 
       // Fetch property details to get owner information
       let property = null;
@@ -194,11 +173,11 @@ const RequestServices = () => {
 
       // Upload image to Cloudflare R2 if provided
       let serviceImageUrl = '';
-      if (form.image) {
+      if (image) {
         try {
           
           serviceImageUrl = await uploadBase64Image(
-            form.image,
+            image,
             'service-requests',
             `${user.uid}-${Date.now()}`
           );
@@ -217,7 +196,7 @@ const RequestServices = () => {
       const notificationPayload = {
         type: 'service_request',
         title: `Service Request: ${serviceType}`,
-        message: `User ${user.displayName || user.email || 'Unknown User'} has raised a ${serviceType} request${propertyId ? ` for property: ${propertyTitle || propertyId}` : ''}. ${form.comment}`,
+        message: `User ${user.displayName || user.email || 'Unknown User'} has raised a ${serviceType} request${propertyId ? ` for property: ${propertyTitle || propertyId}` : ''}. ${comment}`,
         propertyId: propertyId || '',
         ownerId: property?.ownerUID || '',
         ownerName: ownerName,
@@ -234,7 +213,7 @@ const RequestServices = () => {
         propertyListingType: property?.listingType || 'rent',
         // Service request specific fields
         serviceType: serviceType,
-        serviceComment: form.comment,
+        serviceComment: comment,
         serviceImage: serviceImageUrl, // Use uploaded URL instead of base64
         timestamp: new Date().toISOString(),
         isRead: false,
@@ -260,16 +239,11 @@ const RequestServices = () => {
         });
 
         // Reset form after successful submission
-        setServiceForms(prev => ({
-          ...prev,
-          [serviceType]: {
-            serviceType: serviceType,
-            image: null,
-            comment: ""
-          }
-        }));
-        if (fileInputRefs.current[serviceType]) {
-          fileInputRefs.current[serviceType]!.value = '';
+        setServiceType("");
+        setImage(null);
+        setComment("");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
         }
       } else {
         throw new Error(notificationData.message || 'Failed to submit request');
@@ -282,7 +256,7 @@ const RequestServices = () => {
         variant: "destructive"
       });
     } finally {
-      setSubmitting(null);
+      setSubmitting(false);
     }
   };
 
@@ -320,105 +294,103 @@ const RequestServices = () => {
             <CardTitle>Service Request Forms</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              {SERVICE_TYPES.map((serviceType) => {
-                const form = serviceForms[serviceType];
-                const isSubmitting = submitting === serviceType;
+            <form onSubmit={handleSubmitRequest} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="serviceType">Select Service Type *</Label>
+                <Select value={serviceType} onValueChange={setServiceType}>
+                  <SelectTrigger id="serviceType">
+                    <SelectValue placeholder="Select a service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SERVICE_TYPES.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                return (
-                  <div key={serviceType} className="border rounded-lg p-4 space-y-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold">{serviceType}</h3>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Image Upload */}
-                      <div className="space-y-2">
-                        <Label>Image</Label>
-                        <div className="space-y-2">
-                          {form.image ? (
-                            <div className="relative">
-                              <img
-                                src={form.image}
-                                alt={`${serviceType} image`}
-                                className="w-full h-32 object-cover rounded-md border"
-                              />
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="sm"
-                                className="absolute top-2 right-2"
-                                onClick={() => removeImage(serviceType)}
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="border-2 border-dashed rounded-md p-4 flex flex-col items-center justify-center h-32">
-                              <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => fileInputRefs.current[serviceType]?.click()}
-                                className="w-full"
-                              >
-                                <Upload className="h-4 w-4 mr-2" />
-                                Upload Image
-                              </Button>
-                              <input
-                                ref={(el) => {
-                                  fileInputRefs.current[serviceType] = el;
-                                }}
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleImageUpload(serviceType, e)}
-                                className="hidden"
-                              />
-                            </div>
-                          )}
+              <div className="space-y-2">
+                <Label>Optional Attachment</Label>
+                <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center min-h-[200px] relative bg-slate-50">
+                  {image ? (
+                    <div className="w-full relative flex flex-col items-center justify-center">
+                      {image.startsWith('data:application/pdf') || image.startsWith('data:application/') ? (
+                        <div className="flex flex-col items-center justify-center w-full max-w-[200px] h-40 bg-white border border-slate-200 rounded-md shadow-sm">
+                          <FileText className="w-12 h-12 text-blue-500 mb-2" />
+                          <span className="text-sm font-medium text-slate-700">Document Attached</span>
                         </div>
-                      </div>
-
-                      {/* Comment */}
-                      <div className="space-y-2">
-                        <Label htmlFor={`comment-${serviceType}`}>Comment</Label>
-                        <Textarea
-                          id={`comment-${serviceType}`}
-                          placeholder="Describe the issue..."
-                          value={form.comment}
-                          onChange={(e) => handleCommentChange(serviceType, e.target.value)}
-                          rows={5}
-                          className="resize-none"
+                      ) : (
+                        <img
+                          src={image}
+                          alt="Service issue"
+                          className="w-full max-h-[300px] object-contain rounded-md bg-white border shadow-sm"
                         />
-                      </div>
-
-                      {/* Raise Request Button */}
-                      <div className="space-y-2 flex flex-col">
-                        <Label>&nbsp;</Label>
-                        <Button
-                          type="button"
-                          onClick={() => handleSubmitRequest(serviceType)}
-                          disabled={isSubmitting || !form.comment.trim()}
-                          className="w-full cursor-pointer"
-                          size="sm"
-                          variant="default"
-                        >
-                          {isSubmitting ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Raising Request...
-                            </>
-                          ) : (
-                            "Raise a Request"
-                          )}
-                        </Button>
-                      </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2 rounded-full h-8 w-8"
+                        onClick={removeImage}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  ) : (
+                    <>
+                      <FileText className="h-10 w-10 text-slate-400 mb-4" />
+                      <p className="text-sm text-slate-500 mb-4 text-center max-w-sm">
+                        Upload an image or document to help us better understand the issue
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Select File
+                      </Button>
+                    </>
+                  )}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,application/pdf,.doc,.docx"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="comment">Additional Details *</Label>
+                <Textarea
+                  id="comment"
+                  placeholder="Please describe the issue in detail..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={submitting || !serviceType || !comment.trim()}
+                className="w-full"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Request"
+                )}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>
