@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/dropdown-menu";
 import { Badge } from "@/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Switch } from "@/ui/switch";
 import { Label } from "@/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -690,144 +691,112 @@ const ManageProperty = () => {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-gradient-primary shadow-glow flex-shrink-0">
-                <Building2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary-foreground" />
+              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-primary/10 text-primary flex-shrink-0">
+                <Building2 className="h-6 w-6 sm:h-7 sm:w-7" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold leading-tight">Manage Your Properties</h1>
-                <p className="text-sm sm:text-lg text-muted-foreground">Property Management Hub</p>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Manage Your Properties</h1>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">Property Management Hub</p>
               </div>
             </div>
-            <div className="flex-shrink-0 w-full sm:w-auto flex gap-2">
+            
+            <div className="flex-shrink-0 w-full sm:w-auto flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
               <Button
-                className="w-full sm:w-auto px-6 sm:px-12 py-2 sm:py-3 rounded-lg border-2 border-primary/20 bg-primary/10 hover:bg-primary/20 transition-colors shadow-sm"
-                variant="outline"
+                className="w-full sm:w-auto px-6 shadow-sm"
                 onClick={() => navigate("/select-property-type")}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Property
               </Button>
               <Button
-                className="w-full sm:w-auto px-6 sm:px-12 py-2 sm:py-3 rounded-lg border-2 border-orange-200 bg-orange-50 hover:bg-orange-100 transition-colors shadow-sm"
+                className="w-full sm:w-auto px-6 shadow-sm"
                 variant="outline"
                 onClick={() => navigate("/archived-properties")}
               >
                 <Archive className="h-4 w-4 mr-2" />
-                Archived Properties
+                Archived
               </Button>
             </div>
-          </div>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Manage your listings and property portfolio.
-          </p>
-
-          {/* View Toggle Tabs */}
-          <div className="mt-4 flex gap-2">
-            <Button
-              variant={activeView === 'owned' ? 'default' : 'outline'}
-              size="sm"
-              className={`flex-1 sm:flex-none px-6 py-2 rounded-lg transition-all ${activeView === 'owned'
-                ? 'bg-primary text-primary-foreground shadow-md'
-                : 'border-2 border-muted hover:bg-muted/50'
-                }`}
-              onClick={() => setActiveView('owned')}
-            >
-              <Building2 className="h-4 w-4 mr-2" />
-              Owned by You ({filteredOwnedProperties.length})
-            </Button>
-            <Button
-              variant={activeView === 'tenant' ? 'default' : 'outline'}
-              size="sm"
-              className={`flex-1 sm:flex-none px-6 py-2 rounded-lg transition-all ${activeView === 'tenant'
-                ? 'bg-primary text-primary-foreground shadow-md'
-                : 'border-2 border-muted hover:bg-muted/50'
-                }`}
-              onClick={() => setActiveView('tenant')}
-            >
-              <Key className="h-4 w-4 mr-2" />
-              You are Tenant ({filteredTenantProperties.length})
-            </Button>
           </div>
         </div>
 
+        {/* Filters Card */}
+        <Card className="mb-8 border shadow-sm">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex flex-col lg:flex-row gap-6 lg:items-center justify-between">
+              
+              {/* View Toggle */}
+              <div className="flex bg-muted/50 p-1 rounded-lg self-start sm:self-auto w-full sm:w-auto">
+                <button
+                  className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    activeView === 'owned' 
+                      ? 'bg-background shadow-sm text-foreground' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  onClick={() => setActiveView('owned')}
+                >
+                  <Building2 className="h-4 w-4 mr-2 hidden sm:block" />
+                  Owned
+                  <Badge variant="secondary" className={`ml-2 border-none ${activeView === 'owned' ? 'bg-primary/10 text-primary' : ''}`}>
+                    {filteredOwnedProperties.length}
+                  </Badge>
+                </button>
+                <button
+                  className={`flex-1 sm:flex-none flex items-center justify-center px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    activeView === 'tenant' 
+                      ? 'bg-background shadow-sm text-foreground' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  onClick={() => setActiveView('tenant')}
+                >
+                  <Key className="h-4 w-4 mr-2 hidden sm:block" />
+                  Tenant
+                  <Badge variant="secondary" className={`ml-2 border-none ${activeView === 'tenant' ? 'bg-primary/10 text-primary' : ''}`}>
+                    {filteredTenantProperties.length}
+                  </Badge>
+                </button>
+              </div>
+
+              {/* Type Filters */}
+              <div className="flex flex-col sm:flex-row gap-4 items-center w-full lg:w-auto">
+                 <div className="flex items-center gap-3 w-full sm:w-auto">
+                   <span className="text-sm font-medium text-muted-foreground whitespace-nowrap hidden sm:block">Property Type</span>
+                   <Select value={selectedPropertyType || "all"} onValueChange={(v) => setSelectedPropertyType(v === "all" ? "" : v)}>
+                     <SelectTrigger className="w-full sm:w-[150px] bg-background">
+                       <SelectValue placeholder="All Types" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="all">All Types</SelectItem>
+                       <SelectItem value="residential">Residential</SelectItem>
+                       <SelectItem value="commercial">Commercial</SelectItem>
+                       <SelectItem value="industrial">Industrial</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+                 
+                 <div className="flex items-center gap-3 w-full sm:w-auto">
+                   <span className="text-sm font-medium text-muted-foreground whitespace-nowrap hidden sm:block">Listing</span>
+                   <Select value={selectedListingType || "all"} onValueChange={(v) => setSelectedListingType(v === "all" ? "" : v)}>
+                     <SelectTrigger className="w-full sm:w-[150px] bg-background">
+                       <SelectValue placeholder="All Listings" />
+                     </SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="all">All Listings</SelectItem>
+                       <SelectItem value="rent">For Rent</SelectItem>
+                       <SelectItem value="sell">For Sale</SelectItem>
+                     </SelectContent>
+                   </Select>
+                 </div>
+              </div>
+
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Property List Section */}
         <div className="space-y-6">
-
-          {/* Property Type Filter */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-foreground/80">Property Types</h3>
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-              <Button
-                variant={!selectedPropertyType || selectedPropertyType === "all" ? "default" : "outline"}
-                size="sm"
-                className="justify-center text-xs sm:text-sm"
-                onClick={() => setSelectedPropertyType("")}
-              >
-                <Home className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                All Properties
-              </Button>
-              <Button
-                variant={selectedPropertyType === "residential" ? "default" : "outline"}
-                size="sm"
-                className="justify-center text-xs sm:text-sm"
-                onClick={() => setSelectedPropertyType(selectedPropertyType === "residential" ? "" : "residential")}
-              >
-                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Residential
-              </Button>
-              <Button
-                variant={selectedPropertyType === "commercial" ? "default" : "outline"}
-                size="sm"
-                className="justify-center text-xs sm:text-sm"
-                onClick={() => setSelectedPropertyType(selectedPropertyType === "commercial" ? "" : "commercial")}
-              >
-                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Commercial
-              </Button>
-              <Button
-                variant={selectedPropertyType === "industrial" ? "default" : "outline"}
-                size="sm"
-                className="justify-center text-xs sm:text-sm"
-                onClick={() => setSelectedPropertyType(selectedPropertyType === "industrial" ? "" : "industrial")}
-              >
-                <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                Industrial
-              </Button>
-            </div>
-          </div>
-
-          {/* Listing Type Filter */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-foreground/80">Listing Types</h3>
-            <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2">
-              <Button
-                variant={!selectedListingType || selectedListingType === "all" ? "default" : "outline"}
-                size="sm"
-                className="justify-center text-xs sm:text-sm"
-                onClick={() => setSelectedListingType("")}
-              >
-                All Listings
-              </Button>
-              <Button
-                variant={selectedListingType === "rent" ? "default" : "outline"}
-                size="sm"
-                className="justify-center text-xs sm:text-sm"
-                onClick={() => setSelectedListingType(selectedListingType === "rent" ? "" : "rent")}
-              >
-                For Rent
-              </Button>
-              <Button
-                variant={selectedListingType === "sell" ? "default" : "outline"}
-                size="sm"
-                className="justify-center text-xs sm:text-sm"
-                onClick={() => setSelectedListingType(selectedListingType === "sell" ? "" : "sell")}
-              >
-                For Sale
-              </Button>
-            </div>
-          </div>
 
           {/* Active Filters Summary */}
           {hasActiveFilters && (

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/card";
+import { TabsContent } from "@/ui/tabs";
+import { Button } from "@/ui/button";
+import { Checkbox } from "@/ui/checkbox";
+import { Badge } from "@/ui/badge";
+import { Skeleton } from "@/ui/skeleton";
 import { 
   AlertCircle, User as UserIcon, Mail, Phone, CheckCircle2, 
   Loader2, Upload, MessageSquare, Save, ImageIcon, FileText 

@@ -294,6 +294,7 @@ const TerminateAgreement = () => {
                 <Select
                   value={noticePeriod || ""}
                   onValueChange={(value) => handleNoticeChange(value)}
+                  disabled={!isOwner}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select Notice Period" />
