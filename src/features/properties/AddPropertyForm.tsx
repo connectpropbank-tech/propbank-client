@@ -6,6 +6,7 @@ import { Button } from "@/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/ui/form";
 import { Input } from "@/ui/input";
+import { DatePicker } from "@/ui/date-picker";
 import { Textarea } from "@/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Checkbox } from "@/ui/checkbox";
@@ -1417,7 +1418,7 @@ const AddPropertyForm = () => {
                         <FormItem>
                           <FormLabel>Agreement Start Date <span className="text-red-500">*</span></FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <DatePicker value={field.value} onChange={field.onChange} />
                           </FormControl>
                           <FormDescription>
                             When did the rental agreement begin?
@@ -1434,7 +1435,7 @@ const AddPropertyForm = () => {
                         <FormItem>
                           <FormLabel>Agreement End Date <span className="text-red-500">*</span></FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <DatePicker value={field.value} onChange={field.onChange} />
                           </FormControl>
                           <FormDescription>
                             When does the rental agreement expire?
@@ -1516,19 +1517,41 @@ const AddPropertyForm = () => {
                                   />
                                 </div>
                                 <div className="md:col-span-3">
-                                  <FormLabel className="text-xs">From</FormLabel>
-                                  <Input
-                                    type="date"
-                                    {...form.register(`rentSchedule.${index}.fromDate`)}
-                                    className="bg-white"
+                                  <FormField
+                                    control={form.control}
+                                    name={`rentSchedule.${index}.fromDate`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-xs">From</FormLabel>
+                                        <FormControl>
+                                          <DatePicker
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            className="bg-white"
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
                                   />
                                 </div>
                                 <div className="md:col-span-3">
-                                  <FormLabel className="text-xs">To</FormLabel>
-                                  <Input
-                                    type="date"
-                                    {...form.register(`rentSchedule.${index}.toDate`)}
-                                    className="bg-white"
+                                  <FormField
+                                    control={form.control}
+                                    name={`rentSchedule.${index}.toDate`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-xs">To</FormLabel>
+                                        <FormControl>
+                                          <DatePicker
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            className="bg-white"
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
                                   />
                                 </div>
 
@@ -1597,7 +1620,7 @@ const AddPropertyForm = () => {
                 {form.watch("listingType") === "rent" && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 border rounded-lg">
                     <div className="lg:col-span-2">
-                      <h3 className="text-lg font-semibold mb-4">Security Deposit and Agreement Details</h3>
+                      <h3 className="text-lg font-semibold mb-4">Security Deposit</h3>
                     </div>
 
                     <FormField
@@ -1613,54 +1636,6 @@ const AddPropertyForm = () => {
                         </FormItem>
                       )}
                     />
-
-
-                    {/* Agreement Duration - Only for Already Rented Out */}
-                    {form.watch("rentalStatus") === "rented" && (
-                      <FormField
-                        control={form.control}
-                        name="agreementPeriod"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Agreement Duration (in Months)</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Enter agreement duration in months" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    {/* <div className="grid grid-cols-2 gap-2">
-                    <FormField
-                      control={form.control}
-                      name="agreementStartDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Agreement Start Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="agreementEndDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Agreement End Date</FormLabel>
-                          <FormControl>
-                            <Input type="date" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div> */}
                   </div>
                 )}
 
@@ -1832,7 +1807,7 @@ const AddPropertyForm = () => {
                         <FormItem>
                           <FormLabel>Possession Date</FormLabel>
                           <FormControl>
-                            <Input type="date" placeholder="Select possession date" {...field} />
+                            <DatePicker placeholder="Select possession date" value={field.value} onChange={field.onChange} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

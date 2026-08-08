@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/
 import { Badge } from "@/ui/badge";
 import InspectionReportList from "@/features/services/InspectionReportList";
 import { Input } from "@/ui/input";
+import { DatePicker } from "@/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -729,113 +730,7 @@ const PropertyDetails = () => {
               </CardContent>
             </Card>
 
-            {/* Tenant Information */}
-            {
-              (property.tenantName || property.personName || property.mobileNumber || property.employmentStatus) && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Tenant Information</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {property.tenantName && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Tenant Name</label>
-                          <p className="text-sm">{property.tenantName}</p>
-                        </div>
-                      )}
-                      {property.personName && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Person Name</label>
-                          <p className="text-sm">{property.personName}</p>
-                        </div>
-                      )}
-                      {property.mobileNumber && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Mobile Number</label>
-                          <p className="text-sm">{property.mobileNumber}</p>
-                        </div>
-                      )}
-                      {property.primaryNo && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Primary Number</label>
-                          <p className="text-sm">{property.primaryNo}</p>
-                        </div>
-                      )}
-                      {property.ultNo && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Alt Number</label>
-                          <p className="text-sm">{property.ultNo}</p>
-                        </div>
-                      )}
-                      {property.emergencyContact && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Emergency Contact</label>
-                          <p className="text-sm">{property.emergencyContact}</p>
-                        </div>
-                      )}
-                      {property.employmentStatus && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Employment Status</label>
-                          <p className="text-sm capitalize">{property.employmentStatus}</p>
-                        </div>
-                      )}
-                      {property.employer && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Employer</label>
-                          <p className="text-sm">{property.employer}</p>
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Spouse Information */}
-                    {property.isMarried && (property.spouseFirstName || property.spousePhone) && (
-                      <div className="mt-4 pt-4 border-t">
-                        <h4 className="text-sm font-semibold mb-3">Spouse Information</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {(property.spouseFirstName || property.spouseLastName) && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Spouse Name</label>
-                              <p className="text-sm">{property.spouseFirstName} {property.spouseLastName}</p>
-                            </div>
-                          )}
-                          {property.spouseEmail && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Spouse Email</label>
-                              <p className="text-sm">{property.spouseEmail}</p>
-                            </div>
-                          )}
-                          {property.spousePhone && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Spouse Phone</label>
-                              <p className="text-sm">{property.spousePhone}</p>
-                            </div>
-                          )}
-                          {property.spouseEmploymentStatus && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Spouse Employment</label>
-                              <p className="text-sm capitalize">{property.spouseEmploymentStatus}</p>
-                            </div>
-                          )}
-                          {property.spouseEmployer && (
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Spouse Employer</label>
-                              <p className="text-sm">{property.spouseEmployer}</p>
-                            </div>
-                          )}
-                          {property.spouseNotes && (
-                            <div className="md:col-span-2">
-                              <label className="text-sm font-medium text-muted-foreground">Spouse Notes</label>
-                              <p className="text-sm">{property.spouseNotes}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            }
 
             {/* Agreement & Security Details */}
             {
@@ -908,7 +803,7 @@ const PropertyDetails = () => {
 
             {/* Unit Condition & Maintenance */}
             {
-              (property.unitCondition || property.maintenanceToBePaidBy || property.rentalStatus || property.projectCondition || property.possessionDate) && (
+              (property.unitCondition || property.maintenanceToBePaidBy || property.rentalStatus || property.projectCondition || (property.possessionDate && !(property.listingType === 'rent' && property.rentalStatus === 'rented'))) && (
                 <Card>
                   <CardHeader>
                     <CardTitle>Unit Condition & Maintenance</CardTitle>
@@ -939,7 +834,7 @@ const PropertyDetails = () => {
                           <p className="text-sm">{property.projectCondition}</p>
                         </div>
                       )}
-                      {property.possessionDate && (
+                      {property.possessionDate && !(property.listingType === 'rent' && property.rentalStatus === 'rented') && (
                         <div>
                           <label className="text-sm font-medium text-muted-foreground">Possession Date</label>
                           <p className="text-sm">{new Date(property.possessionDate).toLocaleDateString()}</p>
@@ -1375,44 +1270,46 @@ const PropertyDetails = () => {
 
           <div className="space-y-6">
             {/* Pricing */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Pricing</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-primary mb-2">
-                  {formatPrice(property)}
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-                  <Calendar className="h-4 w-4" />
-                  Listed on {new Date(property.createdAt).toLocaleDateString()}
-                </div>
-
-                {/* Detailed Rent Information for Rentals */}
-                {property.listingType === 'rent' && (
-                  <div className="space-y-3">
-                    {property.monthlyRent1stYear && (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">1st Year Rent</label>
-                        <p className="text-sm font-semibold">₹{Number(property.monthlyRent1stYear).toLocaleString()}/month</p>
-                      </div>
-                    )}
-                    {property.monthlyRent2ndYear && (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">2nd Year Rent</label>
-                        <p className="text-sm font-semibold">₹{Number(property.monthlyRent2ndYear).toLocaleString()}/month</p>
-                      </div>
-                    )}
-                    {property.monthlyRent3rdYear && (
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">3rd Year Rent</label>
-                        <p className="text-sm font-semibold">₹{Number(property.monthlyRent3rdYear).toLocaleString()}/month</p>
-                      </div>
-                    )}
+            {!(property.listingType === 'rent' && property.rentalStatus === 'rented') && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pricing</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-primary mb-2">
+                    {formatPrice(property)}
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+                    <Calendar className="h-4 w-4" />
+                    Listed on {new Date(property.createdAt).toLocaleDateString()}
+                  </div>
+
+                  {/* Detailed Rent Information for Rentals */}
+                  {property.listingType === 'rent' && (
+                    <div className="space-y-3">
+                      {property.monthlyRent1stYear && (
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">1st Year Rent</label>
+                          <p className="text-sm font-semibold">₹{Number(property.monthlyRent1stYear).toLocaleString()}/month</p>
+                        </div>
+                      )}
+                      {property.monthlyRent2ndYear && (
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">2nd Year Rent</label>
+                          <p className="text-sm font-semibold">₹{Number(property.monthlyRent2ndYear).toLocaleString()}/month</p>
+                        </div>
+                      )}
+                      {property.monthlyRent3rdYear && (
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">3rd Year Rent</label>
+                          <p className="text-sm font-semibold">₹{Number(property.monthlyRent3rdYear).toLocaleString()}/month</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Owner Information */}
             <Card>
@@ -1596,9 +1493,7 @@ const PropertyDetails = () => {
 
                 <div>
                   <label htmlFor="notice-start-date" className="text-xs font-medium text-muted-foreground">Notice Period Starts From</label>
-                  <Input
-                    id="notice-start-date"
-                    type="date"
+                  <DatePicker
                     value={noticeStartDate}
                     min={(() => {
                       const today = new Date();
@@ -1607,7 +1502,7 @@ const PropertyDetails = () => {
                       const day = String(today.getDate()).padStart(2, '0');
                       return `${year}-${month}-${day}`;
                     })()}
-                    onChange={(e) => setNoticeStartDate(e.target.value)}
+                    onChange={(val) => setNoticeStartDate(val)}
                     className="mt-1"
                   />
                 </div>

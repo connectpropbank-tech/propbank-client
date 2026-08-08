@@ -82,7 +82,7 @@ const PropertyDetailsDialog = ({ property }: PropertyDetailsDialogProps) => {
                         )}
 
                         {/* Possession */}
-                        {(property.projectCondition || property.possessionDate) && (
+                        {(property.projectCondition || (property.possessionDate && !(property.listingType === 'rent' && property.rentalStatus === 'rented'))) && (
                             <div className="col-span-2 space-y-1 pt-1.5 border-t border-slate-100">
                                 <div className="flex items-center gap-1.5 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
                                     <Calendar className="h-3.5 w-3.5" />
@@ -94,7 +94,7 @@ const PropertyDetailsDialog = ({ property }: PropertyDetailsDialogProps) => {
                                             {property.projectCondition}
                                         </Badge>
                                     )}
-                                    {property.possessionDate && (
+                                    {property.possessionDate && !(property.listingType === 'rent' && property.rentalStatus === 'rented') && (
                                         <span className="text-sm font-bold text-slate-800">
                                             {new Date(property.possessionDate).toLocaleDateString()}
                                         </span>
@@ -182,52 +182,54 @@ const PropertyDetailsDialog = ({ property }: PropertyDetailsDialogProps) => {
                     )}
 
                     {/* Pricing Block */}
-                    <div className="border-t border-slate-100 pt-4">
-                        <div className="flex justify-between items-center mb-3">
-                            <div className="flex items-center gap-1.5 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
-                                <Banknote className="h-3.5 w-3.5" />
-                                <span>Pricing</span>
+                    {!(property.listingType === 'rent' && property.rentalStatus === 'rented') && (
+                        <div className="border-t border-slate-100 pt-4">
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="flex items-center gap-1.5 text-slate-400 font-bold uppercase text-[10px] tracking-wider">
+                                    <Banknote className="h-3.5 w-3.5" />
+                                    <span>Pricing</span>
+                                </div>
+                                {property.listingType === 'rent' && (
+                                    <Badge variant="secondary" className="font-bold text-xs uppercase text-blue-700 bg-blue-50 border-blue-100">
+                                        For Rent
+                                    </Badge>
+                                )}
+                                {property.listingType === 'sell' && (
+                                    <Badge variant="secondary" className="font-bold text-xs uppercase text-emerald-700 bg-emerald-50 border-emerald-100">
+                                        For Sale
+                                    </Badge>
+                                )}
                             </div>
-                            {property.listingType === 'rent' && (
-                                <Badge variant="secondary" className="font-bold text-xs uppercase text-blue-700 bg-blue-50 border-blue-100">
-                                    For Rent
-                                </Badge>
-                            )}
-                            {property.listingType === 'sell' && (
-                                <Badge variant="secondary" className="font-bold text-xs uppercase text-emerald-700 bg-emerald-50 border-emerald-100">
-                                    For Sale
-                                </Badge>
-                            )}
-                        </div>
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-                                ₹{
-                                    property.price > 0
-                                        ? property.price.toLocaleString('en-IN')
-                                        : property.listingType === 'rent' && property.monthlyRent
-                                            ? parseInt(property.monthlyRent).toLocaleString('en-IN')
-                                            : property.listingType === 'sell' && property.sellingPrice
-                                                ? parseInt(property.sellingPrice).toLocaleString('en-IN')
-                                                : "0"
-                                }
-                            </span>
-                            {property.listingType === 'rent' && (
-                                <span className="text-sm font-semibold text-slate-400 lowercase">/month</span>
-                            )}
-                        </div>
-
-                        {/* Availability Status */}
-                        {property.rentalStatus && (
-                            <div className="mt-3.5 flex items-center gap-2 pt-2 border-t border-slate-100/60">
-                                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Availability:</span>
-                                <span className={`text-sm font-bold uppercase ${
-                                    property.rentalStatus === 'available' ? 'text-emerald-600' : 'text-amber-600'
-                                }`}>
-                                    {property.rentalStatus}
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                                    ₹{
+                                        property.price > 0
+                                            ? property.price.toLocaleString('en-IN')
+                                            : property.listingType === 'rent' && property.monthlyRent
+                                                ? parseInt(property.monthlyRent).toLocaleString('en-IN')
+                                                : property.listingType === 'sell' && property.sellingPrice
+                                                    ? parseInt(property.sellingPrice).toLocaleString('en-IN')
+                                                    : "0"
+                                    }
                                 </span>
+                                {property.listingType === 'rent' && (
+                                    <span className="text-sm font-semibold text-slate-400 lowercase">/month</span>
+                                )}
                             </div>
-                        )}
-                    </div>
+
+                            {/* Availability Status */}
+                            {property.rentalStatus && (
+                                <div className="mt-3.5 flex items-center gap-2 pt-2 border-t border-slate-100/60">
+                                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Availability:</span>
+                                    <span className={`text-sm font-bold uppercase ${
+                                        property.rentalStatus === 'available' ? 'text-emerald-600' : 'text-amber-600'
+                                    }`}>
+                                        {property.rentalStatus}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </DialogContent>
         </Dialog>

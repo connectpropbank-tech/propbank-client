@@ -4,6 +4,7 @@ import { Trash2, Plus, UserPlus, MapPin, FileText, User,  Loader2, ArrowLeft, Ch
 import { Button } from "@/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
 import { Input } from "@/ui/input";
+import { DatePicker } from "@/ui/date-picker";
 import { Label } from "@/ui/label";
 import { Textarea } from "@/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
@@ -1000,20 +1001,16 @@ const AddTenant = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor={`leaseStartDate - ${tenant.id} `}>Lease Start Date</Label>
-                        <Input
-                          id={`leaseStartDate - ${tenant.id} `}
-                          type="date"
+                        <DatePicker
                           value={tenant.leaseStartDate}
-                          onChange={(e) => handleInputChange(tenant.id, 'leaseStartDate', e.target.value)}
+                          onChange={(value) => handleInputChange(tenant.id, 'leaseStartDate', value)}
                         />
                       </div>
                       <div>
                         <Label htmlFor={`leaseEndDate - ${tenant.id} `}>Lease End Date</Label>
-                        <Input
-                          id={`leaseEndDate - ${tenant.id} `}
-                          type="date"
+                        <DatePicker
                           value={tenant.leaseEndDate}
-                          onChange={(e) => handleInputChange(tenant.id, 'leaseEndDate', e.target.value)}
+                          onChange={(value) => handleInputChange(tenant.id, 'leaseEndDate', value)}
                         />
                       </div>
                       <div>
@@ -1071,19 +1068,17 @@ const AddTenant = () => {
                               </div>
                               <div className="md:col-span-3">
                                 <Label className="text-xs">From</Label>
-                                <Input
-                                  type="date"
+                                <DatePicker
                                   value={item.fromDate}
-                                  onChange={(e) => handleRentScheduleChange(tenant.id, index, 'fromDate', e.target.value)}
+                                  onChange={(value) => handleRentScheduleChange(tenant.id, index, 'fromDate', value)}
                                   className="bg-white"
                                 />
                               </div>
                               <div className="md:col-span-3">
                                 <Label className="text-xs">To</Label>
-                                <Input
-                                  type="date"
+                                <DatePicker
                                   value={item.toDate}
-                                  onChange={(e) => handleRentScheduleChange(tenant.id, index, 'toDate', e.target.value)}
+                                  onChange={(value) => handleRentScheduleChange(tenant.id, index, 'toDate', value)}
                                   className="bg-white"
                                 />
                               </div>

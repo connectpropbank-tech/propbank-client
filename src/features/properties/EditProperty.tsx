@@ -5,6 +5,7 @@ import { Button } from "@/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/ui/form";
 import { Input } from "@/ui/input";
+import { DatePicker } from "@/ui/date-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
 import { Textarea } from "@/ui/textarea";
 import { useForm } from "react-hook-form";
@@ -1249,10 +1250,10 @@ const EditProperty = () => {
                           <FormItem>
                             <FormLabel>Lease Start Date</FormLabel>
                             <FormControl>
-                              <Input
-                                type="date"
+                              <DatePicker
                                 disabled={!isPropertyEditable()}
-                                {...field}
+                                value={field.value}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />
@@ -1267,10 +1268,10 @@ const EditProperty = () => {
                           <FormItem>
                             <FormLabel>Lease End Date</FormLabel>
                             <FormControl>
-                              <Input
-                                type="date"
+                              <DatePicker
                                 disabled={!isPropertyEditable()}
-                                {...field}
+                                value={field.value}
+                                onChange={field.onChange}
                               />
                             </FormControl>
                             <FormMessage />

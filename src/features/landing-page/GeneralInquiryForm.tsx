@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
+import { DatePicker } from "@/ui/date-picker";
 import { Label } from "@/ui/label";
 import { Checkbox } from "@/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/card";
@@ -267,11 +268,9 @@ const GeneralInquiryForm = ({ onSuccess, hideHeader }: GeneralInquiryFormProps) 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="visitDate" className="text-sm font-medium">Date</Label>
-                <Input
-                  id="visitDate"
-                  type="date"
+                <DatePicker
                   value={formData.visitDate}
-                  onChange={(e) => handleInputChange("visitDate", e.target.value)}
+                  onChange={(value) => handleInputChange("visitDate", value)}
                   min={new Date().toISOString().split('T')[0]}
                   className="h-9"
                 />

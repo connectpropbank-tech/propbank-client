@@ -5,6 +5,7 @@ import { Button } from "@/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/card";
 import { Alert, AlertDescription } from "@/ui/alert";
 import { Input } from "@/ui/input";
+import { DatePicker } from "@/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -311,11 +312,10 @@ const TerminateAgreement = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium">Notice Period Starts From</label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={noticeStartDate}
                   min={getLocalTodayString()}
-                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  onChange={handleStartDateChange}
                 />
               </div>
 

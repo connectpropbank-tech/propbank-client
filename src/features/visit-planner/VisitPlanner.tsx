@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet-async";
 import { useState, useEffect } from "react";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
+import { DatePicker } from "@/ui/date-picker";
 import { Label } from "@/ui/label";
 import { Textarea } from "@/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/select";
@@ -354,8 +355,8 @@ const VisitPlanner = () => {
 
                     <div className="space-y-1 sm:space-y-2">
                       <Label htmlFor="date" className="text-xs sm:text-sm">Visit Date *</Label>
-                      <Input id="date" type="date" value={formData.date} className="text-sm" required
-                        onChange={(e) => handleInputChange('date', e.target.value)} min={new Date().toISOString().split('T')[0]}
+                      <DatePicker value={formData.date} className="text-sm"
+                        onChange={(value) => handleInputChange('date', value)} min={new Date().toISOString().split('T')[0]}
                       />
                     </div>
 
