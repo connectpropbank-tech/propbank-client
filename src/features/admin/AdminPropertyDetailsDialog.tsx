@@ -195,7 +195,7 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                                 <DataRow label="Project Condition" value={property.projectCondition} />
                                 <DataRow label="Unit Number" value={property.unitNumber} />
                                 <DataRow label="Floor" value={property.floor} />
-                                <DataRow label="Bedrooms" value={property.configuration} />
+                                <DataRow label="Configuration" value={property.configuration} />
                                 <DataRow label="Property ID" value={property.id} />
                                 {property.possessionDate && (
                                     <DataRow label="Possession Date" value={formatDate(property.possessionDate)} icon={Calendar} />

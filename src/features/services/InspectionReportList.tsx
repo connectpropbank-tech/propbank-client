@@ -102,6 +102,11 @@ const InspectionReportList: React.FC<InspectionReportListProps> = ({ propertyId 
                                     🖼️ Apartment Condition
                                 </a>
                             )}
+                            {report.apartmentConditionImages && report.apartmentConditionImages.length > 0 && report.apartmentConditionImages.map((img: string, idx: number) => (
+                                <a key={idx} href={img} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                                    🖼️ Apartment Condition {idx + 1}
+                                </a>
+                            ))}
                             {report.mglBillMeterImage && (
                                 <a href={report.mglBillMeterImage} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
                                     🖼️ MGL Meter

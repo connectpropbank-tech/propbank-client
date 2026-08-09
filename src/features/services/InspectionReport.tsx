@@ -30,7 +30,7 @@ const InspectionReport = () => {
   const [keysDetails, setKeysDetails] = useState<string>("");
   const [electricityBillMeterImage, setElectricityBillMeterImage] = useState<string>("");
   const [electricityBillReceipt, setElectricityBillReceipt] = useState<string>("");
-  const [apartmentConditionImage, setApartmentConditionImage] = useState<string>("");
+  const [apartmentConditionImages, setApartmentConditionImages] = useState<string[]>([]);
   const [mglBillMeterImage, setMglBillMeterImage] = useState<string>("");
   const [mglBillReceipt, setMglBillReceipt] = useState<string>("");
   const [internetImage, setInternetImage] = useState<string>("");
@@ -113,9 +113,6 @@ const InspectionReport = () => {
         case 'electricityBillReceipt':
           setElectricityBillReceipt(result);
           break;
-        case 'apartmentConditionImage':
-          setApartmentConditionImage(result);
-          break;
         case 'mglBillMeterImage':
           setMglBillMeterImage(result);
           break;
@@ -146,9 +143,6 @@ const InspectionReport = () => {
         break;
       case 'electricityBillReceipt':
         setElectricityBillReceipt("");
-        break;
-      case 'apartmentConditionImage':
-        setApartmentConditionImage("");
         break;
       case 'mglBillMeterImage':
         setMglBillMeterImage("");
@@ -216,7 +210,7 @@ const InspectionReport = () => {
           keysDetails: keysDetails,
           electricityBillMeterImage: electricityBillMeterImage,
           electricityBillReceipt: electricityBillReceipt,
-          apartmentConditionImage: apartmentConditionImage,
+          apartmentConditionImages: apartmentConditionImages,
           mglBillMeterImage: mglBillMeterImage,
           mglBillReceipt: mglBillReceipt,
           internetImage: internetImage,
@@ -240,7 +234,7 @@ const InspectionReport = () => {
         setKeysDetails("");
         setElectricityBillMeterImage("");
         setElectricityBillReceipt("");
-        setApartmentConditionImage("");
+        setApartmentConditionImages([]);
         setMglBillMeterImage("");
         setMglBillReceipt("");
         setInternetImage("");
@@ -272,6 +266,70 @@ const InspectionReport = () => {
       </div>
     );
   }
+
+  const handleMultiFileUpload = (field: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        if (field === 'apartmentConditionImages') {
+          setApartmentConditionImages(prev => [...prev, result]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeMultiFile = (field: string, index: number) => {
+    if (field === 'apartmentConditionImages') {
+      setApartmentConditionImages(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const renderMultiFileUpload = (field: string, label: string, placeholder: string, values: string[]) => (
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      {values.length > 0 && (
+        <div className="space-y-2 mb-2">
+          {values.map((value, index) => (
+            <div key={index} className="flex items-center gap-2 p-2 border rounded">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm flex-1">Image {index + 1} uploaded</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeMultiFile(field, index)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => handleMultiFileUpload(field, e)}
+          ref={(el) => (fileInputRefs.current[field] = el)}
+          className="hidden"
+          id={field}
+        />
+        <Label
+          htmlFor={field}
+          className="flex items-center gap-2 cursor-pointer border rounded p-2 hover:bg-gray-50"
+        >
+          <Upload className="h-4 w-4" />
+          <span className="text-sm">{placeholder}</span>
+        </Label>
+      </div>
+    </div>
+  );
 
   const renderFileUpload = (field: string, label: string, placeholder: string, value: string) => (
     <div className="space-y-2">
@@ -383,7 +441,7 @@ const InspectionReport = () => {
                       {renderFileUpload('electricityBillReceipt', 'Electricity Bill - Attach Payment Receipt', 'Attach Receipt', electricityBillReceipt)}
                     </div>
 
-                    {renderFileUpload('apartmentConditionImage', 'Apartment Condition - Upload Image of Premise', 'Upload Premise Image', apartmentConditionImage)}
+                    {renderMultiFileUpload('apartmentConditionImages', 'Apartment Condition - Upload Image of Premise', 'Upload Premise Image', apartmentConditionImages)}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {renderFileUpload('mglBillMeterImage', 'MGL Bill - Upload Image of Meter', 'Upload Meter Image', mglBillMeterImage)}
@@ -432,7 +490,7 @@ const InspectionReport = () => {
                       {renderFileUpload('electricityBillReceipt', 'Electricity Bill - Attach Payment Receipt', 'Attach Receipt', electricityBillReceipt)}
                     </div>
 
-                    {renderFileUpload('apartmentConditionImage', 'Apartment Condition - Upload Image of Premise', 'Upload Premise Image', apartmentConditionImage)}
+                    {renderMultiFileUpload('apartmentConditionImages', 'Apartment Condition - Upload Image of Premise', 'Upload Premise Image', apartmentConditionImages)}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {renderFileUpload('mglBillMeterImage', 'MGL Bill - Upload Image of Meter', 'Upload Meter Image', mglBillMeterImage)}

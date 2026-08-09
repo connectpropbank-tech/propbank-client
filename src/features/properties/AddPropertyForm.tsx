@@ -489,6 +489,30 @@ const AddPropertyForm = () => {
     name: "rentSchedule",
   });
 
+  const agreementStartDate = form.watch('agreementStartDate');
+  const agreementPeriod = form.watch('agreementPeriod');
+
+  useEffect(() => {
+    if (agreementStartDate && agreementPeriod) {
+      const periodInMonths = parseInt(agreementPeriod, 10);
+      if (!isNaN(periodInMonths) && periodInMonths > 0) {
+        const parts = agreementStartDate.split('-');
+        if (parts.length === 3) {
+          const [year, month, day] = parts.map(Number);
+          const date = new Date(year, month - 1, day);
+          if (!isNaN(date.getTime())) {
+            date.setMonth(date.getMonth() + periodInMonths);
+            date.setDate(date.getDate() - 1); // standard agreement end is minus one day
+            const newYear = date.getFullYear();
+            const newMonth = String(date.getMonth() + 1).padStart(2, '0');
+            const newDay = String(date.getDate()).padStart(2, '0');
+            form.setValue('agreementEndDate', `${newYear}-${newMonth}-${newDay}`);
+          }
+        }
+      }
+    }
+  }, [agreementStartDate, agreementPeriod, form]);
+
   const onSubmit = async (data: FormData) => {
     try {
       // Validate pricing based on listing type
@@ -1396,9 +1420,6 @@ const AddPropertyForm = () => {
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>
-                            Day of the month when rent is due
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1409,13 +1430,10 @@ const AddPropertyForm = () => {
                       name="agreementPeriod"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Agreement Period <span className="text-red-500">*</span></FormLabel>
+                          <FormLabel>Agreement Period (in months) <span className="text-red-500">*</span></FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., 11 Months, 1 Year, 2 Years" {...field} />
+                            <Input placeholder="e.g., 11" type="number" min="1" {...field} />
                           </FormControl>
-                          <FormDescription>
-                            Enter the duration of the rental agreement
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1430,9 +1448,6 @@ const AddPropertyForm = () => {
                           <FormControl>
                             <DatePicker value={field.value} onChange={field.onChange} />
                           </FormControl>
-                          <FormDescription>
-                            When did the rental agreement begin?
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1447,9 +1462,6 @@ const AddPropertyForm = () => {
                           <FormControl>
                             <DatePicker value={field.value} onChange={field.onChange} />
                           </FormControl>
-                          <FormDescription>
-                            When does the rental agreement expire?
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

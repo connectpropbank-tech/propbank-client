@@ -148,8 +148,8 @@ const ManageProperty = () => {
   const [user, setUser] = useState<User | null>(null);
   const { data: propertiesData, isLoading: loading } = useUserProperties(user);
 
-  const ownedProperties = propertiesData?.owned || [];
-  const tenantProperties = propertiesData?.tenant || [];
+  const ownedProperties = useMemo(() => propertiesData?.owned || [], [propertiesData?.owned]);
+  const tenantProperties = useMemo(() => propertiesData?.tenant || [], [propertiesData?.tenant]);
 
   const [filteredOwnedProperties, setFilteredOwnedProperties] = useState<Property[]>([]);
   const [filteredTenantProperties, setFilteredTenantProperties] = useState<Property[]>([]);
@@ -800,9 +800,11 @@ const ManageProperty = () => {
                                             </Badge>
                                           </div>
                                           {/* Show active tenants on a separate line if property is rented out */}
-                                          {property.tenants && property.tenants.length > 0 && (
+                                          {property.tenants && property.tenants.some((t: any) => t.isActive && (t.firstName || t.lastName || t.phone || t.email)) && (
                                             <p className="text-sm text-purple-600 font-medium mt-1">
-                                              Active Tenants: {property.tenants.map((t, i) => (
+                                              Active Tenants: {property.tenants
+                                                .filter((t: any) => t.isActive && (t.firstName || t.lastName || t.phone || t.email))
+                                                .map((t: any, i: number) => (
                                                 <span key={t.id || i}>
                                                   {i > 0 && ", "}
                                                   <TenantNameDisplay tenant={t} />
@@ -835,12 +837,15 @@ const ManageProperty = () => {
                                             Edit Property
                                           </DropdownMenuItem>
                                           <DropdownMenuSeparator />
-                                          {property.listingType === 'rent' && (
-                                            <DropdownMenuItem onClick={() => handleAddTenant(property.id, property.tenants && property.tenants.length > 0)}>
-                                              {property.tenants && property.tenants.length > 0 ? (
+                                          {property.listingType === 'rent' && (() => {
+                                            const validTenants = property.tenants ? property.tenants.filter((t: any) => t.isActive && (t.firstName || t.lastName || t.phone || t.email)) : [];
+                                            const hasValidTenants = validTenants.length > 0;
+                                            return (
+                                            <DropdownMenuItem onClick={() => handleAddTenant(property.id, hasValidTenants)}>
+                                              {hasValidTenants ? (
                                                 <>
                                                   <Eye className="h-4 w-4 mr-2" />
-                                                  View Tenant Details ({property.tenants.length})
+                                                  View Tenant Details ({validTenants.length})
                                                 </>
                                               ) : (
                                                 <>
@@ -849,7 +854,8 @@ const ManageProperty = () => {
                                                 </>
                                               )}
                                             </DropdownMenuItem>
-                                          )}
+                                            );
+                                          })()}
                                           <DropdownMenuItem onClick={() => handleRequestServices(property.id)}>
                                             <Wrench className="h-4 w-4 mr-2" />
                                             Request Services
@@ -933,17 +939,21 @@ const ManageProperty = () => {
                                                 {property.status === 'inactive' ? 'Inactive' : 'Active'}
                                               </Label>
                                             </div>
-                                            {property.status && property.status !== 'inactive' && (
+                                            {property.status && property.status !== 'inactive' && (() => {
+                                              const validTenants = property.tenants ? property.tenants.filter((t: any) => t.isActive && (t.firstName || t.lastName || t.phone || t.email)) : [];
+                                              const hasValidTenants = validTenants.length > 0;
+                                              return (
                                               <Badge variant="outline" className={
-                                                (property.tenants && property.tenants.length > 0)
+                                                hasValidTenants
                                                   ? 'bg-orange-50 text-orange-700 border-orange-200 text-xs whitespace-nowrap'
                                                   : 'bg-green-50 text-green-700 border-green-200 text-xs whitespace-nowrap'
                                               }>
-                                                {(property.tenants && property.tenants.length > 0)
+                                                {hasValidTenants
                                                   ? 'Currently Rented'
                                                   : 'Available for Rent'}
                                               </Badge>
-                                            )}
+                                              );
+                                            })()}
                                             {property.status === 'inactive' && (
                                               <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-xs whitespace-nowrap">
                                                 Inactive (Archived)
