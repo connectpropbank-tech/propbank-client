@@ -6,13 +6,14 @@ import { UserMenu } from "./UserMenu";
 
 interface DesktopNavProps {
   user: User | null;
+  userName?: string;
   userEmail: string;
   userPhone: string;
   userRole: string;
   handleLogout: () => Promise<void>;
 }
 
-export const DesktopNav = ({ user, userEmail, userPhone, userRole, handleLogout }: DesktopNavProps) => {
+export const DesktopNav = ({ user, userName, userEmail, userPhone, userRole, handleLogout }: DesktopNavProps) => {
   const navigate = useNavigate();
 
   const handleContactUs = (e: React.MouseEvent) => {
@@ -78,6 +79,7 @@ export const DesktopNav = ({ user, userEmail, userPhone, userRole, handleLogout 
       {user ? (
         <UserMenu
           user={user}
+          userName={userName}
           userEmail={userEmail}
           userPhone={userPhone}
           handleLogout={handleLogout}

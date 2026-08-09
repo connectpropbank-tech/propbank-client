@@ -20,6 +20,10 @@ const InspectionReportList: React.FC<InspectionReportListProps> = ({ propertyId 
         setLoadingReports(true);
         try {
             const response = await fetch(`${API_BASE_URL}/inspection-reports/property/${propertyId}`);
+            if (!response.ok) {
+                console.error(`Failed to fetch inspection reports: ${response.status} ${response.statusText}`);
+                return;
+            }
             const data = await response.json();
             if (data.success) {
                 setInspectionReports(data.reports || []);

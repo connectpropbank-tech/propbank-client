@@ -12,6 +12,7 @@ const SiteHeader = () => {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [userPhone, setUserPhone] = useState<string>("");
   const [userEmail, setUserEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
 
   useEffect(() => {
@@ -22,6 +23,7 @@ const SiteHeader = () => {
       } else {
         setUserPhone("");
         setUserEmail("");
+        setUserName("");
         setUserRole("");
       }
     });
@@ -41,6 +43,7 @@ const SiteHeader = () => {
         if (data.user) {
           if (data.user.phoneNumber) setUserPhone(data.user.phoneNumber);
           if (data.user.email) setUserEmail(data.user.email);
+          if (data.user.name) setUserName(data.user.name);
           if (data.user.role) setUserRole(data.user.role);
         }
       }
@@ -65,6 +68,7 @@ const SiteHeader = () => {
         {/* Desktop & Tablet Navigation */}
         <DesktopNav
           user={user}
+          userName={userName}
           userEmail={userEmail}
           userPhone={userPhone}
           userRole={userRole}
@@ -74,6 +78,7 @@ const SiteHeader = () => {
         {/* Mobile Navigation */}
         <MobileNav
           user={user}
+          userName={userName}
           userEmail={userEmail}
           userPhone={userPhone}
           userRole={userRole}

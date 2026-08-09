@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithGoogle, signOutUser, auth } from "@/firebase";
-import { User, onAuthStateChanged } from "firebase/auth";
+import { User, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { Button } from "@/ui/button";
 import { Input } from "@/ui/input";
 import { Label } from "@/ui/label";
@@ -18,10 +18,12 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   const [userLoggedIn, setUserLoggedIn] = useState<boolean>(false);
   const [phoneNumber, setPhoneNumber] = useState<string>("");
   const [userRole, setUserRole] = useState<string>("");
+  const [fullName, setFullName] = useState<string>("");
   const [showPhoneInput, setShowPhoneInput] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isCheckingUser, setIsCheckingUser] = useState<boolean>(false);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState<boolean>(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -188,12 +190,12 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   };
 
   // Save a new user to the backend (only called for first-time registrations)
-  const saveUserToBackend = async (firebaseUser: User, phone: string, role: string) => {
+  const saveUserToBackend = async (firebaseUser: User, phone: string, role: string, name: string) => {
     try {
       const userData = {
         uid: firebaseUser.uid,
         email: firebaseUser.email || firebaseUser.providerData[0]?.email || "",
-        name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || "User",
+        name: name,
         photoURL: firebaseUser.photoURL,
         phoneNumber: phone,
         role: role,
@@ -237,18 +239,9 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
   const handlePhoneSubmit = async () => {
     if (isSubmitting) return;
 
-    if (!phoneNumber.trim()) {
-      alert("Phone number is required to complete registration");
-      return;
-    }
+    setHasAttemptedSubmit(true);
 
-    if (!/^\d{10}$/.test(phoneNumber.trim())) {
-      alert("Please enter a valid 10-digit phone number (numbers only)");
-      return;
-    }
-
-    if (!userRole || userRole.trim() === "") {
-      alert("Please select your role to continue");
+    if (!phoneNumber.trim() || !/^\d{10}$/.test(phoneNumber.trim()) || !userRole || userRole.trim() === "" || !fullName || fullName.trim() === "") {
       return;
     }
 
@@ -256,9 +249,14 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
       setIsSubmitting(true);
       try {
         setRegistrationError(null);
-        const result = await saveUserToBackend(user, phoneNumber, userRole);
+        const result = await saveUserToBackend(user, phoneNumber, userRole, fullName.trim());
 
         if (result && result.success) {
+          try {
+            await updateProfile(user, { displayName: fullName.trim() });
+          } catch (e) {
+            console.error("Failed to update profile", e);
+          }
           // Re-verify that data was actually saved
           const isRegistrationComplete = await checkUserPhoneNumber(user.uid);
 
@@ -342,17 +340,19 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                   Welcome, {user?.displayName}!
                 </CardTitle>
                 <p className="text-gray-600 mt-2">{user?.email}</p>
-                <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mt-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="h-5 w-5 text-amber-600" />
-                    <p className="text-sm text-amber-800 font-semibold">
-                      Complete Registration Required
+                {hasAttemptedSubmit && (!phoneNumber || !userRole || !fullName.trim() || phoneNumber.length !== 10) && (
+                  <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mt-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      <p className="text-sm text-amber-800 font-semibold">
+                        Complete Registration Required
+                      </p>
+                    </div>
+                    <p className="text-xs text-amber-700">
+                      You must complete your registration to access PropBank. All fields are mandatory and cannot be skipped.
                     </p>
                   </div>
-                  <p className="text-xs text-amber-700">
-                    You must complete your registration to access PropBank. Both your role and phone number are mandatory fields that cannot be skipped.
-                  </p>
-                </div>
+                )}
               </CardHeader>
 
               <CardContent className="space-y-4">
@@ -364,7 +364,7 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                     setUserRole(val);
                     setRegistrationError(null);
                   }} value={userRole}>
-                    <SelectTrigger className={`w-full mt-1 ${!userRole ? 'border-red-300' : 'border-green-300'}`}>
+                    <SelectTrigger className={`w-full mt-1 ${hasAttemptedSubmit && !userRole ? 'border-red-300 border-2' : userRole ? 'border-green-300' : ''}`}>
                       <SelectValue placeholder="Choose your role" />
                     </SelectTrigger>
                     <SelectContent className="z-[10000]">
@@ -382,8 +382,28 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  {!userRole && (
+                  {hasAttemptedSubmit && !userRole && (
                     <p className="text-xs text-red-500 mt-1">Please select your role</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="fullName" className="text-sm font-medium text-gray-700">
+                    Full Name <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      setRegistrationError(null);
+                    }}
+                    className={`mt-1 ${fullName.trim().length > 0 ? 'border-green-300' : hasAttemptedSubmit ? 'border-red-300 border-2' : ''}`}
+                  />
+                  {hasAttemptedSubmit && !fullName.trim() && (
+                    <p className="text-xs text-red-500 mt-1">Full name is required</p>
                   )}
                 </div>
 
@@ -394,45 +414,46 @@ const GoogleAuth: React.FC<GoogleAuthProps> = () => {
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="Enter your 10-digit phone number"
+                    placeholder="+9193 XXXXXX"
                     value={phoneNumber}
                     onChange={(e) => {
                       setPhoneNumber(e.target.value.replace(/\D/g, ''));
                       setRegistrationError(null);
                     }}
-                    className={`mt-1 ${phoneNumber.length === 10 ? 'border-green-300' : phoneNumber.length > 0 ? 'border-red-300' : ''}`}
+                    className={`mt-1 ${phoneNumber.length === 10 ? 'border-green-300' : hasAttemptedSubmit && phoneNumber.length !== 10 ? 'border-red-300 border-2' : ''}`}
                     maxLength={10}
                   />
-                  {phoneNumber.length > 0 && phoneNumber.length !== 10 && (
+                  {hasAttemptedSubmit && phoneNumber.length > 0 && phoneNumber.length !== 10 && (
                     <p className="text-xs text-red-500 mt-1">Please enter a valid 10-digit phone number</p>
                   )}
-                  {!phoneNumber && (
+                  {hasAttemptedSubmit && !phoneNumber && (
                     <p className="text-xs text-red-500 mt-1">Phone number is required</p>
                   )}
                 </div>
 
                 {/* Validation summary */}
-                <div className={`p-3 rounded-lg ${registrationError ? 'bg-red-50 border border-red-200' : (!phoneNumber || !userRole || phoneNumber.length !== 10) ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
-                  {registrationError ? (
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
-                      <p className="text-xs font-semibold text-red-700">
-                        {registrationError}
+                {hasAttemptedSubmit && (!phoneNumber || !userRole || !fullName.trim() || phoneNumber.length !== 10 || registrationError) && (
+                  <div className={`p-3 rounded-lg bg-red-50 border border-red-200`}>
+                    {registrationError ? (
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                        <p className="text-xs font-semibold text-red-700">
+                          {registrationError}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs font-medium text-red-700">
+                        ⚠️ Please complete all required fields to continue
                       </p>
-                    </div>
-                  ) : (
-                    <p className={`text-xs font-medium ${(!phoneNumber || !userRole || phoneNumber.length !== 10) ? 'text-red-700' : 'text-green-700'}`}>
-                      {(!phoneNumber || !userRole || phoneNumber.length !== 10)
-                        ? '⚠️ Please complete all required fields to continue'
-                        : '✅ All fields completed. You can now register!'}
-                    </p>
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
+
 
                 <Button
                   onClick={handlePhoneSubmit}
                   className="w-full mt-6"
-                  disabled={!phoneNumber || !userRole || phoneNumber.length !== 10 || isSubmitting}
+                  disabled={isSubmitting}
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">

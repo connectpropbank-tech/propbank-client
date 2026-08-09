@@ -51,7 +51,7 @@ export function DatePicker({ value, onChange, className, placeholder = "Select d
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {selectedDate ? format(selectedDate, "DD/MM/YYYY") : <span>{placeholder}</span>}
+          {selectedDate ? format(selectedDate, "dd/MM/yyyy") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

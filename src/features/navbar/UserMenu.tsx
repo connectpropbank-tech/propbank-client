@@ -12,12 +12,13 @@ import {
 
 interface UserMenuProps {
   user: User;
+  userName?: string;
   userEmail: string;
   userPhone: string;
   handleLogout: () => Promise<void>;
 }
 
-export const UserMenu = ({ user, userEmail, userPhone, handleLogout }: UserMenuProps) => {
+export const UserMenu = ({ user, userName, userEmail, userPhone, handleLogout }: UserMenuProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -40,7 +41,7 @@ export const UserMenu = ({ user, userEmail, userPhone, handleLogout }: UserMenuP
         <DropdownMenuLabel className="font-normal px-2.5 py-2">
           <div className="flex flex-col space-y-2.5">
             <p className="text-sm font-semibold leading-none text-slate-900">
-              {user.displayName || "User"}
+              {user.displayName || userName || "User"}
             </p>
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Mail className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />

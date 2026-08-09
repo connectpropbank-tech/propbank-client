@@ -844,7 +844,7 @@ const AddTenant = () => {
                             id={`phone - ${tenant.id} `}
                             value={tenant.phone}
                             onChange={(e) => handleInputChange(tenant.id, 'phone', e.target.value)}
-                            placeholder="+1 (555) 123-4567"
+                            placeholder="+9193 XXXXXX"
                             className={tenant.searchError ? "border-red-500" : tenant.userInfo ? "border-green-500" : ""}
                           />
                           {tenant.searchingUser && (
@@ -948,7 +948,7 @@ const AddTenant = () => {
                             id={`spousePhone - ${tenant.id} `}
                             value={tenant.spouse?.phone || ''}
                             onChange={(e) => handleSpouseChange(tenant.id, 'phone', e.target.value)}
-                            placeholder="+1 (555) 123-4567"
+                            placeholder="+9193 XXXXXX"
                           />
                         </div>
                         <div>

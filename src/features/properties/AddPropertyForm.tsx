@@ -1303,7 +1303,7 @@ const AddPropertyForm = () => {
                                 <FormItem>
                                   <FormLabel>Spouse Phone <span className="text-red-500">*</span></FormLabel>
                                   <FormControl>
-                                    <Input placeholder="+1 (555) 123-4567" {...field} value={field.value || ""} />
+                                    <Input placeholder="+9193 XXXXXX" {...field} value={field.value || ""} />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>

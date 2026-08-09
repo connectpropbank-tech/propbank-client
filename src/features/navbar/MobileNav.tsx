@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/ui/sheet";
 
 interface MobileNavProps {
   user: User | null;
+  userName?: string;
   userEmail: string;
   userPhone: string;
   userRole: string;
@@ -16,6 +17,7 @@ interface MobileNavProps {
 
 export const MobileNav = ({
   user,
+  userName,
   userEmail,
   userPhone,
   userRole,
@@ -64,7 +66,7 @@ export const MobileNav = ({
                 />
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="font-semibold text-sm text-gray-900 truncate">
-                    {user.displayName || "No Name"}
+                    {user.displayName || userName || "No Name"}
                   </div>
                   <div className="text-[10px] text-muted-foreground break-all leading-tight">
                     {user.email || userEmail}

@@ -65,6 +65,7 @@ interface SpouseInfo {
 }
 
 interface TenantInfo {
+  noticePeriod: any;
   id: string;
   firstName: string;
   lastName: string;
@@ -240,6 +241,26 @@ interface Property {
   createdAt: string;
   updatedAt: string;
 }
+
+interface DetailItemProps {
+  label: string;
+  value: React.ReactNode;
+  isCurrency?: boolean;
+  capitalize?: boolean;
+  className?: string;
+}
+
+const DetailItem = ({ label, value, isCurrency = false, capitalize = false, className = "" }: DetailItemProps) => {
+  if (value === null || value === undefined || value === "") return null;
+  return (
+    <div className={className}>
+      <label className="text-sm font-medium text-muted-foreground">{label}</label>
+      <p className={`text-sm ${isCurrency ? 'font-semibold' : ''} ${capitalize ? 'capitalize' : ''}`}>
+        {isCurrency ? `₹${Number(value).toLocaleString()}` : value}
+      </p>
+    </div>
+  );
+};
 
 const PropertyDetails = () => {
   const { propertyId } = useParams();
@@ -683,24 +704,14 @@ const PropertyDetails = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Unit Number</label>
-                    <p className="text-sm">{property.unitNumber || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Floor</label>
-                    <p className="text-sm">{property.floor || 'N/A'}</p>
-                  </div>
-                  {property.buildingName && (
-                    <div>
-                      <label className="text-sm font-medium text-muted-foreground">Building Name</label>
-                      <p className="text-sm">{property.buildingName}</p>
-                    </div>
-                  )}
-                  <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-muted-foreground">Location</label>
-                    <p className="text-sm">{property.location || property.address || 'N/A'}</p>
-                  </div>
+                  {[
+                    { label: 'Unit Number', value: property.unitNumber || 'N/A' },
+                    { label: 'Floor', value: property.floor || 'N/A' },
+                    { label: 'Building Name', value: property.buildingName },
+                    { label: 'Location', value: property.location || property.address || 'N/A', className: 'md:col-span-2' },
+                  ].map((item, idx) => (
+                    <DetailItem key={idx} {...item} />
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -741,60 +752,19 @@ const PropertyDetails = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {property.securityDeposit && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Security Deposit</label>
-                          <p className="text-sm font-semibold">₹{Number(property.securityDeposit).toLocaleString()}</p>
-                        </div>
-                      )}
-                      {property.agreementPeriod && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Agreement Period</label>
-                          <p className="text-sm">{property.agreementPeriod}</p>
-                        </div>
-                      )}
-                      {property.agreementStartDate && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Agreement Start Date</label>
-                          <p className="text-sm">{new Date(property.agreementStartDate).toLocaleDateString()}</p>
-                        </div>
-                      )}
-                      {property.agreementEndDate && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Agreement End Date</label>
-                          <p className="text-sm">{new Date(property.agreementEndDate).toLocaleDateString()}</p>
-                        </div>
-                      )}
-                      {property.noticePeriod && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Notice Period</label>
-                          <p className="text-sm">{property.noticePeriod}</p>
-                        </div>
-                      )}
-                      {property.lockInPeriod && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Lock-in Period</label>
-                          <p className="text-sm">{property.lockInPeriod}</p>
-                        </div>
-                      )}
-                      {property.paymentDueDate && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Payment Due Date</label>
-                          <p className="text-sm">{property.paymentDueDate} of each month</p>
-                        </div>
-                      )}
-                      {property.escalationPercentage && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Annual Escalation</label>
-                          <p className="text-sm">{property.escalationPercentage}%</p>
-                        </div>
-                      )}
-                      {property.escalationAmount && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Escalation Amount</label>
-                          <p className="text-sm font-semibold">₹{Number(property.escalationAmount).toLocaleString()}</p>
-                        </div>
-                      )}
+                      {[
+                        { label: 'Security Deposit', value: property.securityDeposit, isCurrency: true },
+                        { label: 'Agreement Period', value: property.agreementPeriod },
+                        { label: 'Agreement Start Date', value: property.agreementStartDate ? new Date(property.agreementStartDate).toLocaleDateString() : null },
+                        { label: 'Agreement End Date', value: property.agreementEndDate ? new Date(property.agreementEndDate).toLocaleDateString() : null },
+                        { label: 'Notice Period', value: property.noticePeriod },
+                        { label: 'Lock-in Period', value: property.lockInPeriod },
+                        { label: 'Payment Due Date', value: property.paymentDueDate ? `${property.paymentDueDate} of each month` : null },
+                        { label: 'Annual Escalation', value: property.escalationPercentage ? `${property.escalationPercentage}%` : null },
+                        { label: 'Escalation Amount', value: property.escalationAmount, isCurrency: true },
+                      ].map((item, idx) => (
+                        <DetailItem key={idx} {...item} />
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -810,36 +780,15 @@ const PropertyDetails = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {property.unitCondition && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Unit Condition</label>
-                          <p className="text-sm capitalize">{property.unitCondition}</p>
-                        </div>
-                      )}
-                      {property.maintenanceToBePaidBy && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Maintenance To Be Paid By</label>
-                          <p className="text-sm capitalize">{property.maintenanceToBePaidBy}</p>
-                        </div>
-                      )}
-                      {property.rentalStatus && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Rental Status</label>
-                          <p className="text-sm capitalize">{property.rentalStatus}</p>
-                        </div>
-                      )}
-                      {property.projectCondition && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Project Condition</label>
-                          <p className="text-sm">{property.projectCondition}</p>
-                        </div>
-                      )}
-                      {property.possessionDate && !(property.listingType === 'rent' && property.rentalStatus === 'rented') && (
-                        <div>
-                          <label className="text-sm font-medium text-muted-foreground">Possession Date</label>
-                          <p className="text-sm">{new Date(property.possessionDate).toLocaleDateString()}</p>
-                        </div>
-                      )}
+                      {[
+                        { label: 'Unit Condition', value: property.unitCondition, capitalize: true },
+                        { label: 'Maintenance To Be Paid By', value: property.maintenanceToBePaidBy, capitalize: true },
+                        { label: 'Rental Status', value: property.rentalStatus, capitalize: true },
+                        { label: 'Project Condition', value: property.projectCondition },
+                        { label: 'Possession Date', value: property.possessionDate && !(property.listingType === 'rent' && property.rentalStatus === 'rented') ? new Date(property.possessionDate).toLocaleDateString() : null },
+                      ].map((item, idx) => (
+                        <DetailItem key={idx} {...item} />
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -987,58 +936,20 @@ const PropertyDetails = () => {
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="text-sm font-medium text-muted-foreground">Phone</label>
-                              <p className="text-sm">{tenant.phone}</p>
-                            </div>
-                            {tenant.monthlyRent && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Monthly Rent</label>
-                                <p className="text-sm font-semibold">₹{Number(tenant.monthlyRent).toLocaleString()}</p>
-                              </div>
-                            )}
-                            {tenant.leaseStartDate && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Lease Start</label>
-                                <p className="text-sm">{new Date(tenant.leaseStartDate).toLocaleDateString()}</p>
-                              </div>
-                            )}
-                            {tenant.leaseEndDate && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Lease End</label>
-                                <p className="text-sm">{new Date(tenant.leaseEndDate).toLocaleDateString()}</p>
-                              </div>
-                            )}
-                            {tenant.employer && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Employer</label>
-                                <p className="text-sm">{tenant.employer}</p>
-                              </div>
-                            )}
-                            {tenant.paymentDueDate && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Payment Due</label>
-                                <p className="text-sm">{tenant.paymentDueDate}th of each month</p>
-                              </div>
-                            )}
-                            {tenant.escalationPercentage && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Annual Escalation</label>
-                                <p className="text-sm">{tenant.escalationPercentage}</p>
-                              </div>
-                            )}
-                            {tenant.emergencyContact && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Emergency Contact</label>
-                                <p className="text-sm">{tenant.emergencyContact}</p>
-                              </div>
-                            )}
-                            {tenant.updatedAt && (
-                              <div>
-                                <label className="text-sm font-medium text-muted-foreground">Last Modified</label>
-                                <p className="text-sm">{new Date(tenant.updatedAt).toLocaleDateString('en-GB')} at {new Date(tenant.updatedAt).toLocaleTimeString()}</p>
-                              </div>
-                            )}
+                            {[
+                              { label: 'Phone', value: tenant.phone },
+                              { label: 'Monthly Rent', value: tenant.monthlyRent, isCurrency: true },
+                              { label: 'Lease Start', value: tenant.leaseStartDate ? new Date(tenant.leaseStartDate).toLocaleDateString() : null },
+                              { label: 'Lease End', value: tenant.leaseEndDate ? new Date(tenant.leaseEndDate).toLocaleDateString() : null },
+                              { label: 'Employer', value: tenant.employer },
+                              { label: 'Payment Due', value: tenant.paymentDueDate ? `${tenant.paymentDueDate}th of each month` : null },
+                              { label: 'Notice Period', value: tenant.noticePeriod },
+                              { label: 'Annual Escalation', value: tenant.escalationPercentage },
+                              { label: 'Emergency Contact', value: tenant.emergencyContact },
+                              { label: 'Last Modified', value: tenant.updatedAt ? `${new Date(tenant.updatedAt).toLocaleDateString('en-GB')} at ${new Date(tenant.updatedAt).toLocaleTimeString()}` : null },
+                            ].map((item, idx) => (
+                              <DetailItem key={idx} {...item} />
+                            ))}
                           </div>
 
                           {/* Rent Schedule Display */}
@@ -1380,56 +1291,19 @@ const PropertyDetails = () => {
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-                          <div>
-                            <label className="text-xs font-medium text-muted-foreground">Email</label>
-                            <p>{buyer.email}</p>
-                          </div>
-                          <div>
-                            <label className="text-xs font-medium text-muted-foreground">Phone</label>
-                            <p>{buyer.phone}</p>
-                          </div>
-                          {buyer.offerAmount && (
-                            <div>
-                              <label className="text-xs font-medium text-muted-foreground">Offer Amount</label>
-                              <p className="font-semibold">₹{Number(buyer.offerAmount).toLocaleString()}</p>
-                            </div>
-                          )}
-                          {buyer.financingType && (
-                            <div>
-                              <label className="text-xs font-medium text-muted-foreground">Financing</label>
-                              <p className="capitalize">{buyer.financingType}</p>
-                            </div>
-                          )}
-                          {buyer.preApprovalAmount && (
-                            <div>
-                              <label className="text-xs font-medium text-muted-foreground">Pre-approval</label>
-                              <p>₹{Number(buyer.preApprovalAmount).toLocaleString()}</p>
-                            </div>
-                          )}
-                          {buyer.closingDate && (
-                            <div>
-                              <label className="text-xs font-medium text-muted-foreground">Expected Closing</label>
-                              <p>{new Date(buyer.closingDate).toLocaleDateString()}</p>
-                            </div>
-                          )}
-                          {buyer.employmentStatus && (
-                            <div>
-                              <label className="text-xs font-medium text-muted-foreground">Employment</label>
-                              <p className="capitalize">{buyer.employmentStatus}</p>
-                            </div>
-                          )}
-                          {buyer.employer && (
-                            <div>
-                              <label className="text-xs font-medium text-muted-foreground">Employer</label>
-                              <p>{buyer.employer}</p>
-                            </div>
-                          )}
-                          {buyer.annualIncome && (
-                            <div>
-                              <label className="text-xs font-medium text-muted-foreground">Annual Income</label>
-                              <p>₹{Number(buyer.annualIncome).toLocaleString()}</p>
-                            </div>
-                          )}
+                          {[
+                            { label: 'Email', value: buyer.email },
+                            { label: 'Phone', value: buyer.phone },
+                            { label: 'Offer Amount', value: buyer.offerAmount, isCurrency: true },
+                            { label: 'Financing', value: buyer.financingType, capitalize: true },
+                            { label: 'Pre-approval', value: buyer.preApprovalAmount, isCurrency: true },
+                            { label: 'Expected Closing', value: buyer.closingDate ? new Date(buyer.closingDate).toLocaleDateString() : null },
+                            { label: 'Employment', value: buyer.employmentStatus, capitalize: true },
+                            { label: 'Employer', value: buyer.employer },
+                            { label: 'Annual Income', value: buyer.annualIncome, isCurrency: true },
+                          ].map((item, idx) => (
+                            <DetailItem key={idx} {...item} />
+                          ))}
                         </div>
 
                         {buyer.agentName && (
