@@ -12,7 +12,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/ui/checkbox";
 import { ArrowLeft, Building2, Upload, X, Image as ImageIcon, CheckSquare, User, Plus, Trash2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { toast } from "@/hooks/use-toast";
 import { auth } from "../../firebase";
 import { User as FirebaseUser } from "firebase/auth";
 import { useState, useRef, useEffect } from "react";
@@ -20,6 +19,9 @@ import { API_BASE_URL } from "../../utils/config";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { FurnishedChecklistModal } from "./FurnishedChecklistModal";
 import { uploadBase64Image } from "../../services/uploadService";
+import { addMonths, format, subDays, parseISO } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   // Property Basic Details
@@ -71,6 +73,7 @@ const formSchema = z.object({
   // Monthly Rent Details (for rent only) - Dynamic Schedule
   rentSchedule: z.array(z.object({
     year: z.string().optional(),
+    months: z.string().optional(),
     amount: z.string().optional(),
     fromDate: z.string().optional(),
     toDate: z.string().optional(),
@@ -176,8 +179,10 @@ const AddPropertyForm = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [isInternalUploading, setIsInternalUploading] = useState(false);
 
-  // User Search State
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
+  const [userInfo, setUserInfo] = useState<any | null>(null);
   const [searchingUser, setSearchingUser] = useState(false);
   const [searchError, setSearchError] = useState<string | undefined>(undefined);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -444,7 +449,7 @@ const AddPropertyForm = () => {
       rentToDate1: "",
       rentFromDate2: "",
       rentToDate2: "",
-      rentSchedule: [{ year: "1st Year", amount: "", fromDate: "", toDate: "" }], // Start with one row
+      rentSchedule: [{ year: "1st Year", months: "11", amount: "", fromDate: "", toDate: "" }], // Start with one row
       paymentDueDate: "",
       escalationPercentage: "",
       escalationAmount: "",
@@ -672,6 +677,11 @@ const AddPropertyForm = () => {
 
       if (result.success) {
         const listingTypeText = data.listingType === "rent" ? "rental property" : "property for sale";
+        
+        // Invalidate property queries so they refetch the newly added property
+        queryClient.invalidateQueries({ queryKey: ['userProperties'] });
+        queryClient.invalidateQueries({ queryKey: ['allProperties'] });
+        
         toast({
           title: `${data.propertyTitle} added successfully!`,
           description: `Your ${listingTypeText} has been saved and is now listed.`,
@@ -1491,7 +1501,7 @@ const AddPropertyForm = () => {
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => appendRentSchedule({ year: `${rentScheduleFields.length + 1}${getOrdinalSuffix(rentScheduleFields.length + 1)} Year`, amount: "", fromDate: "", toDate: "" })}
+                              onClick={() => appendRentSchedule({ year: `${rentScheduleFields.length + 1}${getOrdinalSuffix(rentScheduleFields.length + 1)} Year`, months: "11", amount: "", fromDate: "", toDate: "" })}
                             >
                               <Plus className="h-4 w-4 mr-2" />
                               Add Year
@@ -1508,7 +1518,30 @@ const AddPropertyForm = () => {
                                     className="bg-white"
                                   />
                                 </div>
-                                <div className="md:col-span-3">
+                                <div className="md:col-span-2">
+                                  <FormLabel className="text-xs">Months</FormLabel>
+                                  <Input
+                                    type="number"
+                                    placeholder="11"
+                                    {...form.register(`rentSchedule.${index}.months`)}
+                                    onChange={(e) => {
+                                      form.setValue(`rentSchedule.${index}.months`, e.target.value);
+                                      const fromDateStr = form.getValues(`rentSchedule.${index}.fromDate`);
+                                      if (fromDateStr && e.target.value) {
+                                        try {
+                                          const startDate = parseISO(fromDateStr);
+                                          const months = parseInt(e.target.value, 10);
+                                          if (!isNaN(months) && months > 0) {
+                                            const endDate = subDays(addMonths(startDate, months), 1);
+                                            form.setValue(`rentSchedule.${index}.toDate`, format(endDate, 'yyyy-MM-dd'));
+                                          }
+                                        } catch (err) {}
+                                      }
+                                    }}
+                                    className="bg-white"
+                                  />
+                                </div>
+                                <div className="md:col-span-2">
                                   <FormLabel className="text-xs">Amount (₹)</FormLabel>
                                   <Input
                                     {...form.register(`rentSchedule.${index}.amount`)}
@@ -1526,7 +1559,20 @@ const AddPropertyForm = () => {
                                         <FormControl>
                                           <DatePicker
                                             value={field.value}
-                                            onChange={field.onChange}
+                                            onChange={(val) => {
+                                              field.onChange(val);
+                                              const monthsStr = form.getValues(`rentSchedule.${index}.months`);
+                                              if (val && monthsStr) {
+                                                try {
+                                                  const startDate = parseISO(val);
+                                                  const months = parseInt(monthsStr, 10);
+                                                  if (!isNaN(months) && months > 0) {
+                                                    const endDate = subDays(addMonths(startDate, months), 1);
+                                                    form.setValue(`rentSchedule.${index}.toDate`, format(endDate, 'yyyy-MM-dd'));
+                                                  }
+                                                } catch (err) {}
+                                              }
+                                            }}
                                             className="bg-white"
                                           />
                                         </FormControl>
@@ -1535,7 +1581,7 @@ const AddPropertyForm = () => {
                                     )}
                                   />
                                 </div>
-                                <div className="md:col-span-3">
+                                <div className="md:col-span-2">
                                   <FormField
                                     control={form.control}
                                     name={`rentSchedule.${index}.toDate`}

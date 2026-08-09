@@ -6,6 +6,8 @@ import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 import { auth } from "../../firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
+import { useUserProperties } from "../../hooks/useProperties";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -141,12 +143,16 @@ const TenantNameDisplay = ({ tenant }: { tenant: TenantInfo }) => {
 const ManageProperty = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [ownedProperties, setOwnedProperties] = useState<Property[]>([]);
-  const [tenantProperties, setTenantProperties] = useState<Property[]>([]);
+  const queryClient = useQueryClient();
+  
+  const [user, setUser] = useState<User | null>(null);
+  const { data: propertiesData, isLoading: loading } = useUserProperties(user);
+
+  const ownedProperties = propertiesData?.owned || [];
+  const tenantProperties = propertiesData?.tenant || [];
+
   const [filteredOwnedProperties, setFilteredOwnedProperties] = useState<Property[]>([]);
   const [filteredTenantProperties, setFilteredTenantProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -160,121 +166,22 @@ const ManageProperty = () => {
   const [wantToSellToggles, setWantToSellToggles] = useState<{ [key: string]: boolean }>({});
 
   useEffect(() => {
-
-
-    // Listen for authentication state changes
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-
       setUser(currentUser);
-
-      if (currentUser) {
-
-        fetchProperties(currentUser);
-      } else {
-
-        setLoading(false);
-      }
     });
 
     return () => unsubscribe();
   }, []);
 
-  const fetchProperties = async (currentUser: User) => {
-    try {
-      const ownerUID = currentUser.uid;
-
-      // Fetch owned properties
-      const ownedResponse = await fetch(`${API_BASE_URL}/properties?ownerUID=${ownerUID}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const ownedData = await ownedResponse.json();
-
-      let owned: Property[] = [];
-      if (ownedData.success) {
-        // Filter to only show active properties (status === 'active') owned by current user
-        owned = (ownedData.properties || []).filter((p: Property) => {
-          const isActive = (p.status === 'active' || (!p.status && p.isActive !== false));
-          // Double-check that the property is actually owned by the current user
-          const isOwnedByUser = p.ownerUID === ownerUID;
-          return isActive && isOwnedByUser;
-        }).map((p: Property) => ({ ...p, userRole: 'owner' }));
-      }
-
-      // Fetch properties where user is a tenant
-      let userEmail = currentUser.email || "";
-
-      // Logic to get email: Auth Object -> Cookie -> Backend API
-      if (!userEmail) {
-        // Try getting from cookies first
-        const match = document.cookie.match(new RegExp('(^| )userEmail=([^;]+)'));
-        if (match) {
-          userEmail = match[2];
-        }
-      }
-
-      // If email is still missing (e.g. phone login and no cookie yet), fetch from backend user profile
-      if (!userEmail) {
-        try {
-          const userProfileResponse = await fetch(`${API_BASE_URL}/users/${currentUser.uid}`);
-          if (userProfileResponse.ok) {
-            const userProfile = await userProfileResponse.json();
-            if (userProfile.email) {
-              userEmail = userProfile.email;
-            }
-          }
-        } catch (e) {
-          console.error("Failed to fetch user profile for email lookup", e);
-        }
-      }
-
-      const tenantResponse = await fetch(`${API_BASE_URL}/properties/tenant/?userEmail=${userEmail}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      let tenant: Property[] = [];
-      if (tenantResponse.ok) {
-        const tenantData = await tenantResponse.json();
-        if (tenantData.success) {
-          // Filter to only show active properties where user is tenant but NOT the owner
-          tenant = (tenantData.properties || [])
-            .filter((p: Property) => {
-              const isActive = (p.status === 'active' || (!p.status && p.isActive !== false));
-              // Only include if user is NOT the owner (avoid duplication)
-              const notOwnedByUser = p.ownerUID !== currentUser.uid;
-              return isActive && notOwnedByUser;
-            })
-            .map((p: Property) => ({ ...p, userRole: 'tenant' }));
-        }
-      }
-
-      setOwnedProperties(owned);
-      setTenantProperties(tenant);
-      setFilteredOwnedProperties(owned);
-      setFilteredTenantProperties(tenant);
-
-      // Initialize wantToSell toggles from owned property data only
+  useEffect(() => {
+    if (ownedProperties.length > 0) {
       const initialToggles: { [key: string]: boolean } = {};
-      owned.forEach((p: Property) => {
+      ownedProperties.forEach((p: Property) => {
         initialToggles[p.id] = p.wantToSell || false;
       });
       setWantToSellToggles(initialToggles);
-    } catch (error) {
-
-      setOwnedProperties([]);
-      setTenantProperties([]);
-      setFilteredOwnedProperties([]);
-      setFilteredTenantProperties([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [ownedProperties]);
 
   // Filter properties based on current filter criteria
   const applyFilters = () => {
@@ -452,7 +359,7 @@ const ManageProperty = () => {
             : "Property set to active and unarchived"
         });
         // Refresh properties list (this will filter out inactive properties)
-        fetchProperties(user);
+        queryClient.invalidateQueries({ queryKey: ['userProperties'] });
       } else {
         toast({
           title: "Error",
@@ -495,7 +402,7 @@ const ManageProperty = () => {
           description: "Property archived successfully"
         });
         // Refresh properties list
-        fetchProperties(user);
+        queryClient.invalidateQueries({ queryKey: ['userProperties'] });
       } else {
         toast({
           title: "Error",
@@ -564,7 +471,7 @@ const ManageProperty = () => {
         }));
 
         // Refresh properties list
-        fetchProperties(user);
+        queryClient.invalidateQueries({ queryKey: ['userProperties'] });
       } else {
         toast({
           title: "Error",
@@ -638,14 +545,6 @@ const ManageProperty = () => {
         }
 
         // Update local state to reflect the change
-        setOwnedProperties(prevProperties =>
-          prevProperties.map(prop =>
-            prop.id === propertyId
-              ? { ...prop, listingType: 'sell' }
-              : prop
-          )
-        );
-
         setFilteredOwnedProperties(prevFiltered =>
           prevFiltered.map(prop =>
             prop.id === propertyId

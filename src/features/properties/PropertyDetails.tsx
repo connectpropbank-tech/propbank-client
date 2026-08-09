@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { auth } from "../../firebase";
 import { User, onAuthStateChanged } from "firebase/auth";
 import { API_BASE_URL } from "../../utils/config";
+import { usePropertyDetails } from "../../hooks/useProperties";
 
 // Raised Request interface for service requests, inspection reports, etc.
 interface RaisedRequest {
@@ -266,8 +267,10 @@ const PropertyDetails = () => {
   const { propertyId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [property, setProperty] = useState<Property | null>(null);
-  const [loading, setLoading] = useState(true);
+  
+  const { data: propertyData, isLoading: loading } = usePropertyDetails(propertyId);
+  const property = propertyData as Property | null;
+  
   const [raisedRequests, setRaisedRequests] = useState<RaisedRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [user, setUser] = useState<User | null>(null);
@@ -316,7 +319,6 @@ const PropertyDetails = () => {
 
   useEffect(() => {
     if (propertyId) {
-      fetchPropertyDetails(propertyId);
       fetchRaisedRequests(propertyId);
     }
   }, [propertyId]);
@@ -353,68 +355,6 @@ const PropertyDetails = () => {
 
     } finally {
       setLoadingRequests(false);
-    }
-  };
-
-  const normalizeFurnishedChecklist = (checklist: any): Array<{
-    id: string;
-    name: string;
-    checked: boolean;
-    quantity: number;
-    category: string;
-  }> => {
-    if (!checklist || !Array.isArray(checklist)) return [];
-
-    return checklist.map((item: any) => {
-      // If it's already in the new format (object with id, name, etc.)
-      if (typeof item === 'object' && item !== null && item.name) {
-        return {
-          id: item.id || `item-${Date.now()}-${Math.random()}`,
-          name: item.name,
-          checked: item.checked !== undefined ? item.checked : true,
-          quantity: item.quantity || 1,
-          category: item.category || 'other'
-        };
-      }
-      // If it's the old string format, convert it
-      if (typeof item === 'string') {
-        return {
-          id: `legacy-${Date.now()}-${Math.random()}`,
-          name: item,
-          checked: true,
-          quantity: 1,
-          category: 'other'
-        };
-      }
-      return item;
-    });
-  };
-
-  const fetchPropertyDetails = async (id: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/properties/${id}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        // Normalize furnished checklist for backward compatibility
-        const normalizedProperty = {
-          ...data.property,
-          furnishedChecklist: normalizeFurnishedChecklist(data.property.furnishedChecklist)
-        };
-        setProperty(normalizedProperty);
-      } else {
-
-      }
-    } catch (error) {
-
-    } finally {
-      setLoading(false);
     }
   };
 

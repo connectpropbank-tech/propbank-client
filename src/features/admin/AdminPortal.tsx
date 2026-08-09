@@ -6,6 +6,8 @@ import { Building2, Users, AlertCircle, Archive } from "lucide-react";
 import { uploadBase64Image } from "@/services/uploadService";
 import AdminPropertyDetailsDialog from "@/features/admin/AdminPropertyDetailsDialog";
 import AdminUserDetailsDialog from "@/features/admin/AdminUserDetailsDialog";
+import { useAllProperties } from "../../hooks/useProperties";
+import { useAllUsers } from "../../hooks/useUsers";
 import { propertyService, Property } from "@/services/propertyService";
 
 import { API_BASE_URL } from "../../utils/config";
@@ -22,8 +24,12 @@ const AdminPortal = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("service-requests");
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const { data: propertiesData, isLoading: loadingProperties } = useAllProperties();
+  const allProperties = propertiesData || [];
+  
+  const { data: usersData, isLoading: loadingUsers } = useAllUsers();
+  const agents = usersData || [];
+  
   const [loading, setLoading] = useState(true);
 
   // Site settings state
@@ -64,8 +70,6 @@ const AdminPortal = () => {
     try {
       if (activeTab === "service-requests") {
         await fetchNotifications();
-      } else if (activeTab === "properties") {
-        await fetchAllProperties();
       } else if (activeTab === "agents") {
         await fetchAgents();
       } else if (activeTab === "archive") {
@@ -121,28 +125,6 @@ const AdminPortal = () => {
     } catch (error) {
       setNotifications([]);
     }
-  };
-
-  const fetchAllProperties = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/properties?all=true`);
-      if (response.ok) {
-        const data = await response.json();
-        const props = data.properties || data.data || [];
-        setProperties(props);
-      }
-    } catch (error) {}
-  };
-
-  const fetchAgents = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/users`);
-      if (response.ok) {
-        const data = await response.json();
-        const allUsers = data.data || [];
-        setAgents(allUsers);
-      }
-    } catch (error) {}
   };
 
   const fetchArchivedNotifications = async () => {
@@ -434,7 +416,7 @@ const AdminPortal = () => {
         <TabsContent value="properties" className="mt-6">
           <AdminPropertiesTab
             loading={loading}
-            properties={properties}
+            properties={allProperties}
             handleViewPropertyDetails={handleViewPropertyDetails}
             loadingProperty={loadingProperty}
             selectedProperty={selectedProperty}
@@ -489,3 +471,7 @@ const AdminPortal = () => {
 };
 
 export default AdminPortal;
+function fetchAgents() {
+  throw new Error("Function not implemented.");
+}
+

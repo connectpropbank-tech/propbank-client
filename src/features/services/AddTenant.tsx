@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { auth } from "../../firebase";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { API_BASE_URL } from "../../utils/config";
+import { addMonths, format, subDays, parseISO } from "date-fns";
 
 interface SpouseData {
   firstName: string;
@@ -56,6 +57,7 @@ interface TenantData {
   escalationPercentage: string;
   escalationAmount: string;
   noticePeriod: string;
+  lockInPeriod: string;
   notes: string;
   searchError?: string; // Error message if user not found
   searchingUser?: boolean; // Loading state for user search
@@ -65,6 +67,7 @@ interface TenantData {
     amount: string;
     fromDate: string;
     toDate: string;
+    months?: string;
   }[];
 }
 
@@ -78,6 +81,8 @@ const AddTenant = () => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [existingTenants, setExistingTenants] = useState<TenantData[]>([]);
   const [propertyTitle, setPropertyTitle] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const [tenants, setTenants] = useState<TenantData[]>([
     {
@@ -103,10 +108,11 @@ const AddTenant = () => {
       escalationPercentage: '',
       escalationAmount: '',
       noticePeriod: '',
+      lockInPeriod: '',
       notes: '',
       searchError: undefined,
       searchingUser: false,
-      rentSchedule: [{ year: "1st Year", amount: "", fromDate: "", toDate: "" }]
+      rentSchedule: [{ year: "1st Year", amount: "", fromDate: "", toDate: "", months: "11" }]
     }
   ]);
 
@@ -151,6 +157,7 @@ const AddTenant = () => {
               escalationPercentage: tenant.escalationPercentage || '',
               escalationAmount: tenant.escalationAmount || '',
               noticePeriod: tenant.noticePeriod || '',
+              lockInPeriod: tenant.lockInPeriod || '',
               notes: tenant.notes || '',
               rentSchedule: tenant.rentSchedule || []
             })));
@@ -340,7 +347,24 @@ const AddTenant = () => {
       if (tenant.id === tenantId) {
         const newSchedule = [...(tenant.rentSchedule || [])];
         if (!newSchedule[index]) return tenant;
-        newSchedule[index] = { ...newSchedule[index], [field]: value };
+        
+        let updatedItem = { ...newSchedule[index], [field]: value };
+        
+        // Auto-calculate toDate if fromDate or months changes
+        if ((field === 'fromDate' || field === 'months') && updatedItem.fromDate && updatedItem.months) {
+          try {
+            const startDate = parseISO(updatedItem.fromDate);
+            const months = parseInt(updatedItem.months, 10);
+            if (!isNaN(months) && months > 0) {
+              const endDate = subDays(addMonths(startDate, months), 1);
+              updatedItem.toDate = format(endDate, 'yyyy-MM-dd');
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        }
+        
+        newSchedule[index] = updatedItem;
         return { ...tenant, rentSchedule: newSchedule };
       }
       return tenant;
@@ -356,7 +380,7 @@ const AddTenant = () => {
           ...tenant,
           rentSchedule: [
             ...currentSchedule,
-            { year: `${nextYear}${getOrdinalSuffix(nextYear)} Year`, amount: "", fromDate: "", toDate: "" }
+            { year: `${nextYear}${getOrdinalSuffix(nextYear)} Year`, months: "11", amount: "", fromDate: "", toDate: "" }
           ]
         };
       }
@@ -398,10 +422,11 @@ const AddTenant = () => {
       escalationPercentage: '',
       escalationAmount: '',
       noticePeriod: '',
+      lockInPeriod: '',
       notes: '',
       searchError: undefined,
       searchingUser: false,
-      rentSchedule: [{ year: "1st Year", amount: "", fromDate: "", toDate: "" }]
+      rentSchedule: [{ year: "1st Year", months: "11", amount: "", fromDate: "", toDate: "" }]
     };
     setTenants(prev => [...prev, newTenant]);
   };
@@ -423,6 +448,8 @@ const AddTenant = () => {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
     const invalidTenants = tenants.filter(tenant => !validateTenant(tenant));
     if (invalidTenants.length > 0) {
       toast({
@@ -469,6 +496,7 @@ const AddTenant = () => {
       return;
     }
 
+    setIsSubmitting(true);
     try {
       const propertyResponse = await fetch(`${API_BASE_URL}/properties/${propertyId}`);
       const propertyData = await propertyResponse.json();
@@ -500,6 +528,7 @@ const AddTenant = () => {
         escalationPercentage: tenant.escalationPercentage,
         escalationAmount: tenant.escalationAmount,
         noticePeriod: tenant.noticePeriod,
+        lockInPeriod: tenant.lockInPeriod,
         notes: tenant.notes,
         rentSchedule: tenant.rentSchedule,
         isActive: true
@@ -521,6 +550,8 @@ const AddTenant = () => {
       const data = await response.json();
 
       if (data.success) {
+        setIsSubmitting(false);
+        setIsSuccess(true);
         toast({
           title: "Success",
           description: `${tenants.length} tenant(s) added successfully`
@@ -530,6 +561,7 @@ const AddTenant = () => {
           navigate("/manage-property");
         }, 1500);
       } else {
+        setIsSubmitting(false);
         toast({
           title: "Error",
           description: data.message || "Failed to add tenants",
@@ -538,6 +570,7 @@ const AddTenant = () => {
       }
 
     } catch (error) {
+      setIsSubmitting(false);
       toast({
         title: "Error",
         description: "Failed to add tenants. Please try again.",
@@ -699,6 +732,10 @@ const AddTenant = () => {
                         <div>
                           <label className="text-xs font-medium text-muted-foreground">Notice Period</label>
                           <p>{tenant.noticePeriod || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground">Lock-in Period</label>
+                          <p>{tenant.lockInPeriod ? `${tenant.lockInPeriod} Months` : 'N/A'}</p>
                         </div>
                         {tenant.rentSchedule && tenant.rentSchedule.length > 0 && (
                           <div className="md:col-span-3 mt-2">
@@ -1048,49 +1085,63 @@ const AddTenant = () => {
 
                         <div className="space-y-4">
                           {(tenant.rentSchedule || []).map((item, index) => (
-                            <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border rounded-lg bg-gray-50/50 items-end relative">
-                              <div className="md:col-span-2">
-                                <Label className="text-xs">Year</Label>
+                            <div key={index} className="flex flex-col md:flex-row gap-5 p-5 border border-slate-200 rounded-xl bg-slate-50/50 shadow-sm items-end relative transition-all hover:shadow-md hover:border-slate-300">
+                              <div className="w-full md:w-[120px] shrink-0">
+                                <Label className="text-xs font-medium text-slate-500 mb-1.5 block">Year</Label>
                                 <Input
                                   value={item.year}
                                   onChange={(e) => handleRentScheduleChange(tenant.id, index, 'year', e.target.value)}
-                                  className="bg-white"
+                                  className="bg-white shadow-sm"
                                 />
                               </div>
-                              <div className="md:col-span-3">
-                                <Label className="text-xs">Amount (₹)</Label>
+                              <div className="w-full md:w-[90px] shrink-0">
+                                <Label className="text-xs font-medium text-slate-500 mb-1.5 block">Months</Label>
+                                <Input
+                                  type="number"
+                                  value={item.months || ""}
+                                  onChange={(e) => handleRentScheduleChange(tenant.id, index, 'months', e.target.value)}
+                                  placeholder="11"
+                                  className="bg-white shadow-sm"
+                                />
+                              </div>
+                              <div className="w-full md:w-[140px] shrink-0">
+                                <Label className="text-xs font-medium text-slate-500 mb-1.5 block">Amount (₹)</Label>
                                 <Input
                                   value={item.amount}
                                   onChange={(e) => handleRentScheduleChange(tenant.id, index, 'amount', e.target.value)}
                                   placeholder="Amount"
-                                  className="bg-white"
+                                  className="bg-white shadow-sm"
                                 />
                               </div>
-                              <div className="md:col-span-3">
-                                <Label className="text-xs">From</Label>
-                                <DatePicker
-                                  value={item.fromDate}
-                                  onChange={(value) => handleRentScheduleChange(tenant.id, index, 'fromDate', value)}
-                                  className="bg-white"
-                                />
+                              <div className="w-full md:flex-1 min-w-[150px]">
+                                <Label className="text-xs font-medium text-slate-500 mb-1.5 block">From</Label>
+                                <div className="w-full">
+                                  <DatePicker
+                                    value={item.fromDate}
+                                    onChange={(value) => handleRentScheduleChange(tenant.id, index, 'fromDate', value)}
+                                    className="bg-white shadow-sm w-full"
+                                  />
+                                </div>
                               </div>
-                              <div className="md:col-span-3">
-                                <Label className="text-xs">To</Label>
-                                <DatePicker
-                                  value={item.toDate}
-                                  onChange={(value) => handleRentScheduleChange(tenant.id, index, 'toDate', value)}
-                                  className="bg-white"
-                                />
+                              <div className="w-full md:flex-1 min-w-[150px]">
+                                <Label className="text-xs font-medium text-slate-500 mb-1.5 block">To</Label>
+                                <div className="w-full">
+                                  <DatePicker
+                                    value={item.toDate}
+                                    onChange={(value) => handleRentScheduleChange(tenant.id, index, 'toDate', value)}
+                                    className="bg-white shadow-sm w-full"
+                                  />
+                                </div>
                               </div>
 
                               {(tenant.rentSchedule || []).length > 1 && (
-                                <div className="md:col-span-1 flex justify-center pb-2">
+                                <div className="shrink-0 flex items-center justify-center pb-[2px]">
                                   <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => removeRentScheduleYear(tenant.id, index)}
-                                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8"
+                                    className="text-red-500 hover:text-red-600 hover:bg-red-50 h-10 w-10 rounded-full transition-colors"
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -1113,12 +1164,12 @@ const AddTenant = () => {
                         />
                       </div>
                       <div>
-                        <Label htmlFor={`noticePeriod - ${tenant.id} `}>Notice Period *</Label>
+                        <Label htmlFor={`noticePeriod - ${tenant.id} `}>Notice Period / Early Termination Notice *</Label>
                         <Select
                           value={tenant.noticePeriod || ""}
                           onValueChange={(value) => handleInputChange(tenant.id, 'noticePeriod', value)}
                         >
-                          <SelectTrigger id={`noticePeriod - ${tenant.id} `}>
+                          <SelectTrigger id={`noticePeriod - ${tenant.id} `} className="mt-1.5">
                             <SelectValue placeholder="Select Notice Period" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1129,6 +1180,17 @@ const AddTenant = () => {
                             <SelectItem value="5 Months">5 Months</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor={`lockInPeriod - ${tenant.id} `}>Lock-in Period (in Months)</Label>
+                        <Input
+                          id={`lockInPeriod - ${tenant.id} `}
+                          type="number"
+                          value={tenant.lockInPeriod}
+                          onChange={(e) => handleInputChange(tenant.id, 'lockInPeriod', e.target.value)}
+                          placeholder="Specify lock-in period in months"
+                          className="mt-1.5"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1187,9 +1249,28 @@ const AddTenant = () => {
             ))}
 
             <div className="flex justify-end">
-              <Button onClick={handleSubmit} size="lg" className="px-8">
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Tenant{tenants.length > 1 ? 's' : ''}
+              <Button 
+                onClick={handleSubmit} 
+                disabled={isSubmitting || isSuccess} 
+                size="lg" 
+                className={`px-8 transition-all ${isSuccess ? 'bg-green-600 text-white opacity-100 hover:bg-green-700 disabled:opacity-100' : ''}`}
+              >
+                {isSuccess ? (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
+                    Saved
+                  </>
+                ) : isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add Tenant{tenants.length > 1 ? 's' : ''}
+                  </>
+                )}
               </Button>
             </div>
           </div>

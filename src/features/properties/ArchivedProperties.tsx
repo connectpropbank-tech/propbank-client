@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "../../utils/config";
+import { useArchivedProperties } from "../../hooks/useProperties";
 
 interface Property {
   id: string;
@@ -45,57 +46,20 @@ interface Property {
 const ArchivedProperties = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  
+  const { data: propertiesData, isLoading: loading } = useArchivedProperties(user?.uid);
+  const properties = propertiesData || [];
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
-        fetchArchivedProperties(currentUser.uid);
-      } else {
-        setLoading(false);
-      }
     });
 
     return () => unsubscribe();
   }, []);
 
-  const fetchArchivedProperties = async (ownerUID: string) => {
-    try {
-      
-      const response = await fetch(`${API_BASE_URL}/properties?ownerUID=${ownerUID}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
 
-      const data = await response.json();
-      
-      if (data.success) {
-        // Filter to only show archived properties (status === 'inactive')
-        // Default to 'active' if status is not set (backward compatibility)
-        const allProperties = data.properties || [];
-        
-        const archivedProperties = allProperties.filter((p: Property) => {
-          // Only include properties where status is 'inactive'
-          // Also check isActive for backward compatibility
-          return p.status === 'inactive' || (!p.status && p.isActive === false);
-        });
-        
-        setProperties(archivedProperties);
-      } else {
-        setProperties([]);
-      }
-    } catch (error) {
-      
-      setProperties([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleView = (propertyId: string) => {
     navigate(`/property/${propertyId}`);

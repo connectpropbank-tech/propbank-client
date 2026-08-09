@@ -18,6 +18,8 @@ import { X } from "lucide-react";
 import { API_BASE_URL } from "../../utils/config";
 import { FurnishedChecklistModal } from "./FurnishedChecklistModal";
 import { uploadBase64Image } from "../../services/uploadService";
+import { usePropertyDetails } from "../../hooks/useProperties";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface UserInfo {
   uid: string;
@@ -153,6 +155,7 @@ const EditProperty = () => {
   const { propertyId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const isRenewalMode = location.state?.mode === 'renewal';
   const [loading, setLoading] = useState(true);
   const [property, setProperty] = useState<Property | null>(null);
@@ -291,137 +294,79 @@ const EditProperty = () => {
     },
   });
 
+  const { data: propertyData, isLoading: loading } = usePropertyDetails(propertyId);
+
   useEffect(() => {
-    if (propertyId) {
-      fetchPropertyDetails(propertyId);
-    }
-  }, [propertyId]);
+    if (propertyData) {
+      setProperty(propertyData);
+      setUploadedImages(propertyData.images || []);
 
-  const fetchPropertyDetails = async (id: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/properties/${id}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        const propertyData = data.property;
-
-        setProperty(propertyData);
-        setUploadedImages(propertyData.images || []);
-
-        // Populate form with existing data
-        let activeTenant = null;
-        if (propertyData.tenants && propertyData.tenants.length > 0) {
-          // Assuming the last tenant in the list is the active one
-          activeTenant = propertyData.tenants[propertyData.tenants.length - 1];
-        }
-
-        const formData = {
-          propertyTitle: propertyData.title || "",
-          propertyType: propertyData.propertyType || "",
-          configuration: propertyData.configuration || "",
-          listingType: propertyData.listingType || "",
-          unitNumber: propertyData.unitNumber || "",
-          floor: propertyData.floor || "",
-          location: propertyData.location || propertyData.address || "",
-          carpetArea: propertyData.carpetArea || "",
-          plotArea: propertyData.plotArea || "",
-          constructedArea: propertyData.constructedArea || "",
-
-          // Tenant Information - Prefer active tenant data, fallback to property top-level
-          tenantFirstName: activeTenant?.firstName || (propertyData.tenantName ? propertyData.tenantName.split(' ')[0] : ""),
-          tenantLastName: activeTenant?.lastName || (propertyData.tenantName ? propertyData.tenantName.split(' ').slice(1).join(' ') : ""),
-          tenantEmail: activeTenant?.email || propertyData.tenantEmail || "",
-          personName: propertyData.personName || "",
-          mobileNumber: activeTenant?.phone || propertyData.mobileNumber || "",
-          emergencyContact: activeTenant?.emergencyContact || propertyData.emergencyContact || "",
-          primaryNo: propertyData.primaryNo || "",
-          ultNo: propertyData.ultNo || "",
-
-          // Pricing Details - Prefer active tenant data for lease details
-          monthlyRent: activeTenant?.monthlyRent || propertyData.monthlyRent || "",
-          sellingPrice: propertyData.sellingPrice || "",
-          paymentDueDate: activeTenant?.paymentDueDate || propertyData.paymentDueDate || "",
-          monthlyRent1stYear: propertyData.monthlyRent1stYear || "",
-          monthlyRent2ndYear: propertyData.monthlyRent2ndYear || "",
-          monthlyRent3rdYear: propertyData.monthlyRent3rdYear || "",
-          monthlyRent4thYear: propertyData.monthlyRent4thYear || "",
-          rentFromDate1: propertyData.rentFromDate1 || "",
-          rentToDate1: propertyData.rentToDate1 || "",
-          rentFromDate2: propertyData.rentFromDate2 || "",
-          rentToDate2: propertyData.rentToDate2 || "",
-          securityDeposit: activeTenant?.securityDeposit || propertyData.securityDeposit || "",
-          agreementPeriod: propertyData.agreementPeriod || "",
-          agreementStartDate: activeTenant?.leaseStartDate || propertyData.agreementStartDate || "",
-          agreementEndDate: activeTenant?.leaseEndDate || propertyData.agreementEndDate || "",
-          noticePeriod: activeTenant?.noticePeriod || propertyData.noticePeriod || "",
-          lockInPeriod: propertyData.lockInPeriod || "",
-          unitCondition: propertyData.unitCondition || "",
-          maintenanceToBePaidBy: propertyData.maintenanceToBePaidBy || "",
-          rentalStatus: propertyData.rentalStatus || "",
-          saleStatus: propertyData.isSold ? "sold" : "available",
-          buyerFirstName: propertyData.buyers && propertyData.buyers.length > 0 ? propertyData.buyers[propertyData.buyers.length - 1].firstName || "" : "",
-          buyerLastName: propertyData.buyers && propertyData.buyers.length > 0 ? propertyData.buyers[propertyData.buyers.length - 1].lastName || "" : "",
-          buyerPhone: propertyData.buyers && propertyData.buyers.length > 0 ? propertyData.buyers[propertyData.buyers.length - 1].phone || "" : "",
-          images: propertyData.images || [],
-          specificComments: propertyData.specificComments || "",
-          furnishedChecklist: propertyData.furnishedChecklist || [],
-        };
-
-        // Normalize furnished checklist - handle both old string[] format and new object format
-        const normalizeFurnishedChecklist = (checklist: any) => {
-          if (!checklist || !Array.isArray(checklist)) return [];
-
-          return checklist.map((item: any) => {
-            // If it's already in the new format (object with id, name, etc.)
-            if (typeof item === 'object' && item !== null && item.name) {
-              return {
-                ...item,
-                quantity: item.quantity || 1,
-                checked: item.checked !== undefined ? item.checked : true
-              };
-            }
-            // If it's the old string format, convert it
-            if (typeof item === 'string') {
-              return {
-                id: `legacy-${Date.now()}-${Math.random()}`,
-                name: item,
-                checked: true,
-                quantity: 1,
-                category: 'other'
-              };
-            }
-            return item;
-          });
-        };
-
-        // Set the furnished checklist state
-        setFurnishedChecklist(normalizeFurnishedChecklist(propertyData.furnishedChecklist));
-
-
-        form.reset(formData);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to fetch property details",
-          variant: "destructive",
-        });
+      // Populate form with existing data
+      let activeTenant = null;
+      if (propertyData.tenants && propertyData.tenants.length > 0) {
+        // Assuming the last tenant in the list is the active one
+        activeTenant = propertyData.tenants[propertyData.tenants.length - 1];
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to connect to server",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+
+      const formData = {
+        propertyTitle: propertyData.title || "",
+        propertyType: propertyData.propertyType || "",
+        configuration: propertyData.configuration || "",
+        listingType: propertyData.listingType || "",
+        unitNumber: propertyData.unitNumber || "",
+        floor: propertyData.floor || "",
+        location: propertyData.location || propertyData.address || "",
+        carpetArea: propertyData.carpetArea || "",
+        plotArea: propertyData.plotArea || "",
+        constructedArea: propertyData.constructedArea || "",
+
+        // Tenant Information - Prefer active tenant data, fallback to property top-level
+        tenantFirstName: activeTenant?.firstName || (propertyData.tenantName ? propertyData.tenantName.split(' ')[0] : ""),
+        tenantLastName: activeTenant?.lastName || (propertyData.tenantName ? propertyData.tenantName.split(' ').slice(1).join(' ') : ""),
+        tenantEmail: activeTenant?.email || propertyData.tenantEmail || "",
+        personName: propertyData.personName || "",
+        mobileNumber: activeTenant?.phone || propertyData.mobileNumber || "",
+        emergencyContact: activeTenant?.emergencyContact || propertyData.emergencyContact || "",
+        primaryNo: propertyData.primaryNo || "",
+        ultNo: propertyData.ultNo || "",
+
+        // Pricing Details - Prefer active tenant data for lease details
+        monthlyRent: activeTenant?.monthlyRent || propertyData.monthlyRent || "",
+        sellingPrice: propertyData.sellingPrice || "",
+        paymentDueDate: activeTenant?.paymentDueDate || propertyData.paymentDueDate || "",
+        monthlyRent1stYear: propertyData.monthlyRent1stYear || "",
+        monthlyRent2ndYear: propertyData.monthlyRent2ndYear || "",
+        monthlyRent3rdYear: propertyData.monthlyRent3rdYear || "",
+        monthlyRent4thYear: propertyData.monthlyRent4thYear || "",
+        rentFromDate1: propertyData.rentFromDate1 || "",
+        rentToDate1: propertyData.rentToDate1 || "",
+        rentFromDate2: propertyData.rentFromDate2 || "",
+        rentToDate2: propertyData.rentToDate2 || "",
+        securityDeposit: activeTenant?.securityDeposit || propertyData.securityDeposit || "",
+        agreementPeriod: propertyData.agreementPeriod || "",
+        agreementStartDate: activeTenant?.leaseStartDate || propertyData.agreementStartDate || "",
+        agreementEndDate: activeTenant?.leaseEndDate || propertyData.agreementEndDate || "",
+        noticePeriod: activeTenant?.noticePeriod || propertyData.noticePeriod || "",
+        lockInPeriod: propertyData.lockInPeriod || "",
+        unitCondition: propertyData.unitCondition || "",
+        maintenanceToBePaidBy: propertyData.maintenanceToBePaidBy || "",
+        rentalStatus: propertyData.rentalStatus || "",
+        saleStatus: propertyData.isSold ? "sold" : "available",
+        buyerFirstName: propertyData.buyers && propertyData.buyers.length > 0 ? propertyData.buyers[propertyData.buyers.length - 1].firstName || "" : "",
+        buyerLastName: propertyData.buyers && propertyData.buyers.length > 0 ? propertyData.buyers[propertyData.buyers.length - 1].lastName || "" : "",
+        buyerPhone: propertyData.buyers && propertyData.buyers.length > 0 ? propertyData.buyers[propertyData.buyers.length - 1].phone || "" : "",
+        images: propertyData.images || [],
+        specificComments: propertyData.specificComments || "",
+        furnishedChecklist: propertyData.furnishedChecklist || [],
+      };
+
+      setFurnishedChecklist(propertyData.furnishedChecklist || []);
+
+      form.reset(formData);
     }
-  };
+  }, [propertyData, form]);
+
+
 
   // Auto-fetch user details when property is loaded and has a phone number
   useEffect(() => {
@@ -748,7 +693,7 @@ const EditProperty = () => {
 
         // Refresh the property data to show updated values
         if (propertyId) {
-          await fetchPropertyDetails(propertyId);
+          queryClient.invalidateQueries({ queryKey: ['property', propertyId] });
         }
 
         // Optional: navigate back or stay on the page
