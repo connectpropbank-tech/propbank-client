@@ -89,6 +89,7 @@ interface TenantInfo {
   notes: string;
   isActive: boolean;
   rentSchedule?: Array<{
+    months: string;
     year: string;
     amount: string;
     fromDate: string;
