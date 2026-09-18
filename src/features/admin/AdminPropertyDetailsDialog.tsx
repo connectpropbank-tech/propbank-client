@@ -387,6 +387,38 @@ const AdminPropertyDetailsDialog: React.FC<AdminPropertyDetailsDialogProps> = ({
                                         <DataRow label="Maintenance Paid By" value={property.maintenanceToBePaidBy} className="bg-orange-50/50 border-orange-100 capitalize" />
                                     )}
                                 </div>
+
+                                {property.rentSchedule && property.rentSchedule.length > 0 && (
+                                    <div className="mt-6 border-t pt-4">
+                                        <label className="text-sm font-bold text-slate-700 mb-3 block">Monthly Rent Schedule</label>
+                                        <div className="border rounded-md overflow-hidden">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-sm">
+                                                    <thead>
+                                                        <tr className="bg-slate-50 text-left border-b border-slate-200">
+                                                            <th className="px-4 py-2 font-semibold text-slate-600">Year</th>
+                                                            <th className="px-4 py-2 font-semibold text-slate-600">Months</th>
+                                                            <th className="px-4 py-2 font-semibold text-slate-600">Amount</th>
+                                                            <th className="px-4 py-2 font-semibold text-slate-600">From</th>
+                                                            <th className="px-4 py-2 font-semibold text-slate-600">To</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {property.rentSchedule.map((item: any, idx: number) => (
+                                                            <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                                                                <td className="px-4 py-2 text-slate-700 font-medium">{item.year}</td>
+                                                                <td className="px-4 py-2 text-slate-600">{item.months || '11'}</td>
+                                                                <td className="px-4 py-2 text-slate-700 font-medium">₹{Number(item.amount).toLocaleString()}</td>
+                                                                <td className="px-4 py-2 text-slate-500">{item.fromDate ? new Date(item.fromDate).toLocaleDateString() : 'N/A'}</td>
+                                                                <td className="px-4 py-2 text-slate-500">{item.toDate ? new Date(item.toDate).toLocaleDateString() : 'N/A'}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
 

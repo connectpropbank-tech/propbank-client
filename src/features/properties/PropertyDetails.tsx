@@ -706,6 +706,38 @@ const PropertyDetails = () => {
                         <DetailItem key={idx} {...item} />
                       ))}
                     </div>
+
+                    {property.rentSchedule && property.rentSchedule.length > 0 && (
+                      <div className="mt-6 border-t pt-4">
+                        <label className="text-sm font-medium mb-3 block">Monthly Rent Schedule</label>
+                        <div className="border rounded-md overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="bg-muted/50 text-left">
+                                  <th className="px-4 py-2 font-medium bg-muted/30">Year</th>
+                                  <th className="px-4 py-2 font-medium bg-muted/30">Months</th>
+                                  <th className="px-4 py-2 font-medium bg-muted/30">Amount</th>
+                                  <th className="px-4 py-2 font-medium bg-muted/30">From</th>
+                                  <th className="px-4 py-2 font-medium bg-muted/30">To</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {property.rentSchedule.map((item: any, idx: number) => (
+                                  <tr key={idx} className="border-t">
+                                    <td className="px-4 py-2">{item.year}</td>
+                                    <td className="px-4 py-2">{item.months || '11'}</td>
+                                    <td className="px-4 py-2">₹{Number(item.amount).toLocaleString()}</td>
+                                    <td className="px-4 py-2">{item.fromDate ? new Date(item.fromDate).toLocaleDateString() : 'N/A'}</td>
+                                    <td className="px-4 py-2">{item.toDate ? new Date(item.toDate).toLocaleDateString() : 'N/A'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )
@@ -903,6 +935,7 @@ const PropertyDetails = () => {
                                   <thead>
                                     <tr className="bg-muted/50 text-left">
                                       <th className="px-4 py-2 font-medium bg-muted/30">Year</th>
+                                      <th className="px-4 py-2 font-medium bg-muted/30">Months</th>
                                       <th className="px-4 py-2 font-medium bg-muted/30">Amount</th>
                                       <th className="px-4 py-2 font-medium bg-muted/30">From</th>
                                       <th className="px-4 py-2 font-medium bg-muted/30">To</th>
@@ -912,9 +945,10 @@ const PropertyDetails = () => {
                                     {tenant.rentSchedule.map((item, idx) => (
                                       <tr key={idx} className="border-t">
                                         <td className="px-4 py-2">{item.year}</td>
+                                        <td className="px-4 py-2">{item.months || '11'}</td>
                                         <td className="px-4 py-2">₹{Number(item.amount).toLocaleString()}</td>
-                                        <td className="px-4 py-2">{new Date(item.fromDate).toLocaleDateString()}</td>
-                                        <td className="px-4 py-2">{new Date(item.toDate).toLocaleDateString()}</td>
+                                        <td className="px-4 py-2">{item.fromDate ? new Date(item.fromDate).toLocaleDateString() : 'N/A'}</td>
+                                        <td className="px-4 py-2">{item.toDate ? new Date(item.toDate).toLocaleDateString() : 'N/A'}</td>
                                       </tr>
                                     ))}
                                   </tbody>

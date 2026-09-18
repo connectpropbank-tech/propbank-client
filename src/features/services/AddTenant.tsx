@@ -81,6 +81,7 @@ const AddTenant = () => {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [existingTenants, setExistingTenants] = useState<TenantData[]>([]);
   const [propertyTitle, setPropertyTitle] = useState<string>('');
+  const [propertyRentSchedule, setPropertyRentSchedule] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -134,6 +135,9 @@ const AddTenant = () => {
         if (data.success) {
           const property = data.property;
           setPropertyTitle(property.title);
+          if (property.rentSchedule) {
+            setPropertyRentSchedule(property.rentSchedule);
+          }
 
           if (property.tenants && property.tenants.length > 0) {
             setExistingTenants(property.tenants.map((tenant: any) => ({
@@ -737,7 +741,7 @@ const AddTenant = () => {
                           <label className="text-xs font-medium text-muted-foreground">Lock-in Period</label>
                           <p>{tenant.lockInPeriod ? `${tenant.lockInPeriod} Months` : 'N/A'}</p>
                         </div>
-                        {tenant.rentSchedule && tenant.rentSchedule.length > 0 && (
+                        {((tenant.rentSchedule && tenant.rentSchedule.length > 0) || (propertyRentSchedule && propertyRentSchedule.length > 0)) && (
                           <div className="md:col-span-3 mt-2">
                             <label className="text-xs font-medium text-muted-foreground mb-1 block">Rent Schedule</label>
                             <div className="border rounded-md overflow-hidden w-full md:w-2/3">
@@ -745,15 +749,17 @@ const AddTenant = () => {
                                 <thead className="bg-gray-100">
                                   <tr>
                                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Year</th>
+                                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Months</th>
                                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Amount</th>
                                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">From</th>
                                     <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">To</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                  {tenant.rentSchedule.map((item, i) => (
+                                  {(tenant.rentSchedule?.length > 0 ? tenant.rentSchedule : propertyRentSchedule).map((item, i) => (
                                     <tr key={i} className="bg-white">
                                       <td className="px-3 py-2">{item.year}</td>
+                                      <td className="px-3 py-2">{item.months || '11'}</td>
                                       <td className="px-3 py-2">₹{Number(item.amount).toLocaleString()}</td>
                                       <td className="px-3 py-2">{item.fromDate ? new Date(item.fromDate).toLocaleDateString() : '-'}</td>
                                       <td className="px-3 py-2">{item.toDate ? new Date(item.toDate).toLocaleDateString() : '-'}</td>

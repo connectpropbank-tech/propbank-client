@@ -53,6 +53,12 @@ interface TenantInfo {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  rentSchedule?: {
+    year: string;
+    amount: string;
+    fromDate: string;
+    toDate: string;
+  }[];
 }
 
 interface BuyerInfo {

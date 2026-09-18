@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '../utils/config';
 
 interface Property {
+  rentSchedule: any;
   id: string;
   title: string;
   description: string;
